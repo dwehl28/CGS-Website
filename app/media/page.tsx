@@ -1,88 +1,197 @@
-export default function MediaPage() {
+import type { Metadata } from "next";
+
+import { getMediaHubData } from "@/lib/media";
+import { buildMetadata } from "@/lib/seo";
+import { siteConfig, socialLinks } from "@/lib/site-content";
+
+export const metadata: Metadata = buildMetadata({
+  title: "Media",
+  description:
+    "Follow Crossodog Golf Society across Instagram, TikTok, YouTube, and Twitch for clips, events, and livestreams.",
+  path: "/media",
+});
+
+export default async function MediaPage() {
+  const mediaData = await getMediaHubData(6);
+
   return (
-    <main className="min-h-screen bg-black text-white">
-      <section className="px-6 py-16 max-w-6xl mx-auto">
-        <h1 className="text-5xl font-black mb-4 text-center">CGS Media</h1>
-
-        <p className="text-zinc-400 text-center max-w-2xl mx-auto mb-12">
-          Follow Crossodog Golf Society across all platforms for livestreams,
-          clips, event content, highlights, and community updates.
-        </p>
-
-        <div className="grid md:grid-cols-2 gap-8">
-          <a
-            href="https://www.instagram.com/crossogolf/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block bg-zinc-900 border border-zinc-800 rounded-2xl p-8 hover:border-sky-400 transition"
-          >
-            <p className="text-sky-400 text-sm font-semibold uppercase tracking-wide mb-2">
-              Social
-            </p>
-            <h2 className="text-3xl font-bold mb-3">Instagram</h2>
-            <p className="text-zinc-300">
-              Follow CGS photos, posts, event updates, and branded content.
-            </p>
-          </a>
-
-          <a
-            href="https://www.tiktok.com/@crossogs"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block bg-zinc-900 border border-zinc-800 rounded-2xl p-8 hover:border-sky-400 transition"
-          >
-            <p className="text-sky-400 text-sm font-semibold uppercase tracking-wide mb-2">
-              Social
-            </p>
-            <h2 className="text-3xl font-bold mb-3">TikTok</h2>
-            <p className="text-zinc-300">
-              Catch CGS short-form videos, clips, and moments from the course.
-            </p>
-          </a>
-
-          <a
-            href="https://www.youtube.com/@CrossodogGolfSociety"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block bg-zinc-900 border border-zinc-800 rounded-2xl p-8 hover:border-sky-400 transition"
-          >
-            <p className="text-sky-400 text-sm font-semibold uppercase tracking-wide mb-2">
-              Video
-            </p>
-            <h2 className="text-3xl font-bold mb-3">YouTube</h2>
-            <p className="text-zinc-300">
-              Watch full videos, major recaps, challenge content, and CGS event
-              coverage.
-            </p>
-          </a>
-
-          <a
-            href="https://www.twitch.tv/crossodog"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block bg-zinc-900 border border-zinc-800 rounded-2xl p-8 hover:border-sky-400 transition"
-          >
-            <p className="text-sky-400 text-sm font-semibold uppercase tracking-wide mb-2">
-              Live
-            </p>
-            <h2 className="text-3xl font-bold mb-3">Twitch</h2>
-            <p className="text-zinc-300">
-              Tune in for livestreams, event coverage, and live CGS content.
-            </p>
-          </a>
-        </div>
-
-        <div className="mt-14 text-center">
-          <p className="text-zinc-500 mb-4">
-            Business or collab enquiries
+    <main className="min-h-screen text-white">
+      <section className="mx-auto max-w-6xl px-6 py-16">
+        <div className="mx-auto max-w-3xl text-center">
+          <div className="eyebrow">Creator-led golf media</div>
+          <h1 className="mt-6 text-5xl md:text-6xl">CGS Media Room</h1>
+          <p className="mt-5 text-lg leading-8 muted-copy">
+            The CGS media side is built to stay active across highlights,
+            livestreams, and short-form clips. Start with the latest upload,
+            then jump out to the channels that suit you best.
           </p>
 
+          <div className="mt-6 flex flex-wrap justify-center gap-3 text-sm">
+            <span className="chip text-zinc-100">{mediaData.feedStatusLabel}</span>
+            <span className="text-zinc-500">
+              Updated {mediaData.feedSyncedLabel}
+            </span>
+          </div>
+
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <a
+              href={siteConfig.youtubeChannelUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary"
+            >
+              Open YouTube
+            </a>
+            <a
+              href={siteConfig.linktreeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-secondary"
+            >
+              Open Linktree
+            </a>
+          </div>
+        </div>
+
+        <div className="mt-12 grid gap-6 lg:grid-cols-[1.08fr_0.92fr]">
           <a
-            href="mailto:crossodoggolf@gmail.com"
-            className="inline-block border border-white px-6 py-3 rounded-full font-semibold hover:bg-white hover:text-black transition"
+            href={mediaData.featuredVideo.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="panel rounded-[2rem] p-5 md:p-6"
           >
-            crossodoggolf@gmail.com
+            <div
+              className="video-thumb min-h-[20rem] rounded-[1.5rem] border border-white/10"
+              style={{
+                backgroundImage: `url(${mediaData.featuredVideo.thumbnail})`,
+              }}
+            />
+
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm uppercase tracking-[0.24em] text-[var(--accent)]">
+                  Featured upload
+                </p>
+                <h2 className="mt-3 text-4xl">{mediaData.featuredVideo.title}</h2>
+              </div>
+              <span className="chip text-xs uppercase tracking-[0.16em] text-zinc-100">
+                {mediaData.featuredVideo.viewCountLabel}
+              </span>
+            </div>
+
+            <p className="mt-4 max-w-3xl leading-7 text-zinc-300">
+              {mediaData.featuredVideo.description}
+            </p>
+            <p className="mt-4 text-sm text-zinc-500">
+              Published {mediaData.featuredVideo.publishedLabel}
+            </p>
           </a>
+
+          <div className="grid gap-6">
+            <div className="panel rounded-[2rem] p-6">
+              <p className="text-sm uppercase tracking-[0.24em] text-[var(--accent)]">
+                Channel snapshot
+              </p>
+              <h2 className="mt-3 text-3xl">{siteConfig.creatorBio}</h2>
+
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                {mediaData.stats.map((stat) => (
+                  <div
+                    key={stat.label}
+                    className="rounded-[1.25rem] border border-white/8 bg-black/20 px-4 py-4"
+                  >
+                    <p className="text-2xl font-semibold text-white">{stat.value}</p>
+                    <p className="mt-2 text-sm leading-6 text-zinc-400">
+                      {stat.label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="panel rounded-[2rem] p-6">
+              <p className="text-sm uppercase tracking-[0.24em] text-[var(--tan)]">
+                Follow CGS
+              </p>
+
+              <div className="mt-5 grid gap-3">
+                {socialLinks.map((link) => (
+                  <a
+                    key={link.label}
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-[1.2rem] border border-white/8 bg-white/5 px-4 py-4"
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                          {link.category}
+                        </p>
+                        <h3 className="mt-1 text-2xl">{link.label}</h3>
+                      </div>
+                      <span
+                        className="h-3 w-3 rounded-full"
+                        style={{ backgroundColor: link.accent }}
+                        aria-hidden="true"
+                      />
+                    </div>
+                    <p className="mt-3 text-sm leading-7 text-zinc-400">
+                      {link.description}
+                    </p>
+                    <p className="mt-2 text-sm text-zinc-500">{link.handle}</p>
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-12">
+          <div className="mb-6 flex items-end justify-between gap-4">
+            <div>
+              <div className="eyebrow">Recent uploads</div>
+              <h2 className="mt-4 text-4xl">Latest from the CGS feed</h2>
+            </div>
+            <a
+              href={siteConfig.youtubeChannelUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--accent)]"
+            >
+              View channel
+            </a>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {mediaData.videos.map((video) => (
+              <a
+                key={video.id}
+                href={video.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="panel rounded-[1.75rem] p-4"
+              >
+                <div
+                  className="video-thumb min-h-[14rem] rounded-[1.25rem] border border-white/10"
+                  style={{ backgroundImage: `url(${video.thumbnail})` }}
+                />
+
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--tan)]">
+                    {video.isShort ? "Short-form clip" : "Long-form video"}
+                  </p>
+                  <span className="text-xs text-zinc-500">{video.viewCountLabel}</span>
+                </div>
+
+                <h3 className="mt-2 text-2xl">{video.title}</h3>
+                <p className="mt-3 line-clamp-3 text-sm leading-7 text-zinc-400">
+                  {video.description || "Open the video to watch the latest CGS upload."}
+                </p>
+                <p className="mt-4 text-sm text-zinc-500">{video.publishedLabel}</p>
+              </a>
+            ))}
+          </div>
         </div>
       </section>
     </main>

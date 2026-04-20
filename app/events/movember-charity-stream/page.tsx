@@ -1,96 +1,147 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+
+import EventCountdown from "@/components/EventCountdown";
+import EventInterestForm from "@/components/EventInterestForm";
+import FAQSection from "@/components/FAQSection";
+import { buildMetadata } from "@/lib/seo";
+import { getEventBySlug } from "@/lib/site-content";
+import {
+  buildEventJsonLd,
+  buildFaqJsonLd,
+  createJsonLd,
+} from "@/lib/structured-data";
+
+function requireEvent() {
+  const event = getEventBySlug("movember-charity-stream");
+
+  if (!event) {
+    throw new Error("Expected Movember Charity Stream content to exist.");
+  }
+
+  return event;
+}
+
+const event = requireEvent();
+
+export const metadata: Metadata = buildMetadata({
+  title: event.title,
+  description: event.summary,
+  path: event.href,
+});
+
 export default function MovemberCharityStreamPage() {
   return (
-    <main className="min-h-screen bg-black text-white">
-      <section className="px-6 py-16 max-w-5xl mx-auto">
-        <p className="text-sky-400 text-sm font-semibold uppercase tracking-wide mb-3">
-          Charity Stream
+    <main className="min-h-screen text-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={createJsonLd(buildEventJsonLd(event))}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={createJsonLd(buildFaqJsonLd(event.faqs))}
+      />
+
+      <section className="mx-auto max-w-5xl px-6 py-16">
+        <div className="eyebrow">{event.category}</div>
+        <h1 className="mt-6 text-5xl md:text-6xl">{event.title}</h1>
+        <div className="mt-5">
+          <EventCountdown startDate={event.startDate} endDate={event.endDate} />
+        </div>
+
+        <p className="mt-6 max-w-3xl text-lg leading-8 text-zinc-300">
+          {event.summary}
         </p>
 
-        <h1 className="text-5xl font-black mb-4">Movember Charity Stream</h1>
-
-        <p className="text-zinc-400 text-lg mb-8 max-w-3xl">
-          A 24-hour Crossodog Golf Society challenge stream where the CGS team
-          plays golf the entire time to raise awareness, create content, and
-          support the Movember cause.
-        </p>
-
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 mb-10">
-          <h2 className="text-2xl font-bold mb-6">Event Overview</h2>
-
-          <div className="grid md:grid-cols-2 gap-6 text-sm text-zinc-300">
-            <div>
-              <p className="text-zinc-500 mb-1">Start</p>
-              <p>Saturday 28 November</p>
-            </div>
-
-            <div>
-              <p className="text-zinc-500 mb-1">Finish</p>
-              <p>Sunday 29 November</p>
-            </div>
-
-            <div>
-              <p className="text-zinc-500 mb-1">Duration</p>
-              <p>24 hours</p>
-            </div>
-
-            <div>
-              <p className="text-zinc-500 mb-1">Format</p>
-              <p>Continuous golf challenge stream</p>
-            </div>
-
-            <div>
-              <p className="text-zinc-500 mb-1">Purpose</p>
-              <p>Charity + content + community</p>
-            </div>
-
-            <div>
-              <p className="text-zinc-500 mb-1">Status</p>
-              <p>Planning stage</p>
-            </div>
+        <div className="mt-10 panel rounded-[2rem] p-8">
+          <h2 className="text-3xl">Event overview</h2>
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            {event.overview.map((row) => (
+              <div
+                key={row.label}
+                className="rounded-[1.2rem] border border-white/8 bg-black/18 px-4 py-4"
+              >
+                <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                  {row.label}
+                </p>
+                <p className="mt-2 text-sm text-zinc-100">{row.value}</p>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 mb-10">
-          <h2 className="text-2xl font-bold mb-4">About the Event</h2>
-
-          <p className="text-zinc-300 leading-7 mb-4">
-            The Movember Charity Stream is designed to be one of the biggest
-            community and content moments on the CGS calendar. Over the course
-            of 24 hours, the team will take on a continuous golf challenge while
-            livestreaming the full experience.
-          </p>
-
-          <p className="text-zinc-300 leading-7">
-            This event is about more than golf. It is a charity-driven stream
-            built to bring together supporters, viewers, and the broader CGS
-            audience around a meaningful cause while creating a memorable annual
-            event.
-          </p>
+        <div className="mt-10 panel rounded-[2rem] p-8">
+          <h2 className="text-3xl">About the event</h2>
+          <div className="mt-5 space-y-4">
+            {event.body.map((paragraph) => (
+              <p key={paragraph} className="leading-7 text-zinc-300">
+                {paragraph}
+              </p>
+            ))}
+          </div>
         </div>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 mb-10">
-          <h2 className="text-2xl font-bold mb-4">Support or Get Involved</h2>
-
-          <p className="text-zinc-300 mb-6">
-            Want to support the event, collaborate, sponsor, or help with the
-            Movember Charity Stream? Reach out through the contact page.
-          </p>
-
-          <div className="flex flex-wrap gap-4">
-            <a
-              href="/contact"
-              className="bg-sky-400 text-black px-6 py-3 rounded-full font-semibold inline-block"
-            >
-              Contact CGS
-            </a>
-
-            <a
-              href="/events"
-              className="border border-white px-6 py-3 rounded-full inline-block"
-            >
-              Back to Events
-            </a>
+        <div className="mt-10 panel rounded-[2rem] p-8">
+          <h2 className="text-3xl">Ways to get involved</h2>
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            {event.pathways.map((pathway) => (
+              <div
+                key={pathway.title}
+                className="rounded-[1.35rem] border border-white/8 bg-black/18 p-5"
+              >
+                <h3 className="text-2xl">{pathway.title}</h3>
+                <p className="mt-3 text-sm leading-7 text-zinc-400">
+                  {pathway.description}
+                </p>
+              </div>
+            ))}
           </div>
+        </div>
+
+        <div className="mt-10 grid gap-8 lg:grid-cols-[1.02fr_0.98fr]">
+          <div className="panel rounded-[2rem] p-8">
+            <h2 className="text-3xl">Support opportunities</h2>
+
+            <ul className="mt-5 list-inside list-disc space-y-3 text-zinc-300">
+              <li>Support the stream with sponsorship or donated prizes.</li>
+              <li>Volunteer behind the scenes or help spread the word.</li>
+              <li>Partner on content, charity promotion, or community reach.</li>
+            </ul>
+
+            <div className="mt-6 flex flex-wrap gap-4">
+              <Link
+                href="/contact"
+                className="btn-primary"
+              >
+                Contact CGS
+              </Link>
+
+              <Link
+                href="/events"
+                className="btn-secondary"
+              >
+                Back to Events
+              </Link>
+            </div>
+          </div>
+
+          <EventInterestForm
+            eventName={event.title}
+            eventSlug={event.slug}
+            title={event.interestForm.title}
+            description={event.interestForm.description}
+            buttonLabel={event.interestForm.buttonLabel}
+            options={event.interestForm.options}
+            showHandicap={event.interestForm.showHandicap}
+          />
+        </div>
+
+        <div className="mt-12">
+          <FAQSection
+            title="Movember Stream FAQs"
+            intro="Useful context for sponsors, collaborators, and community supporters thinking about getting involved."
+            items={event.faqs}
+          />
         </div>
       </section>
     </main>

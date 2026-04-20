@@ -1,106 +1,154 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+
+import EventCountdown from "@/components/EventCountdown";
+import EventInterestForm from "@/components/EventInterestForm";
+import FAQSection from "@/components/FAQSection";
+import { buildMetadata } from "@/lib/seo";
+import { getEventBySlug } from "@/lib/site-content";
+import {
+  buildEventJsonLd,
+  buildFaqJsonLd,
+  createJsonLd,
+} from "@/lib/structured-data";
+
+function requireEvent() {
+  const event = getEventBySlug("cgs-major");
+
+  if (!event) {
+    throw new Error("Expected CGS Major event content to exist.");
+  }
+
+  return event;
+}
+
+const event = requireEvent();
+
+export const metadata: Metadata = buildMetadata({
+  title: event.title,
+  description: event.summary,
+  path: event.href,
+});
+
 export default function CGSMajorPage() {
   return (
-    <main className="min-h-screen bg-black text-white">
-      <section className="px-6 py-16 max-w-5xl mx-auto">
-        <p className="text-sky-400 text-sm font-semibold uppercase tracking-wide mb-3">
-          Featured Major
+    <main className="min-h-screen text-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={createJsonLd(buildEventJsonLd(event))}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={createJsonLd(buildFaqJsonLd(event.faqs))}
+      />
+
+      <section className="mx-auto max-w-5xl px-6 py-16">
+        <div className="eyebrow">{event.category}</div>
+        <h1 className="mt-6 text-5xl md:text-6xl">{event.title}</h1>
+        <div className="mt-5">
+          <EventCountdown startDate={event.startDate} endDate={event.endDate} />
+        </div>
+
+        <p className="mt-6 max-w-3xl text-lg leading-8 text-zinc-300">
+          {event.summary}
         </p>
 
-        <h1 className="text-5xl font-black mb-4">CGS Major</h1>
-
-        <p className="text-zinc-400 text-lg mb-8 max-w-3xl">
-          A Masters-style Crossodog Golf Society event played at the Waste
-          Management Course, featuring both scratch and handicap competitions
-          across two sessions and streamed live for the CGS community.
-        </p>
-
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 mb-10">
-          <h2 className="text-2xl font-bold mb-6">Event Overview</h2>
-
-          <div className="grid md:grid-cols-2 gap-6 text-sm text-zinc-300">
-            <div>
-              <p className="text-zinc-500 mb-1">Date</p>
-              <p>2 May</p>
-            </div>
-
-            <div>
-              <p className="text-zinc-500 mb-1">Venue</p>
-              <p>Waste Management Course</p>
-            </div>
-
-            <div>
-              <p className="text-zinc-500 mb-1">Format</p>
-              <p>Scratch + Handicap</p>
-            </div>
-
-            <div>
-              <p className="text-zinc-500 mb-1">Stream</p>
-              <p>Live streamed</p>
-            </div>
-
-            <div>
-              <p className="text-zinc-500 mb-1">Session One</p>
-              <p>12pm – 4pm</p>
-            </div>
-
-            <div>
-              <p className="text-zinc-500 mb-1">Session Two</p>
-              <p>5pm – 9pm</p>
-            </div>
-
-            <div>
-              <p className="text-zinc-500 mb-1">Member Price</p>
-              <p>$65</p>
-            </div>
-
-            <div>
-              <p className="text-zinc-500 mb-1">Public Price</p>
-              <p>$70</p>
-            </div>
+        <div className="mt-10 panel rounded-[2rem] p-8">
+          <h2 className="text-3xl">Event overview</h2>
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            {event.overview.map((row) => (
+              <div
+                key={row.label}
+                className="rounded-[1.2rem] border border-white/8 bg-black/18 px-4 py-4"
+              >
+                <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                  {row.label}
+                </p>
+                <p className="mt-2 text-sm text-zinc-100">{row.value}</p>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 mb-10">
-          <h2 className="text-2xl font-bold mb-4">About the Event</h2>
-
-          <p className="text-zinc-300 leading-7 mb-4">
-            The CGS Major is one of the signature events on the Crossodog Golf
-            Society calendar. Designed with a Masters-style feel, it combines
-            strong competition with the creator-driven and community-focused
-            energy that defines CGS.
-          </p>
-
-          <p className="text-zinc-300 leading-7">
-            Players will compete in both scratch and handicap formats, giving a
-            wider range of golfers a chance to be part of the event. With live
-            streaming throughout the day, the CGS Major is built to be both a
-            serious event and a showcase moment for the brand.
-          </p>
+        <div className="mt-10 panel rounded-[2rem] p-8">
+          <h2 className="text-3xl">About the event</h2>
+          <div className="mt-5 space-y-4">
+            {event.body.map((paragraph) => (
+              <p key={paragraph} className="leading-7 text-zinc-300">
+                {paragraph}
+              </p>
+            ))}
+          </div>
         </div>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 mb-10">
-          <h2 className="text-2xl font-bold mb-4">Registration</h2>
-
-          <p className="text-zinc-300 mb-6">
-            Interested in playing the CGS Major? Reach out through the contact
-            page for now while registrations are being handled manually.
-          </p>
-
-          <div className="flex flex-wrap gap-4">
-            <a
-              href="/contact"
-              className="bg-sky-400 text-black px-6 py-3 rounded-full font-semibold inline-block"
-            >
-              Register Interest
-            </a>
-
-            <a
-              href="/events"
-              className="border border-white px-6 py-3 rounded-full inline-block"
-            >
-              Back to Events
-            </a>
+        <div className="mt-10 panel rounded-[2rem] p-8">
+          <h2 className="text-3xl">Who this event suits</h2>
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            {event.pathways.map((pathway) => (
+              <div
+                key={pathway.title}
+                className="rounded-[1.35rem] border border-white/8 bg-black/18 p-5"
+              >
+                <h3 className="text-2xl">{pathway.title}</h3>
+                <p className="mt-3 text-sm leading-7 text-zinc-400">
+                  {pathway.description}
+                </p>
+              </div>
+            ))}
           </div>
+        </div>
+
+        <div className="mt-10 grid gap-8 lg:grid-cols-[1.02fr_0.98fr]">
+          <div className="panel rounded-[2rem] p-8">
+            <h2 className="text-3xl">What happens next</h2>
+
+            <ul className="mt-5 list-inside list-disc space-y-3 text-zinc-300">
+              <li>Join the waitlist so CGS knows you want a spot.</li>
+              <li>CGS can follow up with final session, pricing, and entry details.</li>
+              <li>Playing members will be easiest to prioritise when registrations open.</li>
+            </ul>
+
+            <div className="mt-6 flex flex-wrap gap-4">
+              <Link
+                href="/membership"
+                className="btn-primary"
+              >
+                Become a Member
+              </Link>
+
+              <Link
+                href="/scoreboard"
+                className="btn-secondary"
+              >
+                Open live scoreboard
+              </Link>
+
+              <Link
+                href="/events"
+                className="btn-secondary"
+              >
+                Back to Events
+              </Link>
+            </div>
+          </div>
+
+          <EventInterestForm
+            eventName={event.title}
+            eventSlug={event.slug}
+            title={event.interestForm.title}
+            description={event.interestForm.description}
+            buttonLabel={event.interestForm.buttonLabel}
+            options={event.interestForm.options}
+            showHandicap={event.interestForm.showHandicap}
+          />
+        </div>
+
+        <div className="mt-12">
+          <FAQSection
+            title="CGS Major FAQs"
+            intro="A few quick answers for players and supporters deciding whether to raise their hand now."
+            items={event.faqs}
+          />
         </div>
       </section>
     </main>

@@ -1,91 +1,134 @@
+import type { Metadata } from "next";
+
+import ContactForm from "@/components/ContactForm";
+import FAQSection from "@/components/FAQSection";
+import { buildMetadata } from "@/lib/seo";
+import {
+  contactFaqs,
+  contactEnquiryOptions,
+  partnershipReasons,
+  siteConfig,
+  socialLinks,
+} from "@/lib/site-content";
+import { buildFaqJsonLd, createJsonLd } from "@/lib/structured-data";
+
+export const metadata: Metadata = buildMetadata({
+  title: "Contact",
+  description:
+    "Get in touch with Crossodog Golf Society about events, sponsorships, memberships, merch, and collaborations.",
+  path: "/contact",
+});
+
 export default function ContactPage() {
   return (
-    <main className="min-h-screen bg-black text-white">
-      <section className="px-6 py-16 max-w-6xl mx-auto">
-        <h1 className="text-5xl font-black mb-4 text-center">Contact CGS</h1>
+    <main className="min-h-screen text-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={createJsonLd(buildFaqJsonLd(contactFaqs))}
+      />
 
-        <p className="text-zinc-400 text-center max-w-2xl mx-auto mb-12">
-          Want to get involved with Crossodog Golf Society, ask about events,
-          talk merch, or discuss a collab? Reach out below.
-        </p>
+      <section className="mx-auto max-w-6xl px-6 py-16">
+        <div className="mx-auto max-w-3xl text-center">
+          <div className="eyebrow">Open line to CGS</div>
+          <h1 className="mt-6 text-5xl md:text-6xl">Contact CGS</h1>
+          <p className="mt-5 text-lg leading-8 text-zinc-300">
+            Want to get involved with Crossodog Golf Society, ask about events,
+            talk merch, or explore a collaboration? This is the best place to
+            reach the CGS team.
+          </p>
+        </div>
 
-        <div className="grid md:grid-cols-2 gap-8">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8">
-            <p className="text-sky-400 text-sm font-semibold uppercase tracking-wide mb-2">
+        <div className="mt-12 grid gap-8 md:grid-cols-2">
+          <div className="panel rounded-[2rem] p-8">
+            <p className="mb-2 text-sm font-semibold uppercase tracking-[0.24em] text-[var(--accent)]">
               Email
             </p>
-            <h2 className="text-3xl font-bold mb-3">General Enquiries</h2>
-            <p className="text-zinc-300 mb-6">
-              For questions about CGS, membership, events, or general contact.
+            <h2 className="mb-3 text-4xl">General enquiries</h2>
+            <p className="mb-6 leading-7 text-zinc-300">
+              For quick questions about CGS, membership, events, or general
+              contact.
             </p>
 
             <a
-              href="mailto:crossodoggolf@gmail.com"
-              className="inline-block bg-sky-400 text-black px-6 py-3 rounded-full font-semibold"
+              href={`mailto:${siteConfig.email}`}
+              className="btn-primary"
             >
-              crossodoggolf@gmail.com
+              {siteConfig.email}
             </a>
           </div>
 
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8">
-            <p className="text-sky-400 text-sm font-semibold uppercase tracking-wide mb-2">
+          <div className="panel rounded-[2rem] p-8">
+            <p className="mb-2 text-sm font-semibold uppercase tracking-[0.24em] text-[var(--tan)]">
               Partnerships
             </p>
-            <h2 className="text-3xl font-bold mb-3">Sponsors & Collaborations</h2>
-            <p className="text-zinc-300 mb-6">
-              Interested in partnering with CGS, sponsoring an event, or working
-              together on content? Get in touch.
+            <h2 className="mb-3 text-4xl">Sponsors and collaborators</h2>
+            <p className="mb-6 leading-7 text-zinc-300">
+              Interested in partnering with CGS, sponsoring an event, or
+              building branded content together? This is the lane for it.
             </p>
 
-            <a
-              href="mailto:crossodoggolf@gmail.com"
-              className="inline-block border border-white px-6 py-3 rounded-full font-semibold hover:bg-white hover:text-black transition"
-            >
-              Contact for Partnerships
-            </a>
+            <div className="grid gap-4">
+              {partnershipReasons.map((reason) => (
+                <div
+                  key={reason.title}
+                  className="rounded-[1.2rem] border border-white/8 bg-black/18 px-4 py-4"
+                >
+                  <h3 className="text-2xl">{reason.title}</h3>
+                  <p className="mt-3 text-sm leading-7 text-zinc-400">
+                    {reason.description}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
-        <div className="mt-12 bg-zinc-900 border border-zinc-800 rounded-2xl p-8">
-          <h2 className="text-2xl font-bold mb-6 text-center">Follow CGS</h2>
+        <div className="mt-12 grid gap-8 lg:grid-cols-[1.08fr_0.92fr]">
+          <ContactForm enquiryOptions={contactEnquiryOptions} />
 
-          <div className="grid md:grid-cols-2 gap-4 text-center">
-            <a
-              href="https://www.instagram.com/crossogolf/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="border border-zinc-700 rounded-xl px-4 py-4 hover:border-sky-400 transition"
-            >
-              Instagram
-            </a>
+          <div className="panel rounded-[2rem] p-8">
+            <h2 className="text-3xl">Follow CGS</h2>
 
-            <a
-              href="https://www.tiktok.com/@crossogs"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="border border-zinc-700 rounded-xl px-4 py-4 hover:border-sky-400 transition"
-            >
-              TikTok
-            </a>
-
-            <a
-              href="https://www.youtube.com/@CrossodogGolfSociety"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="border border-zinc-700 rounded-xl px-4 py-4 hover:border-sky-400 transition"
-            >
-              YouTube
-            </a>
-
-            <a
-              href="https://www.twitch.tv/crossodog"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="border border-zinc-700 rounded-xl px-4 py-4 hover:border-sky-400 transition"
-            >
-              Twitch
-            </a>
+            <div className="mt-6 grid gap-4">
+              {socialLinks.map((link) => (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-[1.25rem] border border-white/8 bg-white/5 px-4 py-4"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm uppercase tracking-wide text-[var(--accent)]">
+                        {link.category}
+                      </p>
+                      <p className="mt-1 text-lg font-semibold text-white">
+                        {link.label}
+                      </p>
+                    </div>
+                    <span
+                      className="h-3 w-3 rounded-full"
+                      style={{ backgroundColor: link.accent }}
+                      aria-hidden="true"
+                    />
+                  </div>
+                  <p className="mt-3 text-sm leading-7 text-zinc-400">
+                    {link.description}
+                  </p>
+                  <p className="mt-2 text-sm text-zinc-500">{link.handle}</p>
+                </a>
+              ))}
+            </div>
           </div>
+        </div>
+
+        <div className="mt-12">
+          <FAQSection
+            title="Contact FAQs"
+            intro="If you are not sure whether your question fits, this should help."
+            items={contactFaqs}
+          />
         </div>
       </section>
     </main>

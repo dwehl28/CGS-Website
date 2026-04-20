@@ -1,78 +1,108 @@
-export default function SportsPage() {
+import type { Metadata } from "next";
+
+import SportsHubRotator from "@/components/SportsHubRotator";
+import { getSportsHubSnapshots } from "@/lib/live-sports";
+import { buildMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = buildMetadata({
+  title: "Sports Hub",
+  description:
+    "Track the sports CGS cares about with rotating live fixtures, recent results, and CGS-calculated ladder views.",
+  path: "/sports",
+});
+
+export const dynamic = "force-dynamic";
+
+export default async function SportsPage() {
+  const snapshots = await getSportsHubSnapshots();
+  const updatedAtLabel = new Intl.DateTimeFormat("en-AU", {
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date());
+
   return (
-    <main className="min-h-screen bg-black text-white">
-      <section className="px-6 py-16 max-w-6xl mx-auto">
-        <h1 className="text-5xl font-black mb-4 text-center">Sports Hub</h1>
-
-        <p className="text-zinc-400 text-center max-w-2xl mx-auto mb-12">
-          Keep an eye on the sports that matter to the CGS community. This hub
-          will eventually bring together golf, AFL, NRL, and F1 in one place.
-        </p>
-
-        <div className="grid md:grid-cols-2 gap-8">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8">
-            <p className="text-sky-400 text-sm font-semibold uppercase tracking-wide mb-2">
-              Golf
-            </p>
-            <h2 className="text-3xl font-bold mb-3">PGA Tour</h2>
-            <p className="text-zinc-300 mb-4">
-              Future home for PGA results, live leaderboard tracking, and major
-              championship updates.
-            </p>
-            <p className="text-zinc-500 text-sm">
-              Status: Placeholder for future live data or widgets
-            </p>
-          </div>
-
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8">
-            <p className="text-sky-400 text-sm font-semibold uppercase tracking-wide mb-2">
-              Football
-            </p>
-            <h2 className="text-3xl font-bold mb-3">AFL</h2>
-            <p className="text-zinc-300 mb-4">
-              Future home for AFL scores, standings, and weekly ladder updates.
-            </p>
-            <p className="text-zinc-500 text-sm">
-              Status: Placeholder for future live data or widgets
-            </p>
-          </div>
-
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8">
-            <p className="text-sky-400 text-sm font-semibold uppercase tracking-wide mb-2">
-              Rugby League
-            </p>
-            <h2 className="text-3xl font-bold mb-3">NRL</h2>
-            <p className="text-zinc-300 mb-4">
-              Future home for NRL results, fixtures, and ladder movement across
-              the season.
-            </p>
-            <p className="text-zinc-500 text-sm">
-              Status: Placeholder for future live data or widgets
-            </p>
-          </div>
-
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8">
-            <p className="text-sky-400 text-sm font-semibold uppercase tracking-wide mb-2">
-              Motorsport
-            </p>
-            <h2 className="text-3xl font-bold mb-3">Formula 1</h2>
-            <p className="text-zinc-300 mb-4">
-              Future home for F1 race results, championship standings, and major
-              weekend updates.
-            </p>
-            <p className="text-zinc-500 text-sm">
-              Status: Placeholder for future live data or widgets
-            </p>
-          </div>
+    <main className="min-h-screen text-white">
+      <section className="mx-auto max-w-6xl px-6 py-16">
+        <div className="mx-auto max-w-3xl text-center">
+          <div className="eyebrow mb-6">Live clubhouse feed</div>
+          <h1 className="mb-4 text-5xl md:text-6xl">Sports Hub</h1>
+          <p className="text-lg leading-8 text-zinc-300">
+            A rotating snapshot of the sports CGS talks about most. Switch
+            between fixtures, results, and CGS-calculated ladder views, or let
+            it rotate on its own.
+          </p>
         </div>
 
-        <div className="mt-12 bg-zinc-900 border border-zinc-800 rounded-2xl p-8 text-center">
-          <h2 className="text-2xl font-bold mb-4">Why this exists</h2>
-          <p className="text-zinc-300 max-w-3xl mx-auto leading-7">
-            CGS is more than just events. The Sports Hub gives the community
-            another reason to check in regularly and helps turn the website into
-            a broader clubhouse-style destination.
-          </p>
+        <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {snapshots.map((snapshot) => (
+            <div
+              key={`${snapshot.key}-summary`}
+              className="stat-pill rounded-[1.35rem] px-4 py-4"
+            >
+              <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                {snapshot.label}
+              </p>
+              <p className="mt-2 text-xl font-semibold text-white">
+                {snapshot.title}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-zinc-400">
+                {snapshot.nextEvent?.title ?? snapshot.lastEvent?.title ?? "Feed updating"}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-12">
+          <SportsHubRotator
+            snapshots={snapshots}
+            updatedAtLabel={updatedAtLabel}
+            sourceLabel="CGS-calculated + TheSportsDB"
+          />
+        </div>
+
+        <div className="mt-12 grid gap-6 lg:grid-cols-[1.02fr_0.98fr]">
+          <div className="panel rounded-[1.75rem] p-8">
+            <h2 className="text-3xl">Why it belongs in CGS</h2>
+            <div className="mt-6 grid gap-4">
+              {[
+                "Keep the clubhouse conversation moving between league rounds and major events.",
+                "Give CGS followers a quick snapshot of the sports they already talk about together.",
+                "Use CGS-built ladders for AFL and NRL instead of depending on a third-party standings widget.",
+              ].map((point, index) => (
+                <div
+                  key={point}
+                  className="rounded-[1.3rem] border border-white/8 bg-black/18 px-4 py-4"
+                >
+                  <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                    0{index + 1}
+                  </p>
+                  <p className="mt-2 text-zinc-200">{point}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="panel rounded-[1.75rem] p-8">
+            <h2 className="text-3xl">How the ladder works</h2>
+            <p className="mt-4 leading-7 text-zinc-300">
+              AFL and NRL are now calculated inside the site using season
+              results, percentage, differential, and competition points. That
+              means the ladder view is owned by CGS rather than embedded from
+              another standings source.
+            </p>
+            <p className="mt-4 leading-7 text-zinc-300">
+              Formula 1 and PGA TOUR still need standings-specific logic because
+              they run on championship and points systems that do not behave
+              like a normal club ladder, so those cards stay clearly staged for
+              now.
+            </p>
+            <p className="mt-4 text-sm text-zinc-500">
+              Fixtures and results source: TheSportsDB. AFL and NRL ladder math:
+              CGS.
+            </p>
+          </div>
         </div>
       </section>
     </main>
