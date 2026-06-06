@@ -32,21 +32,21 @@ export const paymentCatalog: PaymentProduct[] = [
     },
   },
   {
-    slug: "cgs-major-entry",
-    title: "CGS Major Entry",
+    slug: "season-3-entry",
+    title: "Season 3 Entry",
     description:
-      "A future on-site checkout option for paid entry into the CGS Major event.",
-    checkoutTitle: "CGS Major Entry Checkout",
+      "A future on-site checkout option for paid entry into the current CGS season.",
+    checkoutTitle: "Season 3 Entry Checkout",
     checkoutSummary:
-      "This embedded payment route is ready for the CGS Major once the final public and member pricing are confirmed.",
+      "This embedded payment route is ready for Season 3 once the final public and member pricing are confirmed.",
     amountInCents: null,
     currency: "aud",
     status: "draft",
     buttonLabel: "Pay event entry",
-    successMessage: "Your CGS Major payment has been submitted successfully.",
+    successMessage: "Your Season 3 payment has been submitted successfully.",
     metadata: {
       product_type: "event",
-      event_slug: "cgs-major",
+      event_slug: "season-3",
     },
   },
   {

@@ -48,11 +48,14 @@ export default async function ScoreboardDetailPage({
 
   return (
     <main className="min-h-screen text-white">
-      <section className="mx-auto max-w-6xl px-6 py-16">
+      <section className="page-shell">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap gap-3">
             <Link href="/scoreboard" className="btn-secondary">
               Back to scoreboard
+            </Link>
+            <Link href={`/scoreboard/${competition.slug}/stream`} className="btn-primary">
+              Stream overlay
             </Link>
             <Link href="/events" className="btn-secondary">
               View events

@@ -244,9 +244,10 @@ export default function SportsHubRotator({
               onClick={() => setActiveView(view.key)}
               className={`rounded-full px-4 py-2 text-sm font-semibold ${
                 view.key === activeView
-                  ? "bg-[var(--gold)] text-slate-950"
+                  ? "bg-[var(--sun)] text-slate-950"
                   : "border border-white/12 bg-white/6 text-white"
               }`}
+              aria-pressed={view.key === activeView}
             >
               {view.label}
             </button>
@@ -268,7 +269,7 @@ export default function SportsHubRotator({
             key={view.key}
             className={`signal-line h-1 rounded-full ${
               view.key === activeView
-                ? "w-[4.5rem] bg-[var(--gold)]"
+                ? "w-[4.5rem] bg-[var(--sun)]"
                 : "w-8 bg-white/10"
             }`}
             aria-hidden="true"
@@ -280,7 +281,7 @@ export default function SportsHubRotator({
         {snapshots.map((snapshot, index) => (
           <div
             key={snapshot.key}
-            className="interactive-card rounded-[1.6rem] border border-white/8 bg-[linear-gradient(180deg,rgba(8,12,27,0.88),rgba(5,8,20,0.7))] p-6"
+            className="rounded-[1.6rem] border border-white/8 bg-[linear-gradient(180deg,rgba(8,12,27,0.88),rgba(5,8,20,0.7))] p-6"
           >
             <div className="flex items-start justify-between gap-4">
               <div>

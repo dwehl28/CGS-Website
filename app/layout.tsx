@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Serif_Display, Space_Grotesk } from "next/font/google";
 
-import SiteFooter from "@/components/SiteFooter";
-import SiteHeader from "@/components/SiteHeader";
-import SiteIntroOverlay from "@/components/SiteIntroOverlay";
+import SiteChrome from "@/components/SiteChrome";
 import { absoluteUrl } from "@/lib/seo";
 import { siteConfig } from "@/lib/site-content";
 import {
@@ -82,24 +80,16 @@ export default function RootLayout({
       lang="en"
       className={`${spaceGrotesk.variable} ${dmSerifDisplay.variable}`}
     >
-      <body className="text-white antialiased">
-        <div className="site-shell">
-          <a href="#main-content" className="skip-link">
-            Skip to content
-          </a>
-          <SiteIntroOverlay />
-          <script
-            type="application/ld+json"
-            dangerouslySetInnerHTML={createJsonLd(buildOrganizationJsonLd())}
-          />
-          <script
-            type="application/ld+json"
-            dangerouslySetInnerHTML={createJsonLd(buildWebsiteJsonLd())}
-          />
-          <SiteHeader />
-          <div id="main-content">{children}</div>
-          <SiteFooter />
-        </div>
+      <body className="antialiased">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={createJsonLd(buildOrganizationJsonLd())}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={createJsonLd(buildWebsiteJsonLd())}
+        />
+        <SiteChrome>{children}</SiteChrome>
       </body>
     </html>
   );

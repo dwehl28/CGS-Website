@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
+import PageIntro from "@/components/PageIntro";
 import { buildMetadata } from "@/lib/seo";
 import { getPublishedCompetitionScoreboards } from "@/lib/scoreboards";
+import { competitionArchive } from "@/lib/site-content";
 
 export const metadata: Metadata = buildMetadata({
   title: "Live Scoreboard",
@@ -31,24 +33,73 @@ function formatBoardTime(value: string) {
 
 export default async function ScoreboardPage() {
   const feed = await getPublishedCompetitionScoreboards();
+  const firstCompetition = feed.competitions[0] ?? null;
 
   return (
     <main className="min-h-screen text-white">
-      <section className="mx-auto max-w-6xl px-6 py-16">
-        <div className="mx-auto max-w-3xl text-center">
-          <div className="eyebrow">Live scoring</div>
-          <h1 className="mt-6 text-5xl md:text-6xl">CGS Scoreboard</h1>
-          <p className="mt-5 text-lg leading-8 text-zinc-300">
-            A live home for CGS competition scoring. When a round is active, scores
-            update here as the admin board is updated.
-          </p>
-        </div>
+      <section className="page-shell">
+        <PageIntro
+          eyebrow="Live scoring"
+          title="CGS Scoreboard"
+          description="A live home for CGS competition scoring. Season 3 is underway after the Monday 25 May 2026 launch, and archived competitions stay available for anyone checking old results."
+          align="center"
+          actions={[
+            { href: "/events/season-3", label: "View Season 3" },
+            { href: "/membership", label: "Join CGS", variant: "secondary" },
+          ]}
+        />
 
         {feed.warningMessage ? (
-          <div className="mx-auto mt-8 max-w-3xl rounded-[1.4rem] border border-[var(--tan)]/30 bg-[rgba(202,147,103,0.12)] px-5 py-4 text-sm leading-7 text-zinc-200">
+          <div className="mx-auto max-w-3xl rounded-[1.4rem] border border-[var(--tan)]/30 bg-[rgba(202,147,103,0.12)] px-5 py-4 text-sm leading-7 text-zinc-200">
             {feed.warningMessage}
           </div>
         ) : null}
+
+        <div className="home-stream-panel mt-10">
+          <div>
+            <div className="eyebrow">Twitch stream asset</div>
+            <h2 className="home-band-heading mt-5">OBS-ready scoreboards now live here.</h2>
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--body-copy)]">
+              Published scoreboards now include a dedicated stream overlay URL.
+              Use it as an OBS browser source for a bright lower-third board with
+              large scores, live updates, and no website header or footer.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-4">
+              {firstCompetition ? (
+                <Link
+                  href={`/scoreboard/${firstCompetition.slug}/stream`}
+                  className="btn-primary"
+                >
+                  Preview stream overlay
+                </Link>
+              ) : null}
+              <Link href="/clubhouse-admin/scoreboard" className="btn-secondary">
+                Manage scoreboard
+              </Link>
+            </div>
+          </div>
+
+          <div className="home-score-strip">
+            <p className="text-sm font-bold uppercase tracking-[0.16em] text-[var(--accent-strong)]">
+              Capture format
+            </p>
+            <div className="home-score-row">
+              <span>URL</span>
+              <span>/scoreboard/[board]/stream</span>
+              <span>OBS</span>
+            </div>
+            <div className="home-score-row">
+              <span>Size</span>
+              <span>16:9 friendly lower third</span>
+              <span>1920</span>
+            </div>
+            <div className="home-score-row">
+              <span>Data</span>
+              <span>Realtime Supabase scores</span>
+              <span>Live</span>
+            </div>
+          </div>
+        </div>
 
         {feed.competitions.length > 0 ? (
           <div className="mt-12 grid gap-6 lg:grid-cols-2">
@@ -73,7 +124,7 @@ export default async function ScoreboardPage() {
                 </p>
 
                 <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-[1.25rem] border border-white/8 bg-black/18 px-4 py-4">
+                  <div className="subtle-grid-card rounded-[1.25rem] px-4 py-4">
                     <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
                       Round
                     </p>
@@ -81,7 +132,7 @@ export default async function ScoreboardPage() {
                       {competition.roundLabel ?? "Competition"}
                     </p>
                   </div>
-                  <div className="rounded-[1.25rem] border border-white/8 bg-black/18 px-4 py-4">
+                  <div className="subtle-grid-card rounded-[1.25rem] px-4 py-4">
                     <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
                       Updated
                     </p>
@@ -95,7 +146,7 @@ export default async function ScoreboardPage() {
                   {competition.entries.slice(0, 3).map((entry) => (
                     <div
                       key={entry.id}
-                      className="rounded-[1.2rem] border border-white/8 bg-black/16 px-4 py-4"
+                      className="subtle-grid-card rounded-[1.2rem] px-4 py-4"
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div>
@@ -131,6 +182,12 @@ export default async function ScoreboardPage() {
                 <div className="mt-6 flex flex-wrap gap-4">
                   <Link href={`/scoreboard/${competition.slug}`} className="btn-primary">
                     Open live board
+                  </Link>
+                  <Link
+                    href={`/scoreboard/${competition.slug}/stream`}
+                    className="btn-secondary"
+                  >
+                    Stream overlay
                   </Link>
                   {competition.ctaLabel && competition.ctaHref ? (
                     competition.ctaHref.startsWith("/") ? (
@@ -169,6 +226,49 @@ export default async function ScoreboardPage() {
             </div>
           </div>
         )}
+
+        <div className="mt-14">
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <div className="eyebrow">Results archive</div>
+              <h2 className="mt-4 text-4xl">Old competition placeholders</h2>
+            </div>
+            <Link
+              href="/events"
+              className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--accent)]"
+            >
+              Open events
+            </Link>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-3">
+            {competitionArchive.map((competition) => (
+              <div key={competition.title} className="panel rounded-[1.75rem] p-6">
+                <p className="text-xs uppercase tracking-[0.22em] text-[var(--tan)]">
+                  {competition.label}
+                </p>
+                <h3 className="mt-3 text-3xl">{competition.title}</h3>
+                <p className="mt-4 text-sm leading-7 text-zinc-300">
+                  {competition.description}
+                </p>
+
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Link href={competition.href} className="btn-secondary">
+                    Open archive
+                  </Link>
+                  <a
+                    href={competition.resultHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-secondary"
+                  >
+                    {competition.resultLabel}
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
     </main>
   );

@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import EventCountdown from "@/components/EventCountdown";
-import EventInterestForm from "@/components/EventInterestForm";
 import FAQSection from "@/components/FAQSection";
+import PageIntro from "@/components/PageIntro";
 import { buildMetadata } from "@/lib/seo";
-import { getEventBySlug } from "@/lib/site-content";
+import { competitionArchive, getEventBySlug } from "@/lib/site-content";
 import {
   buildEventJsonLd,
   buildFaqJsonLd,
@@ -23,6 +23,9 @@ function requireEvent() {
 }
 
 const event = requireEvent();
+const seasonArchive = competitionArchive.find(
+  (archive) => archive.href === event.href
+);
 
 export const metadata: Metadata = buildMetadata({
   title: event.title,
@@ -42,24 +45,37 @@ export default function Season2Page() {
         dangerouslySetInnerHTML={createJsonLd(buildFaqJsonLd(event.faqs))}
       />
 
-      <section className="mx-auto max-w-5xl px-6 py-16">
-        <div className="eyebrow">{event.category}</div>
-        <h1 className="mt-6 text-5xl md:text-6xl">{event.title}</h1>
-        <div className="mt-5">
-          <EventCountdown startDate={event.startDate} endDate={event.endDate} />
-        </div>
+      <section className="page-shell max-w-5xl">
+        <PageIntro
+          eyebrow={event.category}
+          title={event.title}
+          description={event.summary}
+          actions={[
+            {
+              href: seasonArchive?.resultHref ?? "https://www.youtube.com/@CrossodogGolfSociety",
+              label: seasonArchive?.resultLabel ?? "Watch finals",
+              external: true,
+            },
+            { href: "/events/season-3", label: "View Season 3", variant: "secondary" },
+          ]}
+        >
+          <div className="mt-5 inline-meta">
+            <span>{event.scheduleLabel}</span>
+            <span>Solo Stableford</span>
+            <span>Results archive</span>
+          </div>
+          <div className="mt-6">
+            <EventCountdown startDate={event.startDate} endDate={event.endDate} />
+          </div>
+        </PageIntro>
 
-        <p className="mt-6 max-w-3xl text-lg leading-8 text-zinc-300">
-          {event.summary}
-        </p>
-
-        <div className="mt-10 panel rounded-[2rem] p-8">
+        <div className="panel rounded-[2rem] p-8">
           <h2 className="text-3xl">Season overview</h2>
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             {event.overview.map((row) => (
               <div
                 key={row.label}
-                className="rounded-[1.2rem] border border-white/8 bg-black/18 px-4 py-4"
+                className="subtle-grid-card rounded-[1.2rem] px-4 py-4"
               >
                 <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
                   {row.label}
@@ -71,7 +87,7 @@ export default function Season2Page() {
         </div>
 
         <div className="mt-10 panel rounded-[2rem] p-8">
-          <h2 className="text-3xl">How Season 2 works</h2>
+          <h2 className="text-3xl">Season 2 results post</h2>
           <div className="mt-5 space-y-4">
             {event.body.map((paragraph) => (
               <p key={paragraph} className="leading-7 text-zinc-300">
@@ -87,7 +103,7 @@ export default function Season2Page() {
             {event.pathways.map((pathway) => (
               <div
                 key={pathway.title}
-                className="rounded-[1.35rem] border border-white/8 bg-black/18 p-5"
+                className="subtle-grid-card rounded-[1.35rem] p-5"
               >
                 <h3 className="text-2xl">{pathway.title}</h3>
                 <p className="mt-3 text-sm leading-7 text-zinc-400">
@@ -98,40 +114,64 @@ export default function Season2Page() {
           </div>
         </div>
 
-        <div className="mt-10 grid gap-8 lg:grid-cols-[1.02fr_0.98fr]">
-          <div className="panel rounded-[2rem] p-8">
-            <h2 className="text-3xl">What happens next</h2>
+        <div className="mt-10 panel rounded-[2rem] p-8">
+          <h2 className="text-3xl">Watch the archive</h2>
 
-            <ul className="mt-5 list-inside list-disc space-y-3 text-zinc-300">
-              <li>Grading week sets the competitive table.</li>
-              <li>Four Stableford scoring weeks make up the season proper.</li>
-              <li>The CGS Major lands on 2 May before the grand final closes the run.</li>
-            </ul>
+          <div className="mt-5 grid gap-4 md:grid-cols-3">
+            <a
+              href="https://www.youtube.com/watch?v=gZjw-iSFTws"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="subtle-grid-card rounded-[1.35rem] p-5"
+            >
+              <p className="text-xs uppercase tracking-[0.2em] text-[var(--tan)]">
+                A Grade
+              </p>
+              <h3 className="mt-3 text-2xl">Grand Final</h3>
+              <p className="mt-3 text-sm leading-7 text-zinc-400">
+                Four weeks of competition came down to one final night.
+              </p>
+            </a>
 
-            <div className="mt-6 flex flex-wrap gap-4">
-              <Link href="/membership" className="btn-primary">
-                Become a Member
-              </Link>
+            <a
+              href="https://www.youtube.com/watch?v=Cfv3sKLNVig"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="subtle-grid-card rounded-[1.35rem] p-5"
+            >
+              <p className="text-xs uppercase tracking-[0.2em] text-[var(--tan)]">
+                B Grade
+              </p>
+              <h3 className="mt-3 text-2xl">Finals</h3>
+              <p className="mt-3 text-sm leading-7 text-zinc-400">
+                The B Grade finalists headed to Augusta to close the season.
+              </p>
+            </a>
 
-              <Link href="/scoreboard" className="btn-secondary">
-                Open live scoreboard
-              </Link>
-
-              <Link href="/events/cgs-major" className="btn-secondary">
-                View the Major
-              </Link>
-            </div>
+            <a
+              href="https://www.youtube.com/shorts/FOYhSVt3TsE"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="subtle-grid-card rounded-[1.35rem] p-5"
+            >
+              <p className="text-xs uppercase tracking-[0.2em] text-[var(--tan)]">
+                Major
+              </p>
+              <h3 className="mt-3 text-2xl">Results short</h3>
+              <p className="mt-3 text-sm leading-7 text-zinc-400">
+                The first CGS Major results sit alongside the Season 2 finish.
+              </p>
+            </a>
           </div>
 
-          <EventInterestForm
-            eventName={event.title}
-            eventSlug={event.slug}
-            title={event.interestForm.title}
-            description={event.interestForm.description}
-            buttonLabel={event.interestForm.buttonLabel}
-            options={event.interestForm.options}
-            showHandicap={event.interestForm.showHandicap}
-          />
+          <div className="mt-6 flex flex-wrap gap-4">
+            <Link href="/events/season-3" className="btn-primary">
+              View Season 3
+            </Link>
+            <Link href="/events" className="btn-secondary">
+              Back to events
+            </Link>
+          </div>
         </div>
 
         <div className="mt-12">

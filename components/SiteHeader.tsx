@@ -14,43 +14,28 @@ export default function SiteHeader() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-[rgba(8,18,32,0.84)] backdrop-blur-xl">
-      <div className="top-strip hidden md:block">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-2 text-[11px] uppercase tracking-[0.18em] text-zinc-100 sm:px-6">
-          <div className="flex flex-wrap items-center gap-4">
-            <span>Season 2 live</span>
-            <span>Solo Stableford</span>
-            <span>Major on 2 May</span>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-4">
-            <Link href="/scoreboard">Live scoreboard</Link>
-            <a href={siteConfig.youtubeChannelUrl} target="_blank" rel="noopener noreferrer">
-              Watch CGS
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-4 sm:gap-4 sm:px-6">
+    <header className="sticky top-0 z-50 w-full border-b border-[rgba(16,32,51,0.1)] bg-[rgba(255,255,255,0.82)] backdrop-blur-xl">
+      <div className="mx-auto flex w-full max-w-[94rem] items-center justify-between gap-3 px-4 py-4 sm:gap-4 sm:px-6">
         <Link href="/" className="flex items-center gap-3">
           <Image
             src="/cgs-logo.png"
             alt="Crossodog Golf Society logo"
             width={44}
             height={44}
-            className="h-11 w-11 rounded-full border border-white/14 bg-white object-cover shadow-[0_0_0_6px_rgba(101,215,255,0.08)]"
+            className="h-11 w-11 rounded-full border border-[rgba(16,32,51,0.12)] bg-white object-cover shadow-[0_10px_24px_rgba(16,32,51,0.08)]"
             priority
           />
           <div>
-            <p className="text-sm font-semibold text-white md:text-base">
+            <p className="text-sm font-semibold text-[var(--ink)] md:text-base">
               {siteConfig.name}
             </p>
-            <p className="hidden text-xs text-[var(--sand)] sm:block">{siteConfig.tagline}</p>
+            <p className="hidden text-xs text-[var(--muted-strong)] sm:block">
+              {siteConfig.tagline}
+            </p>
           </div>
         </Link>
 
-        <nav className="hidden items-center gap-2 text-sm text-zinc-200 md:flex">
+        <nav className="hidden items-center gap-1 text-sm text-[var(--muted-strong)] lg:flex">
           {navigationLinks.map((link) => {
             const isActive =
               pathname === link.href ||
@@ -63,7 +48,7 @@ export default function SiteHeader() {
                 className={`nav-pill ${
                   isActive
                     ? "nav-pill-active"
-                    : "text-zinc-200 hover:bg-white/8 hover:text-white"
+                    : "hover:bg-white hover:text-[var(--ink)]"
                 }`}
               >
                 {link.label}
@@ -72,10 +57,14 @@ export default function SiteHeader() {
           })}
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="hidden rounded-full border border-[rgba(16,32,51,0.1)] bg-white/70 px-3 py-2 text-[11px] uppercase tracking-[0.18em] text-[var(--muted-strong)] md:block">
+            {featuredEvent.titleWithDate}
+          </div>
+
           <Link
             href="/scoreboard"
-            className="hidden rounded-full border border-[rgba(255,190,24,0.3)] bg-[rgba(255,190,24,0.1)] px-4 py-2 text-sm font-semibold text-[var(--sand)] hover:bg-[rgba(255,190,24,0.16)] lg:inline-block"
+            className="hidden rounded-full border border-[rgba(16,32,51,0.12)] bg-white/70 px-4 py-2 text-sm font-semibold text-[var(--ink)] hover:bg-white xl:inline-block"
           >
             Live Scores
           </Link>
@@ -89,7 +78,7 @@ export default function SiteHeader() {
 
           <button
             type="button"
-            className="rounded-full border border-white/12 bg-white/6 px-4 py-2 text-sm font-semibold text-white md:hidden"
+            className="rounded-full border border-[rgba(16,32,51,0.12)] bg-white/80 px-4 py-2 text-sm font-semibold text-[var(--ink)] md:hidden"
             aria-expanded={isOpen}
             aria-label={isOpen ? "Close menu" : "Open menu"}
             onClick={() => setIsOpen((current) => !current)}
@@ -100,9 +89,9 @@ export default function SiteHeader() {
       </div>
 
       {isOpen && (
-        <div className="border-t border-white/8 bg-[rgba(8,18,32,0.96)] md:hidden">
-          <div className="mx-auto flex max-w-6xl flex-col gap-2 px-6 py-4">
-            <div className="mb-2 rounded-[1.2rem] border border-[rgba(255,190,24,0.2)] bg-[rgba(255,190,24,0.08)] px-4 py-3 text-sm text-[var(--sand)]">
+        <div className="border-t border-[rgba(16,32,51,0.1)] bg-[rgba(255,255,255,0.96)] md:hidden">
+          <div className="mx-auto flex w-full max-w-[94rem] flex-col gap-2 px-4 py-4 sm:px-6">
+            <div className="mb-2 rounded-[1.2rem] border border-[rgba(16,32,51,0.1)] bg-white/70 px-4 py-3 text-sm text-[var(--body-copy)]">
               {featuredEvent.titleWithDate}
             </div>
 
@@ -118,8 +107,8 @@ export default function SiteHeader() {
                   onClick={() => setIsOpen(false)}
                   className={`rounded-xl px-3 py-3 text-base ${
                     isActive
-                      ? "bg-[var(--accent-soft)] text-white"
-                      : "text-zinc-100 hover:bg-white/6"
+                      ? "bg-[var(--accent-soft)] text-[var(--ink)]"
+                      : "text-[var(--ink)] hover:bg-white"
                   }`}
                 >
                   {link.label}
@@ -134,6 +123,16 @@ export default function SiteHeader() {
             >
               Join CGS
             </Link>
+
+            <a
+              href={siteConfig.youtubeChannelUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setIsOpen(false)}
+              className="mt-1 rounded-xl px-3 py-3 text-base text-[var(--ink)] hover:bg-white"
+            >
+              Watch CGS
+            </a>
           </div>
         </div>
       )}

@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { siteConfig } from "@/lib/site-content";
 
-const INTRO_STORAGE_KEY = "cgs-intro-seen-v1";
+const INTRO_STORAGE_KEY = "cgs-intro-seen-v2";
 
 type IntroPhase = "booting" | "visible" | "closing" | "hidden";
 
@@ -56,8 +56,8 @@ export default function SiteIntroOverlay() {
       }, 0)
     );
 
-    const closingDelay = prefersReducedMotion ? 900 : 2300;
-    const hiddenDelay = prefersReducedMotion ? 1250 : 2950;
+    const closingDelay = prefersReducedMotion ? 700 : 1700;
+    const hiddenDelay = prefersReducedMotion ? 1000 : 2150;
 
     timeoutRefs.current.push(
       window.setTimeout(() => {
@@ -133,11 +133,10 @@ export default function SiteIntroOverlay() {
         </div>
 
         <div className="intro-copy">
-          <p className="intro-kicker">Season 2 is live</p>
+          <p className="intro-kicker">Crossodog Golf Society</p>
           <h1>{siteConfig.name}</h1>
           <p>
-            Community golf, creator energy, and a six-week solo Stableford run
-            with the CGS Major locked for 2 May inside the season.
+            Community golf for everyday players.
           </p>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import PageIntro from "@/components/PageIntro";
 import { getMediaHubData } from "@/lib/media";
 import { buildMetadata } from "@/lib/seo";
 import { siteConfig, socialLinks } from "@/lib/site-content";
@@ -16,44 +17,35 @@ export default async function MediaPage() {
 
   return (
     <main className="min-h-screen text-white">
-      <section className="mx-auto max-w-6xl px-6 py-16">
-        <div className="mx-auto max-w-3xl text-center">
-          <div className="eyebrow">Creator-led golf media</div>
-          <h1 className="mt-6 text-5xl md:text-6xl">CGS Media Room</h1>
-          <p className="mt-5 text-lg leading-8 muted-copy">
-            The CGS media side is built to stay active across highlights,
-            livestreams, and short-form clips. Start with the latest upload,
-            then jump out to the channels that suit you best.
-          </p>
-
+      <section className="page-shell">
+        <PageIntro
+          eyebrow="Creator-led golf media"
+          title="CGS Media Room"
+          description="Start with the latest upload, then move into the full mix of highlights, livestreams, and short-form clips."
+          align="center"
+          actions={[
+            {
+              href: siteConfig.youtubeChannelUrl,
+              label: "Open YouTube",
+              external: true,
+            },
+            {
+              href: siteConfig.linktreeUrl,
+              label: "Open Linktree",
+              external: true,
+              variant: "secondary",
+            },
+          ]}
+        >
           <div className="mt-6 flex flex-wrap justify-center gap-3 text-sm">
             <span className="chip text-zinc-100">{mediaData.feedStatusLabel}</span>
             <span className="text-zinc-500">
               Updated {mediaData.feedSyncedLabel}
             </span>
           </div>
+        </PageIntro>
 
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <a
-              href={siteConfig.youtubeChannelUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-primary"
-            >
-              Open YouTube
-            </a>
-            <a
-              href={siteConfig.linktreeUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-secondary"
-            >
-              Open Linktree
-            </a>
-          </div>
-        </div>
-
-        <div className="mt-12 grid gap-6 lg:grid-cols-[1.08fr_0.92fr]">
+        <div className="grid gap-6 lg:grid-cols-[1.08fr_0.92fr]">
           <a
             href={mediaData.featuredVideo.url}
             target="_blank"
@@ -98,7 +90,7 @@ export default async function MediaPage() {
                 {mediaData.stats.map((stat) => (
                   <div
                     key={stat.label}
-                    className="rounded-[1.25rem] border border-white/8 bg-black/20 px-4 py-4"
+                    className="subtle-grid-card rounded-[1.25rem] px-4 py-4"
                   >
                     <p className="text-2xl font-semibold text-white">{stat.value}</p>
                     <p className="mt-2 text-sm leading-6 text-zinc-400">
@@ -121,7 +113,7 @@ export default async function MediaPage() {
                     href={link.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-[1.2rem] border border-white/8 bg-white/5 px-4 py-4"
+                    className="subtle-grid-card rounded-[1.2rem] px-4 py-4"
                   >
                     <div className="flex items-center justify-between gap-4">
                       <div>

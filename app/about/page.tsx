@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import PageIntro from "@/components/PageIntro";
 import { buildMetadata } from "@/lib/seo";
 import {
   aboutCommitments,
@@ -19,22 +20,23 @@ export const metadata: Metadata = buildMetadata({
 export default function AboutPage() {
   return (
     <main className="min-h-screen text-white">
-      <section className="mx-auto max-w-6xl px-6 py-16">
-        <div className="mx-auto max-w-3xl text-center">
-          <div className="eyebrow">What CGS is building</div>
-          <h1 className="mt-6 text-5xl md:text-6xl">About Crossodog Golf Society</h1>
-          <p className="mt-5 text-lg leading-8 muted-copy">
-            {siteConfig.name} is built around a simple idea: golf should feel
-            more welcoming, more social, and more alive online than the usual
-            polished-but-distant club model.
-          </p>
-        </div>
+      <section className="page-shell">
+        <PageIntro
+          eyebrow="What CGS is building"
+          title="About Crossodog Golf Society"
+          description={`${siteConfig.name} is built around a simple idea: golf should feel more welcoming, more social, and more alive online than the usual polished-but-distant club model.`}
+          align="center"
+          actions={[
+            { href: "/membership", label: "Join the clubhouse" },
+            { href: "/events", label: "See the events", variant: "secondary" },
+          ]}
+        />
 
-        <div className="mt-12 grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-3">
           {aboutPillars.map((pillar) => (
             <div
               key={pillar.title}
-              className="panel rounded-[1.75rem] p-6"
+              className="subtle-grid-card rounded-[1.75rem] p-6"
             >
               <h2 className="text-3xl">{pillar.title}</h2>
               <p className="mt-4 text-sm leading-7 text-zinc-300">
@@ -68,7 +70,7 @@ export default function AboutPage() {
             {aboutCommitments.map((commitment, index) => (
               <div
                 key={commitment.title}
-                className="rounded-[1.5rem] border border-white/8 bg-black/18 p-5"
+                className="subtle-grid-card rounded-[1.5rem] p-5"
               >
                 <p className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">
                   0{index + 1}
@@ -100,7 +102,7 @@ export default function AboutPage() {
                 href={link.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-[1.35rem] border border-white/8 bg-black/18 px-5 py-5"
+                className="subtle-grid-card rounded-[1.35rem] px-5 py-5"
               >
                 <div className="flex items-center justify-between gap-3">
                   <div>

@@ -29,58 +29,60 @@ export type MediaHubData = {
 };
 
 const FEED_URL = `https://www.youtube.com/feeds/videos.xml?channel_id=${siteConfig.youtubeChannelId}`;
+const YOUTUBE_FEED_TIMEOUT_MS = 3500;
 
 const FALLBACK_VIDEOS: YouTubeVideo[] = [
   {
-    id: "PI0dnoZN_8M",
-    title: "CGS A/B Grand Final | Elite Division Showdown at TPC Sawgrass",
-    url: "https://www.youtube.com/watch?v=PI0dnoZN_8M",
-    thumbnail: "https://i1.ytimg.com/vi/PI0dnoZN_8M/hqdefault.jpg",
+    id: "Cfv3sKLNVig",
+    title: "CGS Season 2 - B Grade Finals",
+    url: "https://www.youtube.com/watch?v=Cfv3sKLNVig",
+    thumbnail: "https://i4.ytimg.com/vi/Cfv3sKLNVig/hqdefault.jpg",
     description:
-      "The Crossodog Golf Society A/B Grand Final brings together the top players of the season for one final showdown at TPC Sawgrass.",
-    publishedAt: "2026-04-03T11:25:37+00:00",
-    publishedLabel: "3 Apr 2026",
-    viewCount: 0,
-    viewCountLabel: "0 views",
+      "After four weeks of competition, the B Grade finalists head to Augusta to close out Season 2.",
+    publishedAt: "2026-05-14T00:18:06+00:00",
+    publishedLabel: "14 May 2026",
+    viewCount: 146,
+    viewCountLabel: "146 views",
     isShort: false,
   },
   {
-    id: "UszhKjiAB8I",
-    title: "Tee Lounge C/D Grand Final | TPC Sawgrass 18-Hole Scramble",
-    url: "https://www.youtube.com/watch?v=UszhKjiAB8I",
-    thumbnail: "https://i2.ytimg.com/vi/UszhKjiAB8I/hqdefault.jpg",
+    id: "gZjw-iSFTws",
+    title: "CGS Season 2 - A Grade Grand Final",
+    url: "https://www.youtube.com/watch?v=gZjw-iSFTws",
+    thumbnail: "https://i4.ytimg.com/vi/gZjw-iSFTws/hqdefault.jpg",
     description:
-      "The Tee Lounge C/D Grand Final heads to one of the most iconic courses in the world: TPC Sawgrass.",
-    publishedAt: "2026-04-03T10:45:56+00:00",
-    publishedLabel: "3 Apr 2026",
-    viewCount: 1,
-    viewCountLabel: "1 view",
+      "Four weeks of competition came down to one A Grade Grand Final night.",
+    publishedAt: "2026-05-12T12:41:08+00:00",
+    publishedLabel: "12 May 2026",
+    viewCount: 124,
+    viewCountLabel: "124 views",
     isShort: false,
   },
   {
-    id: "3qsxtgQcbR0",
-    title: "Round 8 Overview | The Australian Golf Club (CGS Season 1)",
-    url: "https://www.youtube.com/watch?v=3qsxtgQcbR0",
-    thumbnail: "https://i4.ytimg.com/vi/3qsxtgQcbR0/hqdefault.jpg",
+    id: "FOYhSVt3TsE",
+    title: "Results from our first ever CGS Major! How did the boys stack up?",
+    url: "https://www.youtube.com/shorts/FOYhSVt3TsE",
+    thumbnail: "https://i3.ytimg.com/vi/FOYhSVt3TsE/hqdefault.jpg",
     description:
-      "Round 8 takes CGS to one of Australia's most prestigious layouts: The Australian Golf Club in Sydney.",
-    publishedAt: "2026-03-21T04:34:03+00:00",
-    publishedLabel: "21 Mar 2026",
-    viewCount: 49,
-    viewCountLabel: "49 views",
-    isShort: false,
-  },
-  {
-    id: "gvq3g0DcTIQ",
-    title: "Don't miss your chance! #golf #cgs",
-    url: "https://www.youtube.com/shorts/gvq3g0DcTIQ",
-    thumbnail: "https://i4.ytimg.com/vi/gvq3g0DcTIQ/hqdefault.jpg",
-    description: "Short-form CGS promo content built for discovery.",
-    publishedAt: "2026-03-19T10:14:45+00:00",
-    publishedLabel: "19 Mar 2026",
-    viewCount: 4619,
-    viewCountLabel: "4.6K views",
+      "A quick results clip from the first CGS Major.",
+    publishedAt: "2026-05-09T11:02:10+00:00",
+    publishedLabel: "9 May 2026",
+    viewCount: 2222,
+    viewCountLabel: "2.2K views",
     isShort: true,
+  },
+  {
+    id: "xVcgUB5cco8",
+    title: "The Crossodog Golf Society debuts LIVE on YouTube",
+    url: "https://www.youtube.com/watch?v=xVcgUB5cco8",
+    thumbnail: "https://i1.ytimg.com/vi/xVcgUB5cco8/hqdefault.jpg",
+    description:
+      "Catch CGS live on Tuesday nights at 7pm AEST as the society moves deeper into live coverage.",
+    publishedAt: "2026-05-06T12:38:40+00:00",
+    publishedLabel: "6 May 2026",
+    viewCount: 1897,
+    viewCountLabel: "1.9K views",
+    isShort: false,
   },
 ];
 
@@ -195,32 +197,42 @@ async function fetchYouTubeFeed(): Promise<MediaFeedResult> {
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      const response = await fetch(FEED_URL, {
-        next: { revalidate: 900 },
-        headers: {
-          Accept: "application/atom+xml,text/xml;q=0.9,*/*;q=0.8",
-          "User-Agent":
-            "Mozilla/5.0 (compatible; CrossodogGolfSite/1.0; +https://crossodoggolf.com)",
-        },
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, YOUTUBE_FEED_TIMEOUT_MS);
 
-      if (!response.ok) {
-        throw new Error(`YouTube feed failed: ${response.status}`);
+      try {
+        const response = await fetch(FEED_URL, {
+          next: { revalidate: 900 },
+          signal: controller.signal,
+          headers: {
+            Accept: "application/atom+xml,text/xml;q=0.9,*/*;q=0.8",
+            "User-Agent":
+              "Mozilla/5.0 (compatible; CrossodogGolfSite/1.0; +https://crossodoggolf.com)",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`YouTube feed failed: ${response.status}`);
+        }
+
+        const xml = await response.text();
+        const videos = parseFeed(xml);
+
+        if (videos.length > 0) {
+          return {
+            videos,
+            mode: "live",
+            statusLabel: "Live YouTube feed",
+            syncedLabel: formatSyncLabel(),
+          };
+        }
+
+        throw new Error("YouTube feed returned no videos.");
+      } finally {
+        clearTimeout(timeoutId);
       }
-
-      const xml = await response.text();
-      const videos = parseFeed(xml);
-
-      if (videos.length > 0) {
-        return {
-          videos,
-          mode: "live",
-          statusLabel: "Live YouTube feed",
-          syncedLabel: formatSyncLabel(),
-        };
-      }
-
-      throw new Error("YouTube feed returned no videos.");
     } catch (error) {
       lastError = error;
     }

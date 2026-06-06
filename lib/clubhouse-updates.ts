@@ -1,3 +1,4 @@
+import { withTimeout } from "@/lib/async-timeout";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 export type ClubhouseUpdate = {
@@ -33,46 +34,47 @@ type ClubhouseUpdateInput = {
 
 const missingTableMessage =
   "Clubhouse updates table is not set up yet. Apply the latest Supabase migration to use the admin workflow.";
+const CLUBHOUSE_QUERY_TIMEOUT_MS = 3500;
 
 const fallbackUpdates: ClubhouseUpdate[] = [
   {
     id: 1,
-    createdAt: "2026-04-07T07:00:00+10:00",
-    title: "Season 2 is now underway",
+    createdAt: "2026-05-24T09:00:00+10:00",
+    title: "Season 3 is underway",
     summary:
-      "The new CGS season is live as a six-week solo Stableford competition, with grading week opening the run and the CGS Major hitting on 2 May inside it.",
-    statusLabel: "Season 2 live",
-    ctaLabel: "View Season 2",
-    ctaHref: "/events/season-2",
-    startsAt: "2026-04-07T07:00:00+10:00",
+      "Season 3 launched Monday 25 May 2026 at 7pm AEST with seven CGS teams, new faces, new team combinations, and the Ambrose format back in play.",
+    statusLabel: "Season 3 live",
+    ctaLabel: "View Season 3",
+    ctaHref: "/events/season-3",
+    startsAt: "2026-05-25T19:00:00+10:00",
     endsAt: null,
     isPinned: true,
     isPublished: true,
   },
   {
     id: 2,
-    createdAt: "2026-04-07T06:55:00+10:00",
-    title: "The CGS Major stays locked for 2 May",
+    createdAt: "2026-05-24T08:55:00+10:00",
+    title: "Season 2 Results are now posted",
     summary:
-      "The Major now sits inside the Season 2 calendar as a featured date within the solo Stableford run, rather than waiting until the season is over.",
-    statusLabel: "Calendar update",
-    ctaLabel: "View the major",
-    ctaHref: "/events/cgs-major",
-    startsAt: "2026-04-07T06:55:00+10:00",
+      "Season 2 is complete. The A Grade Grand Final, B Grade Finals, and first CGS Major results are now collected in the results archive.",
+    statusLabel: "Season 2 results",
+    ctaLabel: "Open archive",
+    ctaHref: "/events/season-2",
+    startsAt: "2026-05-24T08:55:00+10:00",
     endsAt: null,
     isPinned: false,
     isPublished: true,
   },
   {
     id: 3,
-    createdAt: "2026-04-07T06:50:00+10:00",
-    title: "Birdie Hunters open as reigning champions",
+    createdAt: "2026-05-24T08:50:00+10:00",
+    title: "Old competitions now have a results home",
     summary:
-      "Season 1 winners Birdie Hunters hold the benchmark heading into the new run, with a six-week solo season now building toward its next champion.",
-    statusLabel: "Reigning champs",
-    ctaLabel: "View the scoreboard",
-    ctaHref: "/scoreboard",
-    startsAt: "2026-04-07T06:50:00+10:00",
+      "Season 1, the CGS Major, and Season 2 are being kept as archive placeholders so players and followers can revisit the results story.",
+    statusLabel: "Results archive",
+    ctaLabel: "View events",
+    ctaHref: "/events",
+    startsAt: "2026-05-24T08:50:00+10:00",
     endsAt: null,
     isPinned: false,
     isPublished: true,
@@ -109,14 +111,18 @@ export async function getPublishedClubhouseUpdates(limit = 3) {
   try {
     const supabaseAdmin = getSupabaseAdmin();
 
-    const { data, error } = await supabaseAdmin
-      .from("clubhouse_updates")
-      .select("*")
-      .eq("is_published", true)
-      .order("is_pinned", { ascending: false })
-      .order("starts_at", { ascending: false, nullsFirst: false })
-      .order("created_at", { ascending: false })
-      .limit(limit);
+    const { data, error } = await withTimeout(
+      supabaseAdmin
+        .from("clubhouse_updates")
+        .select("*")
+        .eq("is_published", true)
+        .order("is_pinned", { ascending: false })
+        .order("starts_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
+        .limit(limit),
+      CLUBHOUSE_QUERY_TIMEOUT_MS,
+      "Published clubhouse updates query"
+    );
 
     if (error) {
       if (error.code !== "42P01") {
@@ -140,12 +146,16 @@ export async function getAdminClubhouseUpdates(
   try {
     const supabaseAdmin = getSupabaseAdmin();
 
-    const { data, error } = await supabaseAdmin
-      .from("clubhouse_updates")
-      .select("*")
-      .order("is_pinned", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(limit);
+    const { data, error } = await withTimeout(
+      supabaseAdmin
+        .from("clubhouse_updates")
+        .select("*")
+        .order("is_pinned", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(limit),
+      CLUBHOUSE_QUERY_TIMEOUT_MS,
+      "Admin clubhouse updates query"
+    );
 
     if (error) {
       if (error.code === "42P01") {

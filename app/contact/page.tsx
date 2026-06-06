@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import ContactForm from "@/components/ContactForm";
 import FAQSection from "@/components/FAQSection";
+import PageIntro from "@/components/PageIntro";
 import { buildMetadata } from "@/lib/seo";
 import {
   contactFaqs,
@@ -27,18 +28,15 @@ export default function ContactPage() {
         dangerouslySetInnerHTML={createJsonLd(buildFaqJsonLd(contactFaqs))}
       />
 
-      <section className="mx-auto max-w-6xl px-6 py-16">
-        <div className="mx-auto max-w-3xl text-center">
-          <div className="eyebrow">Open line to CGS</div>
-          <h1 className="mt-6 text-5xl md:text-6xl">Contact CGS</h1>
-          <p className="mt-5 text-lg leading-8 text-zinc-300">
-            Want to get involved with Crossodog Golf Society, ask about events,
-            talk merch, or explore a collaboration? This is the best place to
-            reach the CGS team.
-          </p>
-        </div>
+      <section className="page-shell">
+        <PageIntro
+          eyebrow="Open line to CGS"
+          title="Contact CGS"
+          description="Use this page for event questions, memberships, sponsorships, merch, or general enquiries."
+          align="center"
+        />
 
-        <div className="mt-12 grid gap-8 md:grid-cols-2">
+        <div className="grid gap-8 md:grid-cols-2">
           <div className="panel rounded-[2rem] p-8">
             <p className="mb-2 text-sm font-semibold uppercase tracking-[0.24em] text-[var(--accent)]">
               Email
@@ -71,7 +69,7 @@ export default function ContactPage() {
               {partnershipReasons.map((reason) => (
                 <div
                   key={reason.title}
-                  className="rounded-[1.2rem] border border-white/8 bg-black/18 px-4 py-4"
+                  className="subtle-grid-card rounded-[1.2rem] px-4 py-4"
                 >
                   <h3 className="text-2xl">{reason.title}</h3>
                   <p className="mt-3 text-sm leading-7 text-zinc-400">
@@ -96,7 +94,7 @@ export default function ContactPage() {
                   href={link.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded-[1.25rem] border border-white/8 bg-white/5 px-4 py-4"
+                  className="subtle-grid-card rounded-[1.25rem] px-4 py-4"
                 >
                   <div className="flex items-center justify-between gap-4">
                     <div>

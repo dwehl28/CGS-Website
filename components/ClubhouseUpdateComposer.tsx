@@ -46,7 +46,7 @@ export default function ClubhouseUpdateComposer() {
             type="text"
             name="title"
             className="field-control"
-            placeholder="Example: CGS Major registrations are heating up"
+            placeholder="Example: Season 3 is underway"
             required
           />
         </div>

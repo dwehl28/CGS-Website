@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import FormStatusMessage from "@/components/FormStatusMessage";
 import type { SelectOption } from "@/lib/site-content";
 
 type ContactFormProps = {
@@ -21,6 +22,7 @@ export default function ContactForm({ enquiryOptions }: ContactFormProps) {
   });
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
+  const [statusKind, setStatusKind] = useState<"success" | "error">("success");
 
   function handleChange(
     event: React.ChangeEvent<
@@ -38,6 +40,7 @@ export default function ContactForm({ enquiryOptions }: ContactFormProps) {
     event.preventDefault();
     setLoading(true);
     setStatus("");
+    setStatusKind("success");
 
     try {
       const response = await fetch("/api/contact", {
@@ -51,10 +54,12 @@ export default function ContactForm({ enquiryOptions }: ContactFormProps) {
       const data = await response.json();
 
       if (!response.ok) {
+        setStatusKind("error");
         setStatus(data.error || "Something went wrong.");
         return;
       }
 
+      setStatusKind("success");
       setStatus("Thanks. Your message has been sent to CGS.");
       setFormData({
         full_name: "",
@@ -67,6 +72,7 @@ export default function ContactForm({ enquiryOptions }: ContactFormProps) {
       });
     } catch (error) {
       console.error(error);
+      setStatusKind("error");
       setStatus("Something went wrong.");
     } finally {
       setLoading(false);
@@ -83,10 +89,8 @@ export default function ContactForm({ enquiryOptions }: ContactFormProps) {
 
       <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
         <div className="grid gap-5 md:grid-cols-2">
-          <div>
-            <label className="mb-2 block text-sm text-zinc-300">
-              Full Name
-            </label>
+          <div className="page-split-card rounded-[1.35rem] p-5">
+            <label className="field-label">Full Name</label>
             <input
               type="text"
               name="full_name"
@@ -94,12 +98,14 @@ export default function ContactForm({ enquiryOptions }: ContactFormProps) {
               onChange={handleChange}
               className="field-control"
               placeholder="Enter your name"
+              autoComplete="name"
               required
             />
+            <p className="field-hint">The best name for CGS to reply to.</p>
           </div>
 
-          <div>
-            <label className="mb-2 block text-sm text-zinc-300">Email</label>
+          <div className="page-split-card rounded-[1.35rem] p-5">
+            <label className="field-label">Email</label>
             <input
               type="email"
               name="email"
@@ -107,16 +113,16 @@ export default function ContactForm({ enquiryOptions }: ContactFormProps) {
               onChange={handleChange}
               className="field-control"
               placeholder="Enter your email"
+              autoComplete="email"
               required
             />
+            <p className="field-hint">This is where CGS will usually respond first.</p>
           </div>
         </div>
 
         <div className="grid gap-5 md:grid-cols-2">
-          <div>
-            <label className="mb-2 block text-sm text-zinc-300">
-              Phone Number
-            </label>
+          <div className="page-split-card rounded-[1.35rem] p-5">
+            <label className="field-label">Phone Number</label>
             <input
               type="tel"
               name="phone"
@@ -124,13 +130,13 @@ export default function ContactForm({ enquiryOptions }: ContactFormProps) {
               onChange={handleChange}
               className="field-control"
               placeholder="Optional"
+              autoComplete="tel"
             />
+            <p className="field-hint">Optional, but useful if you prefer a quicker reply.</p>
           </div>
 
-          <div>
-            <label className="mb-2 block text-sm text-zinc-300">
-              Preferred Contact
-            </label>
+          <div className="page-split-card rounded-[1.35rem] p-5">
+            <label className="field-label">Preferred Contact</label>
             <select
               name="preferred_contact"
               value={formData.preferred_contact}
@@ -141,14 +147,13 @@ export default function ContactForm({ enquiryOptions }: ContactFormProps) {
               <option value="phone">Phone</option>
               <option value="either">Either</option>
             </select>
+            <p className="field-hint">Tell CGS the easiest way to get back to you.</p>
           </div>
         </div>
 
         <div className="grid gap-5 md:grid-cols-2">
-          <div>
-            <label className="mb-2 block text-sm text-zinc-300">
-              Enquiry Type
-            </label>
+          <div className="page-split-card rounded-[1.35rem] p-5">
+            <label className="field-label">Enquiry Type</label>
             <select
               name="enquiry_type"
               value={formData.enquiry_type}
@@ -161,10 +166,11 @@ export default function ContactForm({ enquiryOptions }: ContactFormProps) {
                 </option>
               ))}
             </select>
+            <p className="field-hint">Choose the lane that best matches your message.</p>
           </div>
 
-          <div>
-            <label className="mb-2 block text-sm text-zinc-300">Subject</label>
+          <div className="page-split-card rounded-[1.35rem] p-5">
+            <label className="field-label">Subject</label>
             <input
               type="text"
               name="subject"
@@ -174,11 +180,12 @@ export default function ContactForm({ enquiryOptions }: ContactFormProps) {
               placeholder="What do you need help with?"
               required
             />
+            <p className="field-hint">A short summary helps CGS triage the message quickly.</p>
           </div>
         </div>
 
-        <div>
-          <label className="mb-2 block text-sm text-zinc-300">Message</label>
+        <div className="page-split-card rounded-[1.35rem] p-5">
+          <label className="field-label">Message</label>
           <textarea
             name="message"
             value={formData.message}
@@ -188,6 +195,9 @@ export default function ContactForm({ enquiryOptions }: ContactFormProps) {
             placeholder="Tell CGS what you're after"
             required
           />
+          <p className="field-hint">
+            Add any details that will help CGS give you a useful reply first time.
+          </p>
         </div>
 
         <button
@@ -207,7 +217,7 @@ export default function ContactForm({ enquiryOptions }: ContactFormProps) {
           .
         </p>
 
-        {status && <p className="text-center text-sm text-zinc-300">{status}</p>}
+        {status ? <FormStatusMessage kind={statusKind} message={status} /> : null}
       </form>
     </div>
   );

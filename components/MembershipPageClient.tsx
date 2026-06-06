@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 
 import FAQSection from "@/components/FAQSection";
+import FormStatusMessage from "@/components/FormStatusMessage";
+import PageIntro from "@/components/PageIntro";
 import {
   clubhouseStats,
   membershipFaqs,
@@ -22,6 +24,7 @@ export default function MembershipPageClient() {
   });
 
   const [status, setStatus] = useState("");
+  const [statusKind, setStatusKind] = useState<"success" | "error">("success");
   const [loading, setLoading] = useState(false);
 
   function handleChange(
@@ -38,6 +41,7 @@ export default function MembershipPageClient() {
     event.preventDefault();
     setLoading(true);
     setStatus("");
+    setStatusKind("success");
 
     try {
       const response = await fetch("/api/membership", {
@@ -51,8 +55,10 @@ export default function MembershipPageClient() {
       const data = await response.json();
 
       if (!response.ok) {
+        setStatusKind("error");
         setStatus(data.error || "Something went wrong.");
       } else {
+        setStatusKind("success");
         setStatus("Thanks! Your membership interest has been submitted.");
         setFormData({
           full_name: "",
@@ -65,6 +71,7 @@ export default function MembershipPageClient() {
       }
     } catch (error) {
       console.error(error);
+      setStatusKind("error");
       setStatus("Something went wrong.");
     } finally {
       setLoading(false);
@@ -73,23 +80,24 @@ export default function MembershipPageClient() {
 
   return (
     <main className="min-h-screen text-white">
-      <section className="mx-auto max-w-6xl px-6 py-16">
+      <section className="page-shell">
+        <PageIntro
+          eyebrow="Join the clubhouse"
+          title="Membership"
+          description="Stay involved online or become a playing member for Season 3, in-person events, and a deeper seat in the CGS story."
+          actions={[
+            { href: "#membership-form", label: "Join CGS" },
+            { href: "/contact", label: "Contact CGS", variant: "secondary" },
+          ]}
+        />
+
         <div className="grid gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:items-start">
           <div>
-            <div className="eyebrow">Join the clubhouse</div>
-            <h1 className="mt-6 text-5xl md:text-6xl">Membership</h1>
-
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-zinc-300">
-              Join the Crossodog Golf Society community. Stay involved online or
-              become a playing member for Season 2, in-person events, better
-              access, and a deeper seat in the CGS story.
-            </p>
-
-            <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               {clubhouseStats.slice(0, 4).map((stat) => (
                 <div
                   key={stat.label}
-                  className="stat-pill rounded-[1.35rem] px-4 py-4"
+                  className="subtle-grid-card rounded-[1.35rem] px-4 py-4"
                 >
                   <p className="text-2xl font-semibold text-white">{stat.value}</p>
                   <p className="mt-2 text-sm leading-6 text-zinc-400">
@@ -136,7 +144,7 @@ export default function MembershipPageClient() {
             <p className="mt-4 max-w-xl leading-7 text-zinc-300">
               The goal is to make joining feel approachable. You do not need to
               know every event detail before raising your hand, especially with
-              Season 2 already underway.
+              Season 3 already underway.
             </p>
           </div>
 
@@ -144,7 +152,7 @@ export default function MembershipPageClient() {
             {membershipSteps.map((step, index) => (
               <div
                 key={step.title}
-                className="rounded-[1.5rem] border border-white/8 bg-black/18 p-5"
+                className="subtle-grid-card rounded-[1.5rem] p-5"
               >
                 <p className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">
                   0{index + 1}
@@ -158,7 +166,10 @@ export default function MembershipPageClient() {
           </div>
         </div>
 
-        <div className="panel mx-auto mt-12 max-w-3xl rounded-[2rem] p-8 md:p-10">
+        <div
+          id="membership-form"
+          className="panel mx-auto mt-12 max-w-3xl rounded-[2rem] p-8 md:p-10"
+        >
           <h2 className="text-center text-3xl">Join CGS</h2>
           <p className="mt-3 text-center text-zinc-400">
             Submit your interest and the CGS team can follow up with the right
@@ -167,10 +178,8 @@ export default function MembershipPageClient() {
 
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
             <div className="grid gap-6 md:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm text-zinc-300">
-                  Full Name
-                </label>
+              <div className="page-split-card rounded-[1.35rem] p-5">
+                <label className="field-label">Full Name</label>
                 <input
                   type="text"
                   name="full_name"
@@ -178,14 +187,14 @@ export default function MembershipPageClient() {
                   onChange={handleChange}
                   placeholder="Enter your full name"
                   className="field-control"
+                  autoComplete="name"
                   required
                 />
+                <p className="field-hint">The name CGS should use for your membership enquiry.</p>
               </div>
 
-              <div>
-                <label className="mb-2 block text-sm text-zinc-300">
-                  Email Address
-                </label>
+              <div className="page-split-card rounded-[1.35rem] p-5">
+                <label className="field-label">Email Address</label>
                 <input
                   type="email"
                   name="email"
@@ -193,16 +202,16 @@ export default function MembershipPageClient() {
                   onChange={handleChange}
                   placeholder="Enter your email"
                   className="field-control"
+                  autoComplete="email"
                   required
                 />
+                <p className="field-hint">CGS will use this to send membership follow-up details.</p>
               </div>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm text-zinc-300">
-                  Membership Type
-                </label>
+              <div className="page-split-card rounded-[1.35rem] p-5">
+                <label className="field-label">Membership Type</label>
                 <select
                   name="membership_type"
                   value={formData.membership_type}
@@ -213,12 +222,11 @@ export default function MembershipPageClient() {
                     <option key={tier.name}>{tier.name}</option>
                   ))}
                 </select>
+                <p className="field-hint">Choose the lane that fits how involved you want to be.</p>
               </div>
 
-              <div>
-                <label className="mb-2 block text-sm text-zinc-300">
-                  Interested in playing events?
-                </label>
+              <div className="page-split-card rounded-[1.35rem] p-5">
+                <label className="field-label">Interested in playing events?</label>
                 <select
                   name="interested_in_events"
                   value={formData.interested_in_events}
@@ -228,14 +236,13 @@ export default function MembershipPageClient() {
                   <option>Yes</option>
                   <option>No</option>
                 </select>
+                <p className="field-hint">This helps CGS sort players from general community interest.</p>
               </div>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm text-zinc-300">
-                  Handicap
-                </label>
+              <div className="page-split-card rounded-[1.35rem] p-5">
+                <label className="field-label">Handicap</label>
                 <input
                   type="text"
                   name="handicap"
@@ -244,12 +251,11 @@ export default function MembershipPageClient() {
                   placeholder="Enter your handicap"
                   className="field-control"
                 />
+                <p className="field-hint">Optional. Add it if it helps with event fit and follow-up.</p>
               </div>
 
-              <div>
-                <label className="mb-2 block text-sm text-zinc-300">
-                  Handicap Type
-                </label>
+              <div className="page-split-card rounded-[1.35rem] p-5">
+                <label className="field-label">Handicap Type</label>
                 <select
                   name="handicap_type"
                   value={formData.handicap_type}
@@ -259,6 +265,7 @@ export default function MembershipPageClient() {
                   <option>Real</option>
                   <option>Sim</option>
                 </select>
+                <p className="field-hint">Let CGS know whether the number is real-world or sim-based.</p>
               </div>
             </div>
 
@@ -279,9 +286,7 @@ export default function MembershipPageClient() {
               .
             </p>
 
-            {status && (
-              <p className="text-center text-sm text-zinc-300">{status}</p>
-            )}
+            {status ? <FormStatusMessage kind={statusKind} message={status} /> : null}
           </form>
         </div>
 

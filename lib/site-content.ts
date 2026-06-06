@@ -36,6 +36,7 @@ export type EventRecord = {
   slug: string;
   href: string;
   category: string;
+  isArchived?: boolean;
   homepageBadge: string;
   title: string;
   titleWithDate: string;
@@ -59,6 +60,15 @@ export type EventRecord = {
     showHandicap: boolean;
     options: SelectOption[];
   };
+};
+
+export type CompetitionArchiveRecord = {
+  title: string;
+  label: string;
+  description: string;
+  href: string;
+  resultLabel: string;
+  resultHref: string;
 };
 
 export const siteConfig = {
@@ -141,36 +151,36 @@ export const socialLinks: SocialLink[] = [
 
 export const clubhouseStats = [
   {
+    value: "Season 3",
+    label: "Underway after the Monday 25 May launch",
+  },
+  {
+    value: "7 teams",
+    label: "CGS teams back into the Ambrose format",
+  },
+  {
+    value: "Ambrose",
+    label: "New faces, new teams, and team golf pressure",
+  },
+  {
     value: "Season 2",
-    label: "Six-week solo Stableford season now underway",
-  },
-  {
-    value: "6 weeks",
-    label: "1 grading week, 4 season weeks, 1 grand final",
-  },
-  {
-    value: "2 May",
-    label: "CGS Major lands inside the Season 2 run",
-  },
-  {
-    value: "Birdie Hunters",
-    label: "Season 1 champs opening the new run as the benchmark",
+    label: "Finals now archived with result links",
   },
 ];
 
 export const homeSpotlights = [
   {
     key: "events",
-    eyebrow: "Big event energy",
-    title: "The calendar is designed like a season, not a flyer.",
+    eyebrow: "Season 3 live",
+    title: "The current CGS team season is underway.",
     description:
-      "Season 2 is now the live story: a solo Stableford run with a grading opener, four scoring weeks, the CGS Major on 2 May, and a grand final to close it out.",
+      "Season 3 launched Monday 25 May 2026 at 7pm AEST with seven CGS teams, new faces, new combinations, and a return to Ambrose competition.",
     href: "/events",
     ctaLabel: "See the calendar",
     highlights: [
-      "A six-week solo Stableford format with a proper season arc",
-      "The CGS Major sits inside the run on 2 May",
-      "Event pages designed to turn interest into real sign-ups",
+      "Seven CGS teams involved from the opening night",
+      "Ambrose format returns after the solo Stableford season",
+      "Season 2 and Major results stay available in the archive",
     ],
   },
   {
@@ -219,28 +229,28 @@ export const homeSpotlights = [
 
 export const seasonMoments = [
   {
-    title: "Grading week",
-    label: "Week 1",
+    title: "Season 3 opener",
+    label: "25 May",
     description:
-      "Season 2 opens with grading so the field can be sorted and the Stableford run starts with a fair baseline.",
+      "The new team season launched Monday 25 May 2026 at 7pm AEST, with the first Ambrose night setting the tone.",
   },
   {
-    title: "Solo Stableford season",
-    label: "Weeks 2-5",
+    title: "Seven CGS teams",
+    label: "Team field",
     description:
-      "Four scoring weeks make up the core of the competition, with every player competing solo rather than in teams.",
+      "Seven CGS teams are involved this season, bringing new faces, new pairings, and fresh leaderboard movement.",
   },
   {
-    title: "CGS Major",
-    label: "2 May",
+    title: "Ambrose is back",
+    label: "Format",
     description:
-      "The Major lands during Season 2 as the premium event date inside the run, not after it.",
+      "Season 3 shifts back into team Ambrose, so decisions, chemistry, and clutch second shots matter again.",
   },
   {
-    title: "Season 2 grand final",
-    label: "Week 6",
+    title: "Results archive",
+    label: "Past comps",
     description:
-      "The six-week run still finishes with a grand final that decides the next solo CGS champion.",
+      "Season 2, the CGS Major, and earlier competitions now live as archive entries for anyone checking the history.",
   },
 ];
 
@@ -285,9 +295,9 @@ export const membershipTiers = [
     name: "Playing Member",
     price: "Paid",
     summary:
-      "Best for golfers who want to play in CGS events, put their hand up for Season 2, access member pricing, and take part in the in-person side of the society.",
+      "Best for golfers who want to play in CGS events, put their hand up for Season 3, access member pricing, and take part in the in-person side of the society.",
     highlights: [
-      "Play in CGS events and Season 2 competitions",
+      "Play in CGS events and Season 3 competitions",
       "Discounted event entry",
       "Priority access to selected events",
     ],
@@ -310,7 +320,7 @@ export const membershipSteps: ProcessStep[] = [
   {
     title: "Get the next details",
     description:
-      "CGS can follow up with membership information, Season 2 timing, and the best next step based on how involved you want to be.",
+      "CGS can follow up with membership information, Season 3 timing, and the best next step based on how involved you want to be.",
   },
 ];
 
@@ -551,69 +561,142 @@ export const contactEnquiryOptions: SelectOption[] = [
 
 export const events: EventRecord[] = [
   {
-    slug: "season-2",
-    href: "/events/season-2",
-    category: "Live Season",
-    homepageBadge: "Now Underway",
-    title: "Season 2",
-    titleWithDate: "Season 2 - Now Underway",
-    startDate: "2026-04-07T09:00:00+10:00",
-    endDate: "2026-05-18T21:00:00+10:00",
-    teaser: "Six-week solo Stableford season",
+    slug: "season-3",
+    href: "/events/season-3",
+    category: "Current Season",
+    homepageBadge: "Live season",
+    title: "Season 3",
+    titleWithDate: "Season 3 - Underway after Monday 25 May",
+    startDate: "2026-05-25T19:00:00+10:00",
+    endDate: "2026-07-06T21:00:00+10:00",
+    teaser: "Seven-team Ambrose season",
     summary:
-      "Season 2 is a six-week solo Stableford competition that opens with one grading week, runs through four scoring weeks, features the CGS Major on 2 May inside the run, and closes with a grand final.",
-    scheduleLabel: "Live now | Grading week, 4 season weeks, CGS Major on 2 May, then a grand final",
+      "Season 3 launched Monday 25 May 2026 at 7pm AEST, with seven CGS teams, new faces, new team combinations, and a return to the Ambrose competition format.",
+    scheduleLabel: "Launched Monday 25 May 2026 at 7pm AEST | Seven CGS teams | Ambrose format",
     overview: [
-      { label: "Format", value: "Solo Stableford" },
-      { label: "Length", value: "6 weeks" },
-      { label: "Week 1", value: "Grading week" },
-      { label: "Weeks 2-5", value: "Regular season" },
-      { label: "Featured stop", value: "CGS Major - 2 May" },
-      { label: "Week 6", value: "Grand final" },
+      { label: "Start", value: "Monday 25 May" },
+      { label: "Time", value: "7pm AEST" },
+      { label: "Format", value: "Team Ambrose" },
+      { label: "Teams", value: "7 CGS teams" },
+      { label: "Season feel", value: "New faces + new teams" },
+      { label: "Status", value: "Underway" },
     ],
     body: [
-      "Season 2 is the current competitive spine of the CGS calendar. It is built as a solo Stableford run so every player has their own campaign to manage rather than leaning on a team format.",
-      "The structure is simple: one grading week to set the table, four scoring weeks that make up the season proper, the CGS Major landing on 2 May during the run, and one grand final to decide the champion.",
+      "Season 3 resets the CGS competition story and brings the field back into team golf. After the solo Stableford run of Season 2, the league returns to Ambrose with seven CGS teams involved from the opening night.",
+      "The season launched Monday 25 May 2026 at 7pm AEST. Expect new faces, new team combinations, and the kind of pressure that comes when every shot can set up the next player.",
     ],
     pathways: [
       {
         title: "For players",
         description:
-          "This is the clearest fit if you want regular competitive golf with a simple individual format and a defined run toward a grand final.",
+          "This is the team format returning, so communication, confidence, and knowing when to attack will matter from night one.",
       },
       {
         title: "For members",
         description:
-          "Playing members are best placed to put their hand up early, stay close to updates, and roll from the season into the rest of the CGS calendar.",
+          "Season 3 is the clearest current path into the playing side of CGS, especially for members who want weekly competition rhythm.",
       },
       {
         title: "For followers",
         description:
-          "Even if you are not playing, Season 2 gives the site a live scoreboard story to follow, with the Major acting as the biggest date inside the run.",
+          "Seven teams gives the leaderboard more movement, more storylines, and more names to follow across the season.",
       },
     ],
     faqs: [
       {
-        question: "Is Season 2 an individual competition?",
+        question: "When does Season 3 start?",
         answer:
-          "Yes. Season 2 is being run as a solo Stableford competition, so every player is competing on their own score rather than in teams.",
+          "Season 3 started Monday 25 May 2026 at 7pm AEST.",
       },
       {
-        question: "How is the six-week structure split up?",
+        question: "What format is Season 3?",
         answer:
-          "The format is one grading week, four regular season weeks, the CGS Major on 2 May inside the run, and a grand final in week six to decide the champion.",
+          "Season 3 returns to the Ambrose team format, with seven CGS teams involved this season.",
       },
       {
-        question: "Why is there a grading week first?",
+        question: "Is Season 3 different from Season 2?",
         answer:
-          "The grading opener helps CGS set the field properly before the scoring weeks begin, which gives the rest of the season a cleaner competitive base.",
+          "Yes. Season 2 was a solo Stableford competition, while Season 3 moves back into team Ambrose with new faces and new teams.",
       },
     ],
     interestForm: {
-      title: "Register for Season 2",
+      title: "Register Season 3 interest",
       description:
-        "Drop your details if you want to play, stay on the reserve list, or keep close to Season 2 updates as the weeks roll on.",
-      buttonLabel: "Send Season 2 interest",
+        "Drop your details if you want to play, join the reserve list, or keep close to Season 3 updates.",
+      buttonLabel: "Send Season 3 interest",
+      showHandicap: true,
+      options: [
+        { value: "player", label: "Player" },
+        { value: "reserve", label: "Reserve list" },
+        { value: "supporter", label: "Follow the season" },
+      ],
+    },
+  },
+  {
+    slug: "season-2",
+    href: "/events/season-2",
+    category: "Past Results",
+    isArchived: true,
+    homepageBadge: "Results Posted",
+    title: "Season 2",
+    titleWithDate: "Season 2 - Results Archive",
+    startDate: "2026-04-07T09:00:00+10:00",
+    endDate: "2026-05-18T21:00:00+10:00",
+    teaser: "Solo Stableford finals archive",
+    summary:
+      "Season 2 is now complete. The solo Stableford run built through four weeks of competition, moved into A Grade and B Grade finals, and left a clean results archive for the CGS record.",
+    scheduleLabel: "Completed | A Grade Grand Final and B Grade Finals now available",
+    overview: [
+      { label: "Format", value: "Solo Stableford" },
+      { label: "Status", value: "Completed" },
+      { label: "A Grade", value: "Grand Final played" },
+      { label: "B Grade", value: "Finals played" },
+      { label: "Major stop", value: "CGS Major results posted" },
+      { label: "Next season", value: "Season 3 Ambrose" },
+    ],
+    body: [
+      "Season 2 closed out the solo Stableford chapter of CGS. The run moved through four competitive weeks and finished with A Grade and B Grade finals content now sitting in the CGS media archive.",
+      "The accessible result posts confirm the A Grade Grand Final, the B Grade Finals at Augusta, the first CGS Major results short, and the first YouTube live push as the key public records from the end of the season.",
+    ],
+    pathways: [
+      {
+        title: "A Grade Grand Final",
+        description:
+          "The A Grade final brought the top end of the season together after four weeks of competition, with CGS members fighting into the final mix.",
+      },
+      {
+        title: "B Grade Finals",
+        description:
+          "The B Grade finalists headed to Augusta, with the youngest CGS member joining the final-night storyline.",
+      },
+      {
+        title: "Major results",
+        description:
+          "The first CGS Major produced its own results short, keeping the biggest Season 2 event easy to revisit.",
+      },
+    ],
+    faqs: [
+      {
+        question: "Is Season 2 still open for registration?",
+        answer:
+          "No. Season 2 is complete and now lives on the site as a results archive.",
+      },
+      {
+        question: "Where can I watch the Season 2 finals?",
+        answer:
+          "The CGS YouTube channel has the Season 2 A Grade Grand Final and B Grade Finals available to watch.",
+      },
+      {
+        question: "What comes after Season 2?",
+        answer:
+          "Season 3 started Monday 25 May 2026 at 7pm AEST and returned CGS to team Ambrose.",
+      },
+    ],
+    interestForm: {
+      title: "Season 2 is complete",
+      description:
+        "Use the Season 3 page if you want to get involved in the next competition.",
+      buttonLabel: "View Season 3",
       showHandicap: true,
       options: [
         { value: "player", label: "Player" },
@@ -625,70 +708,71 @@ export const events: EventRecord[] = [
   {
     slug: "cgs-major",
     href: "/events/cgs-major",
-    category: "Featured Major",
-    homepageBadge: "Live Streamed",
+    category: "Past Results",
+    isArchived: true,
+    homepageBadge: "Results Posted",
     title: "CGS Major",
-    titleWithDate: "CGS Major - May 2",
+    titleWithDate: "CGS Major - 2026 Results Archive",
     startDate: "2026-05-02T12:00:00+10:00",
     endDate: "2026-05-02T21:00:00+10:00",
     teaser: "Waste Management Course - Scratch + Handicap",
     summary:
-      "A Masters-style CGS event played at the Waste Management Course, featuring both scratch and handicap competitions across two sessions and streamed live for the CGS community as a feature date inside Season 2.",
-    scheduleLabel: "Sessions: 12pm-4pm and 5pm-9pm | Lands during Season 2",
-    pricingLabel: "Members: $65 - Non-members: $70",
+      "The first CGS Major is now in the results archive, with the event stream, results short, and closest-to-the-pin moment preserved for the CGS record.",
+    scheduleLabel: "Completed 2 May | Results, stream, and highlights now archived",
+    pricingLabel: "Completed event archive",
     overview: [
-      { label: "Date", value: "2 May" },
+      { label: "Date", value: "2 May 2026" },
       { label: "Venue", value: "Waste Management Course" },
       { label: "Format", value: "Scratch + Handicap" },
-      { label: "Stream", value: "Live streamed" },
+      { label: "Stream", value: "Archived on YouTube" },
       { label: "Session One", value: "12pm - 4pm" },
       { label: "Session Two", value: "5pm - 9pm" },
       { label: "Member Price", value: "$65" },
       { label: "Public Price", value: "$70" },
     ],
     body: [
-      "The CGS Major is one of the signature events on the Crossodog Golf Society calendar. Designed with a Masters-style feel, it combines strong competition with the creator-driven and community-focused energy that defines CGS.",
-      "Players will compete in both scratch and handicap formats, giving a wider range of golfers a chance to be part of the event. With live streaming throughout the day, the CGS Major is built to be both a serious event and a showcase moment for the brand while Season 2 is still in motion.",
+      "The first CGS Major became one of the first big showcase moments in the CGS archive, with the event stream, a results short, and the closest-to-the-pin winner clip now available through the media feed.",
+      "The event has moved out of registration mode and into results mode. It now works as a reference point for future majors, sponsors, members, and anyone checking how the CGS calendar is growing.",
     ],
     pathways: [
       {
-        title: "For players",
+        title: "Event stream",
         description:
-          "A strong fit if you want a feature-event atmosphere, structured sessions, and the chance to compete in scratch and handicap formats.",
+          "The full Major stream remains available as the long-form record of the day.",
       },
       {
-        title: "For supporters",
+        title: "Results short",
         description:
-          "If you mainly want to follow the stream, back a player, or stay close to the big moments, the event still gives you a place in the CGS story.",
+          "The quick results clip gives followers a simple way to revisit how the first Major shook out.",
       },
       {
-        title: "For members",
+        title: "Closest to pin",
         description:
-          "Playing members are the clearest fit for priority access and member pricing once final registration windows are confirmed.",
+          "Lachy's closest-to-the-pin prize moment is part of the archived Major story.",
       },
     ],
     faqs: [
       {
-        question: "Do I need an official handicap to show interest?",
+        question: "Is the CGS Major still open for registration?",
         answer:
-          "No. You can still register interest if you do not have a formal handicap yet. CGS can sort out what information is useful once event spots and formats are being finalised.",
+          "No. The 2026 CGS Major has been completed and this page now works as a results archive.",
       },
       {
-        question: "Can non-members still play?",
+        question: "Where can I watch the Major?",
         answer:
-          "Yes. Public pricing is already in place, while members are positioned for a slightly better rate and easier priority when entries open.",
+          "The CGS YouTube channel has the event stream, results short, and related Major clips.",
       },
       {
-        question: "Will the day be streamed live?",
+        question: "Will there be future CGS Majors?",
         answer:
-          "Yes. The CGS Major is designed as a showcase event with live coverage so the community can follow the action even if they are not on-site.",
+          "The Major is now a proven CGS format and can act as the reference point for future feature events.",
       },
     ],
     interestForm: {
-      title: "Register your interest",
+      title: "Major complete",
       description:
-        "Drop your details and CGS can contact you when player spots, pricing, and final event information are confirmed.",
-      buttonLabel: "Join the CGS Major list",
+        "Use the archive links to revisit the event, or jump to Season 3 for the current competition.",
+      buttonLabel: "View Season 3",
       showHandicap: true,
       options: [
         { value: "player", label: "Player" },
@@ -772,7 +856,39 @@ export const events: EventRecord[] = [
   },
 ];
 
-export const upcomingEventCards: EventRecord[] = [...events];
+export const competitionArchive: CompetitionArchiveRecord[] = [
+  {
+    title: "Season 2 Results",
+    label: "Solo Stableford",
+    description:
+      "Season 2 is complete, with the A Grade Grand Final, B Grade Finals, and Major results now collected as the public record.",
+    href: "/events/season-2",
+    resultLabel: "Watch A Grade Grand Final",
+    resultHref: "https://www.youtube.com/watch?v=gZjw-iSFTws",
+  },
+  {
+    title: "CGS Major 2026",
+    label: "First Major",
+    description:
+      "The first CGS Major has moved into the archive with the event stream, results short, and closest-to-the-pin moment available.",
+    href: "/events/cgs-major",
+    resultLabel: "Watch Major results",
+    resultHref: "https://www.youtube.com/shorts/FOYhSVt3TsE",
+  },
+  {
+    title: "Season 1 Grand Final",
+    label: "Birdie Hunters",
+    description:
+      "Season 1 closed with Birdie Hunters on top, Eagles & Shanks one shot back, and Bogey Boys disqualified in the final.",
+    href: "/scoreboard",
+    resultLabel: "Watch Season 1 final",
+    resultHref: "https://www.youtube.com/watch?v=NnVYHGyo3mM",
+  },
+];
+
+export const upcomingEventCards: EventRecord[] = events.filter(
+  (event) => !event.isArchived
+);
 
 export function getEventBySlug(slug: string) {
   return events.find((event) => event.slug === slug);

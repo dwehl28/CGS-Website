@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import FAQSection from "@/components/FAQSection";
+import PageIntro from "@/components/PageIntro";
 import { buildMetadata } from "@/lib/seo";
 import {
   privacyFaqs,
@@ -28,25 +29,23 @@ export default function PrivacyPage() {
         dangerouslySetInnerHTML={createJsonLd(buildFaqJsonLd(privacyFaqs))}
       />
 
-      <section className="mx-auto max-w-6xl px-6 py-16">
-        <div className="mx-auto max-w-3xl text-center">
-          <div className="eyebrow">Plain-English privacy</div>
-          <h1 className="mt-6 text-5xl md:text-6xl">Privacy at CGS</h1>
-          <p className="mt-5 text-lg leading-8 muted-copy">
-            This site collects the information you choose to send through
-            membership, contact, and event-interest forms so CGS can reply and
-            manage those enquiries properly.
-          </p>
+      <section className="page-shell">
+        <PageIntro
+          eyebrow="Plain-English privacy"
+          title="Privacy at CGS"
+          description="This site collects the information you choose to send through membership, contact, and event-interest forms so CGS can reply and manage those enquiries properly."
+          align="center"
+        >
           <p className="mt-4 text-sm uppercase tracking-[0.18em] text-zinc-500">
             Last updated {lastUpdated}
           </p>
-        </div>
+        </PageIntro>
 
-        <div className="mt-12 grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-3">
           {privacyPrinciples.map((principle) => (
             <div
               key={principle.title}
-              className="panel rounded-[1.75rem] p-6"
+              className="subtle-grid-card rounded-[1.75rem] p-6"
             >
               <h2 className="text-3xl">{principle.title}</h2>
               <p className="mt-4 text-sm leading-7 text-zinc-300">
@@ -95,7 +94,7 @@ export default function PrivacyPage() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="rounded-[1.2rem] border border-white/8 bg-black/18 px-4 py-4"
+                  className="subtle-grid-card rounded-[1.2rem] px-4 py-4"
                 >
                   <p className="text-lg font-semibold text-white">{link.label}</p>
                   <p className="mt-2 text-sm leading-7 text-zinc-400">

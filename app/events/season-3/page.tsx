@@ -14,10 +14,10 @@ import {
 } from "@/lib/structured-data";
 
 function requireEvent() {
-  const event = getEventBySlug("movember-charity-stream");
+  const event = getEventBySlug("season-3");
 
   if (!event) {
-    throw new Error("Expected Movember Charity Stream content to exist.");
+    throw new Error("Expected Season 3 event content to exist.");
   }
 
   return event;
@@ -31,7 +31,7 @@ export const metadata: Metadata = buildMetadata({
   path: event.href,
 });
 
-export default function MovemberCharityStreamPage() {
+export default function Season3Page() {
   return (
     <main className="min-h-screen text-white">
       <script
@@ -49,14 +49,14 @@ export default function MovemberCharityStreamPage() {
           title={event.title}
           description={event.summary}
           actions={[
-            { href: "#event-interest", label: "Get involved" },
-            { href: "/contact", label: "Contact CGS", variant: "secondary" },
+            { href: "#event-interest", label: "Register interest" },
+            { href: "/scoreboard", label: "Open scoreboard", variant: "secondary" },
           ]}
         >
           <div className="mt-5 inline-meta">
-            <span>24-hour challenge</span>
-            <span>Charity + content</span>
-            <span>28-29 November</span>
+            <span>{event.scheduleLabel}</span>
+            <span>Seven CGS teams</span>
+            <span>Team Ambrose</span>
           </div>
           <div className="mt-6">
             <EventCountdown startDate={event.startDate} endDate={event.endDate} />
@@ -64,7 +64,7 @@ export default function MovemberCharityStreamPage() {
         </PageIntro>
 
         <div className="panel rounded-[2rem] p-8">
-          <h2 className="text-3xl">Event overview</h2>
+          <h2 className="text-3xl">Season overview</h2>
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             {event.overview.map((row) => (
               <div
@@ -81,7 +81,7 @@ export default function MovemberCharityStreamPage() {
         </div>
 
         <div className="mt-10 panel rounded-[2rem] p-8">
-          <h2 className="text-3xl">About the event</h2>
+          <h2 className="text-3xl">How Season 3 works</h2>
           <div className="mt-5 space-y-4">
             {event.body.map((paragraph) => (
               <p key={paragraph} className="leading-7 text-zinc-300">
@@ -92,7 +92,7 @@ export default function MovemberCharityStreamPage() {
         </div>
 
         <div className="mt-10 panel rounded-[2rem] p-8">
-          <h2 className="text-3xl">Ways to get involved</h2>
+          <h2 className="text-3xl">What changes this season</h2>
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             {event.pathways.map((pathway) => (
               <div
@@ -110,48 +110,46 @@ export default function MovemberCharityStreamPage() {
 
         <div className="mt-10 grid gap-8 lg:grid-cols-[1.02fr_0.98fr]">
           <div className="panel rounded-[2rem] p-8">
-            <h2 className="text-3xl">Support opportunities</h2>
+            <h2 className="text-3xl">What happens next</h2>
 
             <ul className="mt-5 list-inside list-disc space-y-3 text-zinc-300">
-              <li>Support the stream with sponsorship or donated prizes.</li>
-              <li>Volunteer behind the scenes or help spread the word.</li>
-              <li>Partner on content, charity promotion, or community reach.</li>
+              <li>Season 3 started Monday 25 May 2026 at 7pm AEST.</li>
+              <li>Seven CGS teams move back into the Ambrose format.</li>
+              <li>Old competition results stay available through the archive.</li>
             </ul>
 
             <div className="mt-6 flex flex-wrap gap-4">
-              <Link
-                href="/contact"
-                className="btn-primary"
-              >
-                Contact CGS
+              <Link href="/membership" className="btn-primary">
+                Become a Member
               </Link>
 
-              <Link
-                href="/events"
-                className="btn-secondary"
-              >
-                Back to Events
+              <Link href="/scoreboard" className="btn-secondary">
+                Open live scoreboard
+              </Link>
+
+              <Link href="/events/season-2" className="btn-secondary">
+                View Season 2 results
               </Link>
             </div>
           </div>
 
           <div id="event-interest">
             <EventInterestForm
-            eventName={event.title}
-            eventSlug={event.slug}
-            title={event.interestForm.title}
-            description={event.interestForm.description}
-            buttonLabel={event.interestForm.buttonLabel}
-            options={event.interestForm.options}
-            showHandicap={event.interestForm.showHandicap}
+              eventName={event.title}
+              eventSlug={event.slug}
+              title={event.interestForm.title}
+              description={event.interestForm.description}
+              buttonLabel={event.interestForm.buttonLabel}
+              options={event.interestForm.options}
+              showHandicap={event.interestForm.showHandicap}
             />
           </div>
         </div>
 
         <div className="mt-12">
           <FAQSection
-            title="Movember Stream FAQs"
-            intro="Useful context for sponsors, collaborators, and community supporters thinking about getting involved."
+            title="Season 3 FAQs"
+            intro="A few quick answers for players and followers jumping into the new Ambrose season."
             items={event.faqs}
           />
         </div>

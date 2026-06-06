@@ -1,3 +1,4 @@
+import { withTimeout } from "@/lib/async-timeout";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 export type LeaderboardMode = "gross" | "net";
@@ -66,6 +67,7 @@ type CompetitionScoreEntryInput = {
 
 const missingTableMessage =
   "Competition scoreboards are not set up yet. Apply the latest Supabase migration to start using live scoring.";
+const SCOREBOARD_QUERY_TIMEOUT_MS = 3500;
 
 function isMissingScoreboardTableError(error: unknown) {
   if (!error || typeof error !== "object" || !("code" in error)) {
@@ -241,11 +243,15 @@ async function loadCompetitionEntries(competitionIds: number[]) {
   }
 
   const supabaseAdmin = getSupabaseAdmin();
-  const { data, error } = await supabaseAdmin
-    .from("competition_score_entries")
-    .select("*")
-    .in("competition_id", competitionIds)
-    .order("updated_at", { ascending: false });
+  const { data, error } = await withTimeout(
+    supabaseAdmin
+      .from("competition_score_entries")
+      .select("*")
+      .in("competition_id", competitionIds)
+      .order("updated_at", { ascending: false }),
+    SCOREBOARD_QUERY_TIMEOUT_MS,
+    "Competition score entries query"
+  );
 
   if (error) {
     throw error;
@@ -259,14 +265,18 @@ export async function getPublishedCompetitionScoreboards(
 ): Promise<ScoreboardFeed> {
   try {
     const supabaseAdmin = getSupabaseAdmin();
-    const { data, error } = await supabaseAdmin
-      .from("competition_scoreboards")
-      .select("*")
-      .eq("is_published", true)
-      .order("is_live", { ascending: false })
-      .order("starts_at", { ascending: false, nullsFirst: false })
-      .order("updated_at", { ascending: false })
-      .limit(limit);
+    const { data, error } = await withTimeout(
+      supabaseAdmin
+        .from("competition_scoreboards")
+        .select("*")
+        .eq("is_published", true)
+        .order("is_live", { ascending: false })
+        .order("starts_at", { ascending: false, nullsFirst: false })
+        .order("updated_at", { ascending: false })
+        .limit(limit),
+      SCOREBOARD_QUERY_TIMEOUT_MS,
+      "Published competition scoreboards query"
+    );
 
     if (error) {
       if (isMissingScoreboardTableError(error)) {
@@ -305,12 +315,16 @@ export async function getPublishedCompetitionScoreboards(
 export async function getPublishedCompetitionScoreboardBySlug(slug: string) {
   try {
     const supabaseAdmin = getSupabaseAdmin();
-    const { data, error } = await supabaseAdmin
-      .from("competition_scoreboards")
-      .select("*")
-      .eq("slug", slug)
-      .eq("is_published", true)
-      .maybeSingle();
+    const { data, error } = await withTimeout(
+      supabaseAdmin
+        .from("competition_scoreboards")
+        .select("*")
+        .eq("slug", slug)
+        .eq("is_published", true)
+        .maybeSingle(),
+      SCOREBOARD_QUERY_TIMEOUT_MS,
+      "Published competition scoreboard by slug query"
+    );
 
     if (error) {
       if (isMissingScoreboardTableError(error)) {
@@ -340,12 +354,16 @@ export async function getAdminCompetitionScoreboards(
 ): Promise<ScoreboardFeed> {
   try {
     const supabaseAdmin = getSupabaseAdmin();
-    const { data, error } = await supabaseAdmin
-      .from("competition_scoreboards")
-      .select("*")
-      .order("is_live", { ascending: false })
-      .order("updated_at", { ascending: false })
-      .limit(limit);
+    const { data, error } = await withTimeout(
+      supabaseAdmin
+        .from("competition_scoreboards")
+        .select("*")
+        .order("is_live", { ascending: false })
+        .order("updated_at", { ascending: false })
+        .limit(limit),
+      SCOREBOARD_QUERY_TIMEOUT_MS,
+      "Admin competition scoreboards query"
+    );
 
     if (error) {
       if (isMissingScoreboardTableError(error)) {

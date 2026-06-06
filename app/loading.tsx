@@ -1,12 +1,12 @@
 export default function Loading() {
   return (
     <main className="min-h-screen text-white">
-      <section className="mx-auto max-w-6xl px-6 py-16 md:py-24">
+      <section className="page-shell md:py-24">
         <div className="mx-auto max-w-3xl text-center">
           <div className="eyebrow">Loading clubhouse</div>
           <h1 className="mt-6 text-5xl md:text-6xl">Crossodog Golf Society</h1>
           <p className="mt-4 text-zinc-400">
-            Building the next screen with events, media, and clubhouse energy.
+            Loading the next part of the clubhouse.
           </p>
         </div>
 

@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import EventCountdown from "@/components/EventCountdown";
-import EventInterestForm from "@/components/EventInterestForm";
 import FAQSection from "@/components/FAQSection";
+import PageIntro from "@/components/PageIntro";
 import { buildMetadata } from "@/lib/seo";
-import { getEventBySlug } from "@/lib/site-content";
+import { competitionArchive, getEventBySlug } from "@/lib/site-content";
 import {
   buildEventJsonLd,
   buildFaqJsonLd,
@@ -23,6 +23,9 @@ function requireEvent() {
 }
 
 const event = requireEvent();
+const majorArchive = competitionArchive.find(
+  (archive) => archive.href === event.href
+);
 
 export const metadata: Metadata = buildMetadata({
   title: event.title,
@@ -42,24 +45,37 @@ export default function CGSMajorPage() {
         dangerouslySetInnerHTML={createJsonLd(buildFaqJsonLd(event.faqs))}
       />
 
-      <section className="mx-auto max-w-5xl px-6 py-16">
-        <div className="eyebrow">{event.category}</div>
-        <h1 className="mt-6 text-5xl md:text-6xl">{event.title}</h1>
-        <div className="mt-5">
-          <EventCountdown startDate={event.startDate} endDate={event.endDate} />
-        </div>
+      <section className="page-shell max-w-5xl">
+        <PageIntro
+          eyebrow={event.category}
+          title={event.title}
+          description={event.summary}
+          actions={[
+            {
+              href: majorArchive?.resultHref ?? "https://www.youtube.com/@CrossodogGolfSociety",
+              label: majorArchive?.resultLabel ?? "Watch results",
+              external: true,
+            },
+            { href: "/events/season-3", label: "View Season 3", variant: "secondary" },
+          ]}
+        >
+          <div className="mt-5 inline-meta">
+            <span>{event.pricingLabel ?? "Pricing to be confirmed"}</span>
+            <span>Waste Management Course</span>
+            <span>Results archive</span>
+          </div>
+          <div className="mt-6">
+            <EventCountdown startDate={event.startDate} endDate={event.endDate} />
+          </div>
+        </PageIntro>
 
-        <p className="mt-6 max-w-3xl text-lg leading-8 text-zinc-300">
-          {event.summary}
-        </p>
-
-        <div className="mt-10 panel rounded-[2rem] p-8">
+        <div className="panel rounded-[2rem] p-8">
           <h2 className="text-3xl">Event overview</h2>
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             {event.overview.map((row) => (
               <div
                 key={row.label}
-                className="rounded-[1.2rem] border border-white/8 bg-black/18 px-4 py-4"
+                className="subtle-grid-card rounded-[1.2rem] px-4 py-4"
               >
                 <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
                   {row.label}
@@ -87,7 +103,7 @@ export default function CGSMajorPage() {
             {event.pathways.map((pathway) => (
               <div
                 key={pathway.title}
-                className="rounded-[1.35rem] border border-white/8 bg-black/18 p-5"
+                className="subtle-grid-card rounded-[1.35rem] p-5"
               >
                 <h3 className="text-2xl">{pathway.title}</h3>
                 <p className="mt-3 text-sm leading-7 text-zinc-400">
@@ -98,49 +114,64 @@ export default function CGSMajorPage() {
           </div>
         </div>
 
-        <div className="mt-10 grid gap-8 lg:grid-cols-[1.02fr_0.98fr]">
-          <div className="panel rounded-[2rem] p-8">
-            <h2 className="text-3xl">What happens next</h2>
+        <div className="mt-10 panel rounded-[2rem] p-8">
+          <h2 className="text-3xl">Watch the Major archive</h2>
 
-            <ul className="mt-5 list-inside list-disc space-y-3 text-zinc-300">
-              <li>Join the waitlist so CGS knows you want a spot.</li>
-              <li>CGS can follow up with final session, pricing, and entry details.</li>
-              <li>Playing members will be easiest to prioritise when registrations open.</li>
-            </ul>
+          <div className="mt-5 grid gap-4 md:grid-cols-3">
+            <a
+              href="https://www.youtube.com/watch?v=9hC0x-vxrHI"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="subtle-grid-card rounded-[1.35rem] p-5"
+            >
+              <p className="text-xs uppercase tracking-[0.2em] text-[var(--tan)]">
+                Event stream
+              </p>
+              <h3 className="mt-3 text-2xl">Major day</h3>
+              <p className="mt-3 text-sm leading-7 text-zinc-400">
+                The long-form record of CGS at the Tee Lounge.
+              </p>
+            </a>
 
-            <div className="mt-6 flex flex-wrap gap-4">
-              <Link
-                href="/membership"
-                className="btn-primary"
-              >
-                Become a Member
-              </Link>
+            <a
+              href="https://www.youtube.com/shorts/FOYhSVt3TsE"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="subtle-grid-card rounded-[1.35rem] p-5"
+            >
+              <p className="text-xs uppercase tracking-[0.2em] text-[var(--tan)]">
+                Results
+              </p>
+              <h3 className="mt-3 text-2xl">Major results</h3>
+              <p className="mt-3 text-sm leading-7 text-zinc-400">
+                A quick look at how the boys stacked up in the first CGS Major.
+              </p>
+            </a>
 
-              <Link
-                href="/scoreboard"
-                className="btn-secondary"
-              >
-                Open live scoreboard
-              </Link>
-
-              <Link
-                href="/events"
-                className="btn-secondary"
-              >
-                Back to Events
-              </Link>
-            </div>
+            <a
+              href="https://www.youtube.com/shorts/KzwO1izuALQ"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="subtle-grid-card rounded-[1.35rem] p-5"
+            >
+              <p className="text-xs uppercase tracking-[0.2em] text-[var(--tan)]">
+                Prize moment
+              </p>
+              <h3 className="mt-3 text-2xl">Closest to pin</h3>
+              <p className="mt-3 text-sm leading-7 text-zinc-400">
+                Lachy&apos;s closest-to-the-pin winner moment with Pin Pursuit.
+              </p>
+            </a>
           </div>
 
-          <EventInterestForm
-            eventName={event.title}
-            eventSlug={event.slug}
-            title={event.interestForm.title}
-            description={event.interestForm.description}
-            buttonLabel={event.interestForm.buttonLabel}
-            options={event.interestForm.options}
-            showHandicap={event.interestForm.showHandicap}
-          />
+          <div className="mt-6 flex flex-wrap gap-4">
+            <Link href="/events/season-3" className="btn-primary">
+              View Season 3
+            </Link>
+            <Link href="/events" className="btn-secondary">
+              Back to events
+            </Link>
+          </div>
         </div>
 
         <div className="mt-12">

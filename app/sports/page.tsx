@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import PageIntro from "@/components/PageIntro";
 import SportsHubRotator from "@/components/SportsHubRotator";
 import { getSportsHubSnapshots } from "@/lib/live-sports";
 import { buildMetadata } from "@/lib/seo";
@@ -24,22 +25,19 @@ export default async function SportsPage() {
 
   return (
     <main className="min-h-screen text-white">
-      <section className="mx-auto max-w-6xl px-6 py-16">
-        <div className="mx-auto max-w-3xl text-center">
-          <div className="eyebrow mb-6">Live clubhouse feed</div>
-          <h1 className="mb-4 text-5xl md:text-6xl">Sports Hub</h1>
-          <p className="text-lg leading-8 text-zinc-300">
-            A rotating snapshot of the sports CGS talks about most. Switch
-            between fixtures, results, and CGS-calculated ladder views, or let
-            it rotate on its own.
-          </p>
-        </div>
+      <section className="page-shell">
+        <PageIntro
+          eyebrow="Live clubhouse feed"
+          title="Sports Hub"
+          description="A rotating snapshot of the sports CGS talks about most, with fixtures, results, and CGS-calculated ladder views."
+          align="center"
+        />
 
-        <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {snapshots.map((snapshot) => (
             <div
               key={`${snapshot.key}-summary`}
-              className="stat-pill rounded-[1.35rem] px-4 py-4"
+              className="subtle-grid-card rounded-[1.35rem] px-4 py-4"
             >
               <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
                 {snapshot.label}
@@ -73,7 +71,7 @@ export default async function SportsPage() {
               ].map((point, index) => (
                 <div
                   key={point}
-                  className="rounded-[1.3rem] border border-white/8 bg-black/18 px-4 py-4"
+                  className="subtle-grid-card rounded-[1.3rem] px-4 py-4"
                 >
                   <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
                     0{index + 1}

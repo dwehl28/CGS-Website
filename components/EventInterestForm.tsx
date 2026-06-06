@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import FormStatusMessage from "@/components/FormStatusMessage";
 import type { SelectOption } from "@/lib/site-content";
 
 type EventInterestFormProps = {
@@ -37,6 +38,7 @@ export default function EventInterestForm({
   });
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
+  const [statusKind, setStatusKind] = useState<"success" | "error">("success");
 
   function handleChange(
     event: React.ChangeEvent<
@@ -54,6 +56,7 @@ export default function EventInterestForm({
     event.preventDefault();
     setLoading(true);
     setStatus("");
+    setStatusKind("success");
 
     try {
       const response = await fetch("/api/event-interest", {
@@ -67,10 +70,12 @@ export default function EventInterestForm({
       const data = await response.json();
 
       if (!response.ok) {
+        setStatusKind("error");
         setStatus(data.error || "Something went wrong.");
         return;
       }
 
+      setStatusKind("success");
       setStatus(`Thanks. Your ${eventName} enquiry has been sent.`);
       setFormData({
         event_name: eventName,
@@ -85,6 +90,7 @@ export default function EventInterestForm({
       });
     } catch (error) {
       console.error(error);
+      setStatusKind("error");
       setStatus("Something went wrong.");
     } finally {
       setLoading(false);
@@ -98,10 +104,8 @@ export default function EventInterestForm({
 
       <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
         <div className="grid gap-5 md:grid-cols-2">
-          <div>
-            <label className="mb-2 block text-sm text-zinc-300">
-              Full Name
-            </label>
+          <div className="page-split-card rounded-[1.35rem] p-5">
+            <label className="field-label">Full Name</label>
             <input
               type="text"
               name="full_name"
@@ -109,12 +113,14 @@ export default function EventInterestForm({
               onChange={handleChange}
               className="field-control"
               placeholder="Enter your name"
+              autoComplete="name"
               required
             />
+            <p className="field-hint">The name CGS should use when following up.</p>
           </div>
 
-          <div>
-            <label className="mb-2 block text-sm text-zinc-300">Email</label>
+          <div className="page-split-card rounded-[1.35rem] p-5">
+            <label className="field-label">Email</label>
             <input
               type="email"
               name="email"
@@ -122,16 +128,16 @@ export default function EventInterestForm({
               onChange={handleChange}
               className="field-control"
               placeholder="Enter your email"
+              autoComplete="email"
               required
             />
+            <p className="field-hint">This is the main contact point for event updates.</p>
           </div>
         </div>
 
         <div className="grid gap-5 md:grid-cols-2">
-          <div>
-            <label className="mb-2 block text-sm text-zinc-300">
-              Interest Type
-            </label>
+          <div className="page-split-card rounded-[1.35rem] p-5">
+            <label className="field-label">Interest Type</label>
             <select
               name="enquiry_type"
               value={formData.enquiry_type}
@@ -144,12 +150,11 @@ export default function EventInterestForm({
                 </option>
               ))}
             </select>
+            <p className="field-hint">Choose whether you want to play, watch, or support.</p>
           </div>
 
-          <div>
-            <label className="mb-2 block text-sm text-zinc-300">
-              Phone Number
-            </label>
+          <div className="page-split-card rounded-[1.35rem] p-5">
+            <label className="field-label">Phone Number</label>
             <input
               type="tel"
               name="phone"
@@ -157,15 +162,15 @@ export default function EventInterestForm({
               onChange={handleChange}
               className="field-control"
               placeholder="Optional"
+              autoComplete="tel"
             />
+            <p className="field-hint">Optional, in case CGS needs a faster reply channel.</p>
           </div>
         </div>
 
         <div className="grid gap-5 md:grid-cols-2">
-          <div>
-            <label className="mb-2 block text-sm text-zinc-300">
-              Membership Status
-            </label>
+          <div className="page-split-card rounded-[1.35rem] p-5">
+            <label className="field-label">Membership Status</label>
             <select
               name="membership_status"
               value={formData.membership_status}
@@ -176,13 +181,12 @@ export default function EventInterestForm({
               <option value="online-social">Online Social member</option>
               <option value="playing-member">Playing member</option>
             </select>
+            <p className="field-hint">This helps CGS understand your current place in the club.</p>
           </div>
 
           {showHandicap ? (
-            <div>
-              <label className="mb-2 block text-sm text-zinc-300">
-                Handicap
-              </label>
+            <div className="page-split-card rounded-[1.35rem] p-5">
+              <label className="field-label">Handicap</label>
               <input
                 type="text"
                 name="handicap"
@@ -191,21 +195,21 @@ export default function EventInterestForm({
                 className="field-control"
                 placeholder="Optional"
               />
+              <p className="field-hint">Only add this if it helps for the event format.</p>
             </div>
           ) : (
-            <div>
-              <label className="mb-2 block text-sm text-zinc-300">
-                Best role for you
-              </label>
+            <div className="page-split-card rounded-[1.35rem] p-5">
+              <label className="field-label">Best role for you</label>
               <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-zinc-400">
                 Tell CGS how you want to help in the notes below.
               </div>
+              <p className="field-hint">Use the notes field to explain where you best fit.</p>
             </div>
           )}
         </div>
 
-        <div>
-          <label className="mb-2 block text-sm text-zinc-300">Notes</label>
+        <div className="page-split-card rounded-[1.35rem] p-5">
+          <label className="field-label">Notes</label>
           <textarea
             name="notes"
             value={formData.notes}
@@ -214,6 +218,9 @@ export default function EventInterestForm({
             className="field-control"
             placeholder="Anything CGS should know?"
           />
+          <p className="field-hint">
+            Add availability, questions, or anything else that helps with follow-up.
+          </p>
         </div>
 
         <button
@@ -233,7 +240,7 @@ export default function EventInterestForm({
           .
         </p>
 
-        {status && <p className="text-center text-sm text-zinc-300">{status}</p>}
+        {status ? <FormStatusMessage kind={statusKind} message={status} /> : null}
       </form>
     </div>
   );

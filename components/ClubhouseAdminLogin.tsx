@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 
 import type { AdminActionState } from "@/app/clubhouse-admin/actions";
 import { loginAdminAction } from "@/app/clubhouse-admin/actions";
+import FormStatusMessage from "@/components/FormStatusMessage";
 
 const initialAdminActionState: AdminActionState = {
   message: "",
@@ -32,25 +33,25 @@ export default function ClubhouseAdminLogin() {
 
   return (
     <form action={formAction} className="mt-8 space-y-5">
-      <div>
-        <label className="mb-2 block text-sm text-zinc-300">
-          Admin passcode
-        </label>
+      <div className="page-split-card rounded-[1.35rem] p-5">
+        <label className="field-label">Admin passcode</label>
         <input
           type="password"
           name="secret"
           className="field-control"
           placeholder="Enter the CGS admin passcode"
+          autoComplete="current-password"
           required
         />
+        <p className="field-hint">
+          This hidden route is for quick homepage notices and scoreboard control.
+        </p>
       </div>
 
       <LoginButton />
 
       {state.message ? (
-        <p className="text-center text-sm leading-7 text-zinc-400">
-          {state.message}
-        </p>
+        <FormStatusMessage kind="error" message={state.message} />
       ) : null}
     </form>
   );

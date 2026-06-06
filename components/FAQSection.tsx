@@ -22,10 +22,13 @@ export default function FAQSection({
         {items.map((item) => (
           <details
             key={item.question}
-            className="rounded-[1.35rem] border border-white/8 bg-black/18 px-5 py-4"
+            className="faq-item rounded-[1.35rem] border border-white/8 bg-black/18 px-5 py-4"
           >
-            <summary className="cursor-pointer list-none text-lg font-semibold text-white">
-              {item.question}
+            <summary className="flex cursor-pointer list-none items-start justify-between gap-4 text-lg font-semibold text-white">
+              <span>{item.question}</span>
+              <span className="text-sm uppercase tracking-[0.18em] text-[var(--sky)]">
+                Answer
+              </span>
             </summary>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-zinc-400">
               {item.answer}

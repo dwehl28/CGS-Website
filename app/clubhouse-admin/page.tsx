@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import AdminMetricCard from "@/components/admin/AdminMetricCard";
+import AdminShell, {
+  AdminAccessState,
+  AdminQuickLink,
+} from "@/components/admin/AdminShell";
 import ClubhouseAdminLogin from "@/components/ClubhouseAdminLogin";
 import ClubhouseUpdateComposer from "@/components/ClubhouseUpdateComposer";
 import {
@@ -11,6 +16,7 @@ import {
   hasAdminSecretConfigured,
   isAdminAuthenticated,
 } from "@/lib/admin-auth";
+import { getAdminDashboardData } from "@/lib/admin-dashboard";
 import { getAdminClubhouseUpdates } from "@/lib/clubhouse-updates";
 import { buildMetadata } from "@/lib/seo";
 
@@ -56,146 +62,240 @@ export default async function ClubhouseAdminPage() {
 
   if (!hasSecretConfigured) {
     return (
-      <main className="min-h-screen text-white">
-        <section className="mx-auto max-w-4xl px-6 py-16">
-          <div className="panel rounded-[2rem] p-8 md:p-10">
-            <div className="eyebrow">Admin setup needed</div>
-            <h1 className="mt-6 text-4xl md:text-5xl">Clubhouse admin is not ready yet</h1>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-zinc-300">
-              Add <code>CGS_ADMIN_SECRET</code> to the local and hosted
-              environment so this internal route can be used safely.
-            </p>
-          </div>
-        </section>
-      </main>
+      <AdminAccessState
+        eyebrow="Admin setup needed"
+        title="Clubhouse admin is not ready yet"
+        description="Add CGS_ADMIN_SECRET to the local and hosted environment so this internal route can be used safely."
+      />
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <main className="min-h-screen text-white">
-        <section className="mx-auto max-w-4xl px-6 py-16">
-          <div className="panel rounded-[2rem] p-8 md:p-10">
-            <div className="eyebrow">Private route</div>
-            <h1 className="mt-6 text-4xl md:text-5xl">Clubhouse admin</h1>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-zinc-300">
-              This hidden page is for quick live notices only, so you can update
-              the homepage noticeboard without changing code.
-            </p>
-
-            <ClubhouseAdminLogin />
-          </div>
-        </section>
-      </main>
+      <AdminAccessState
+        eyebrow="Private route"
+        title="Clubhouse admin"
+        description="This hidden area is where you manage the live noticeboard, scoreboards, and enquiry flow without touching code."
+      >
+        <ClubhouseAdminLogin />
+      </AdminAccessState>
     );
   }
 
   const feed = await getAdminClubhouseUpdates();
+  const dashboard = await getAdminDashboardData();
 
   return (
-    <main className="min-h-screen text-white">
-      <section className="mx-auto max-w-6xl px-6 py-16">
-        <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-          <div>
-            <div className="eyebrow">Internal tools</div>
-            <h1 className="mt-6 text-4xl md:text-5xl">Clubhouse admin</h1>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-zinc-300">
-              Publish short site notices, keep the homepage fresh, and archive
-              updates once they have done their job.
-            </p>
-          </div>
-
+    <AdminShell
+      eyebrow="Internal tools"
+      title="Clubhouse admin"
+      description="Run the live site from here: monitor new enquiries, publish noticeboard updates, and jump into scoreboard control when competition days are on."
+      actions={
+        <>
           <form action={logoutAdminAction}>
             <button type="submit" className="btn-secondary">
               Sign out
             </button>
           </form>
+        </>
+      }
+    >
+      {dashboard.warningMessage ? (
+        <div className="rounded-[1.35rem] border border-[var(--tan)]/30 bg-[rgba(202,147,103,0.12)] px-5 py-4 text-sm leading-7 text-zinc-200">
+          {dashboard.warningMessage}
         </div>
+      ) : null}
 
-        <div className="mt-10 grid gap-8 lg:grid-cols-[1.02fr_0.98fr]">
-          <div className="panel rounded-[2rem] p-8">
-            <h2 className="text-3xl">Publish a new update</h2>
-            <p className="mt-3 text-sm leading-7 text-zinc-400">
-              Keep these notices short and useful. They are designed for quick
-              homepage context, not long announcements.
-            </p>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <AdminMetricCard
+          label="New memberships"
+          value={dashboard.stats.newMemberships}
+          detail="Fresh membership interest waiting in the admin inbox."
+        />
+        <AdminMetricCard
+          label="New contacts"
+          value={dashboard.stats.newContacts}
+          detail="General enquiries, sponsorship asks, and contact form messages."
+        />
+        <AdminMetricCard
+          label="New event interest"
+          value={dashboard.stats.newEventInterest}
+          detail="Player, supporter, and event-related submissions across the calendar."
+        />
+        <AdminMetricCard
+          label="Live boards"
+          value={dashboard.stats.liveBoards}
+          detail={`${dashboard.stats.publishedBoards} published board${dashboard.stats.publishedBoards === 1 ? "" : "s"} total.`}
+        />
+      </div>
 
-            <ClubhouseUpdateComposer />
+      <div className="mt-8 grid gap-8 xl:grid-cols-[0.78fr_1.22fr]">
+        <div className="panel rounded-[2rem] p-8">
+          <h2 className="text-3xl">Quick access</h2>
+          <p className="mt-3 text-sm leading-7 text-zinc-400">
+            The three key admin lanes are inbox, noticeboard, and live scoring.
+          </p>
+
+          <div className="mt-6 grid gap-4">
+            <AdminQuickLink
+              href="/clubhouse-admin/inbox"
+              label="Open admin inbox"
+              detail="Review membership, contact, and event submissions in one place."
+            />
+            <AdminQuickLink
+              href="/clubhouse-admin/scoreboard"
+              label="Open scoreboard admin"
+              detail="Create boards, add player rows, and run live competition scoring."
+            />
+            <AdminQuickLink
+              href="/scoreboard"
+              label="Open public scoreboard"
+              detail="Check exactly what visitors can see on the live board side."
+            />
+            <AdminQuickLink
+              href="/"
+              label="Open live homepage"
+              detail="See how the noticeboard and current public presentation look."
+            />
           </div>
 
+          <div className="mt-8 grid gap-4 md:grid-cols-2">
+            <div className="subtle-grid-card rounded-[1.25rem] px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                Noticeboard source
+              </p>
+              <p className="mt-2 text-lg text-white">
+                {feed.source === "database" ? "Supabase live table" : "Fallback notices"}
+              </p>
+            </div>
+            <div className="subtle-grid-card rounded-[1.25rem] px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                Noticeboard updates
+              </p>
+              <p className="mt-2 text-lg text-white">
+                {dashboard.stats.publishedUpdates} live / {dashboard.stats.totalUpdates} total
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-8">
           <div className="panel rounded-[2rem] p-8">
-            <h2 className="text-3xl">Feed status</h2>
-            <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-              <div className="rounded-[1.25rem] border border-white/8 bg-black/18 px-4 py-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
-                  Source
-                </p>
-                <p className="mt-2 text-lg text-white">
-                  {feed.source === "database" ? "Supabase live table" : "Fallback notices"}
+            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <div>
+                <h2 className="text-3xl">Recent submissions</h2>
+                <p className="mt-3 text-sm leading-7 text-zinc-400">
+                  The inbox is now the main operational queue for memberships, contact
+                  enquiries, and event interest.
                 </p>
               </div>
-              <div className="rounded-[1.25rem] border border-white/8 bg-black/18 px-4 py-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
-                  Updates loaded
-                </p>
-                <p className="mt-2 text-lg text-white">{feed.updates.length}</p>
-              </div>
+
+              <Link href="/clubhouse-admin/inbox" className="btn-secondary">
+                Open full inbox
+              </Link>
             </div>
 
-            {feed.warningMessage ? (
-              <div className="mt-6 rounded-[1.25rem] border border-[var(--tan)]/30 bg-[rgba(202,147,103,0.12)] px-4 py-4 text-sm leading-7 text-zinc-200">
-                {feed.warningMessage}
+            {dashboard.latestSubmissions.length > 0 ? (
+              <div className="mt-6 space-y-4">
+                {dashboard.latestSubmissions.slice(0, 5).map((submission) => (
+                  <div
+                    key={`${submission.type}-${submission.id}`}
+                    className="subtle-grid-card rounded-[1.35rem] px-4 py-4"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="chip text-zinc-100">{submission.subtitle}</span>
+                        <span className="chip text-zinc-100">
+                          {submission.status}
+                        </span>
+                      </div>
+                      <Link href={submission.href} className="text-sm uppercase tracking-[0.16em] text-[var(--sky)]">
+                        Open page
+                      </Link>
+                    </div>
+
+                    <h3 className="mt-4 text-xl text-white">{submission.contactName}</h3>
+                    <p className="mt-1 text-sm text-zinc-400">
+                      {submission.title} | {submission.email}
+                    </p>
+                    {submission.details[0] ? (
+                      <p className="mt-3 text-sm leading-7 text-zinc-300">
+                        {submission.details[0]}
+                      </p>
+                    ) : null}
+                  </div>
+                ))}
               </div>
             ) : (
-              <p className="mt-6 text-sm leading-7 text-zinc-400">
-                Published items appear on the homepage noticeboard and can be
-                toggled on or off below.
-              </p>
+              <div className="mt-6 rounded-[1.35rem] border border-dashed border-white/12 bg-black/12 px-5 py-6 text-sm leading-7 text-zinc-400">
+                No recent submissions have landed yet, or the inbox data is currently unavailable.
+              </div>
             )}
           </div>
-        </div>
 
-        <div className="mt-8 panel rounded-[2rem] p-6 md:p-8">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="panel rounded-[2rem] p-6 md:p-8">
             <div>
-              <div className="eyebrow">New tool</div>
-              <h2 className="mt-4 text-3xl">Live scoreboard controls</h2>
+              <div className="eyebrow">Live scoring</div>
+              <h2 className="mt-4 text-3xl">Scoreboard control room</h2>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-400">
-                Create competition boards and update player scores in real time from a
-                dedicated admin screen.
+                There are currently {dashboard.stats.liveBoards} live board
+                {dashboard.stats.liveBoards === 1 ? "" : "s"} and {dashboard.stats.publishedBoards} published
+                scoreboard page{dashboard.stats.publishedBoards === 1 ? "" : "s"}.
               </p>
             </div>
 
-            <Link href="/clubhouse-admin/scoreboard" className="btn-secondary">
-              Open scoreboard admin
-            </Link>
+            <div className="mt-5 flex flex-wrap gap-4">
+              <Link href="/clubhouse-admin/scoreboard" className="btn-secondary">
+                Open scoreboard admin
+              </Link>
+              <Link href="/scoreboard" className="btn-secondary">
+                Open public scoreboard
+              </Link>
+            </div>
           </div>
         </div>
+      </div>
 
-        <div className="mt-12">
-          <div className="mb-6">
-            <div className="eyebrow">Live noticeboard</div>
-            <h2 className="mt-4 text-4xl">Current clubhouse updates</h2>
-          </div>
+      <div className="mt-8 grid gap-8 xl:grid-cols-[1.02fr_0.98fr]">
+        <div className="panel rounded-[2rem] p-8">
+          <h2 className="text-3xl">Publish a new update</h2>
+          <p className="mt-3 text-sm leading-7 text-zinc-400">
+            Keep these notices short and useful. They are designed for quick homepage
+            context, not long announcements.
+          </p>
 
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          <ClubhouseUpdateComposer />
+        </div>
+
+        <div className="panel rounded-[2rem] p-8">
+          <h2 className="text-3xl">Current clubhouse updates</h2>
+          <p className="mt-3 text-sm leading-7 text-zinc-400">
+            Published items appear on the homepage noticeboard and can be toggled
+            on or off here.
+          </p>
+
+          <div className="mt-6 space-y-4">
             {feed.updates.map((update) => (
-              <div key={update.id} className="panel rounded-[1.75rem] p-6">
+              <div key={update.id} className="subtle-grid-card rounded-[1.5rem] p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <span className="chip text-zinc-100">{update.statusLabel}</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="chip text-zinc-100">{update.statusLabel}</span>
+                    <span className="chip text-zinc-100">
+                      {update.isPublished ? "Published" : "Archived"}
+                    </span>
+                  </div>
                   <span className="text-xs uppercase tracking-[0.16em] text-zinc-500">
-                    {update.isPublished ? "Published" : "Archived"}
+                    Starts {formatUpdateTime(update.startsAt)}
                   </span>
                 </div>
 
-                <h3 className="mt-4 text-3xl">{update.title}</h3>
+                <h3 className="mt-4 text-2xl">{update.title}</h3>
                 <p className="mt-4 text-sm leading-7 text-zinc-300">
                   {update.summary}
                 </p>
 
                 <div className="mt-5 flex flex-wrap gap-2 text-xs uppercase tracking-[0.16em] text-zinc-500">
                   {update.isPinned ? <span>Pinned</span> : null}
-                  <span>Starts {formatUpdateTime(update.startsAt)}</span>
                 </div>
 
                 <div className="mt-6 flex flex-wrap gap-3">
@@ -232,7 +332,7 @@ export default async function ClubhouseAdminPage() {
             ))}
           </div>
         </div>
-      </section>
-    </main>
+      </div>
+    </AdminShell>
   );
 }

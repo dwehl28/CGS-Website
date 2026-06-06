@@ -6,7 +6,8 @@ create table if not exists public.membership_interest (
   membership_type text not null,
   handicap text,
   handicap_type text,
-  interested_in_events text
+  interested_in_events text,
+  status text not null default 'new'
 );
 
 create table if not exists public.contact_enquiries (
@@ -119,6 +120,9 @@ create index if not exists competition_score_entries_live_ranking_idx
 
 alter table public.competition_scoreboards
   add column if not exists leaderboard_mode text not null default 'gross';
+
+alter table public.membership_interest
+  add column if not exists status text not null default 'new';
 
 alter table public.competition_score_entries
   add column if not exists gross_score numeric(10, 2);

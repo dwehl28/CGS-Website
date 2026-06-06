@@ -10,8 +10,8 @@ import {
 
 export default function SiteFooter() {
   return (
-    <footer className="mt-20 border-t border-white/8 bg-[rgba(7,17,30,0.78)]">
-      <div className="mx-auto grid max-w-6xl gap-10 px-5 py-12 sm:px-6 md:grid-cols-2 xl:grid-cols-[1.15fr_0.7fr_0.7fr_0.95fr]">
+    <footer className="mt-20 border-t border-[rgba(16,32,51,0.1)] bg-[rgba(255,255,255,0.74)]">
+      <div className="mx-auto grid w-full max-w-[94rem] gap-10 px-4 py-12 sm:px-6 md:grid-cols-2 xl:grid-cols-[1.1fr_0.8fr_0.9fr]">
         <div>
           <div className="flex items-center gap-4">
             <Image
@@ -19,23 +19,20 @@ export default function SiteFooter() {
               alt={siteConfig.name}
               width={68}
               height={68}
-              className="h-16 w-16 rounded-full border border-white/12 bg-white object-cover"
+              className="h-16 w-16 rounded-full border border-[rgba(16,32,51,0.12)] bg-white object-cover shadow-[0_14px_30px_rgba(16,32,51,0.08)]"
             />
             <div>
-              <p className="text-xs uppercase tracking-[0.22em] text-[var(--sky)]">
+              <p className="text-xs uppercase tracking-[0.22em] text-[var(--accent-strong)]">
                 Crossodog Golf Society
               </p>
-              <h3 className="mt-2 text-2xl text-white">Play it louder.</h3>
+              <h3 className="mt-2 text-2xl text-[var(--ink)]">
+                Built for everyday golfers.
+              </h3>
             </div>
           </div>
-          <p className="mt-4 max-w-sm text-sm leading-7 text-zinc-300">
-            A golf brand for everyday players, built around community, content,
-            and event moments that feel approachable but still competitive.
-          </p>
-          <p className="mt-4 max-w-sm text-sm leading-7 text-zinc-500">
-            CGS sits between league play, creator media, merch, and clubhouse-style
-            community. The goal is to feel memorable before a visitor even clicks a
-            second page.
+          <p className="mt-4 max-w-sm text-sm leading-7 text-[var(--body-copy)]">
+            CGS brings together community golf, creator-led coverage, and live
+            competition without the gatekeeping.
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link href="/events" className="btn-secondary">
@@ -49,23 +46,10 @@ export default function SiteFooter() {
 
         <div>
           <h4 className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
-            Navigate
+            Pages
           </h4>
-          <div className="flex flex-col gap-2 text-sm text-zinc-300">
+          <div className="flex flex-col gap-2 text-sm text-[var(--body-copy)]">
             {navigationLinks.map((link) => (
-              <Link key={link.href} href={link.href}>
-                {link.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <h4 className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
-            Support
-          </h4>
-          <div className="flex flex-col gap-2 text-sm text-zinc-300">
-            {supportLinks.map((link) => (
               <Link key={link.href} href={link.href}>
                 {link.label}
               </Link>
@@ -84,7 +68,7 @@ export default function SiteFooter() {
                 href={link.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-full border border-white/10 bg-white/6 px-3 py-2 text-sm text-zinc-100"
+                className="rounded-full border border-[rgba(16,32,51,0.12)] bg-white/70 px-3 py-2 text-sm text-[var(--ink)]"
               >
                 {link.label}
               </a>
@@ -92,7 +76,7 @@ export default function SiteFooter() {
           </div>
           <a
             href={`mailto:${siteConfig.email}`}
-            className="mt-4 block text-sm text-zinc-300"
+            className="mt-4 block text-sm text-[var(--body-copy)]"
           >
             {siteConfig.email}
           </a>
@@ -104,10 +88,23 @@ export default function SiteFooter() {
           >
             Linktree
           </a>
+          <Link
+            href="/clubhouse-admin"
+            className="mt-2 inline-flex rounded-full border border-[rgba(16,32,51,0.12)] bg-white/70 px-3 py-2 text-sm text-[var(--ink)]"
+          >
+            Clubhouse Admin
+          </Link>
+          <div className="mt-5 flex flex-col gap-2 text-sm text-[var(--body-copy)]">
+            {supportLinks.map((link) => (
+              <Link key={link.href} href={link.href}>
+                {link.label}
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="border-t border-white/6 px-5 py-4 text-center text-xs uppercase tracking-[0.16em] text-zinc-500 sm:px-6">
+      <div className="border-t border-[rgba(16,32,51,0.08)] px-5 py-4 text-center text-xs uppercase tracking-[0.16em] text-[var(--muted)] sm:px-6">
         &copy; 2026 {siteConfig.name} | Built for everyday golfers
       </div>
     </footer>
