@@ -24,7 +24,7 @@ function SaveButton() {
       disabled={pending}
       className="btn-primary w-full border-0 disabled:opacity-70"
     >
-      {pending ? "Saving..." : "Add score row"}
+      {pending ? "Saving..." : "Add team row"}
     </button>
   );
 }
@@ -53,13 +53,13 @@ export default function ScoreEntryComposer({
       <div className="grid gap-4 md:grid-cols-[0.56fr_0.2fr_0.24fr]">
         <div>
           <label className="mb-2 block text-xs uppercase tracking-[0.16em] text-zinc-500">
-            Player
+            Team / player
           </label>
           <input
             type="text"
             name="player_name"
             className="field-control"
-            placeholder="Player name"
+            placeholder="Team name"
             required
           />
         </div>
@@ -96,7 +96,7 @@ export default function ScoreEntryComposer({
             name="is_cgs_member"
             className="h-4 w-4 accent-[var(--gold)]"
           />
-          Show the CGS logo next to this player.
+          Show the CGS logo next to this team.
         </label>
 
         <div className="rounded-[1rem] border border-white/8 bg-black/12 px-4 py-4 text-sm leading-7 text-zinc-400">

@@ -61,8 +61,8 @@ export default async function ScoreboardPage() {
             <h2 className="home-band-heading mt-5">OBS-ready scoreboards now live here.</h2>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--body-copy)]">
               Published scoreboards now include a dedicated stream overlay URL.
-              Use it as an OBS browser source for a bright lower-third board with
-              large scores, live updates, and no website header or footer.
+              Use it as an OBS browser source for a bright top-corner board with
+              up to six teams, live score updates, and no website header or footer.
             </p>
             <div className="mt-7 flex flex-wrap gap-4">
               {firstCompetition ? (
@@ -90,12 +90,12 @@ export default async function ScoreboardPage() {
             </div>
             <div className="home-score-row">
               <span>Size</span>
-              <span>16:9 friendly lower third</span>
+              <span>Top-left half-screen panel</span>
               <span>1920</span>
             </div>
             <div className="home-score-row">
               <span>Data</span>
-              <span>Realtime Supabase scores</span>
+              <span>Manual admin controls, realtime stream view</span>
               <span>Live</span>
             </div>
           </div>

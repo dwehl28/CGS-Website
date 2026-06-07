@@ -192,8 +192,8 @@ export default async function Home() {
               </h2>
               <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--body-copy)]">
                 Each live competition can now expose a dedicated stream overlay:
-                a bright lower-third board designed for OBS browser sources,
-                large scores, and quick on-screen reading.
+                a bright top-corner board designed for OBS browser sources,
+                quick admin scoring, six visible teams, and chunky on-screen reading.
               </p>
               <div className="home-actions mt-7">
                 <Link href="/scoreboard" className="btn-primary">
@@ -218,7 +218,7 @@ export default async function Home() {
               ))}
               <p className="text-sm leading-7 text-[var(--body-copy)]">
                 Use the stream link from any published scoreboard card as the OBS
-                browser source.
+                browser source. Scores update from the admin control desk.
               </p>
             </div>
           </div>

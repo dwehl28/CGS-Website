@@ -70,11 +70,11 @@ export default function StreamScoreboardOverlay({
 }: StreamScoreboardOverlayProps) {
   const [competition, setCompetition] = useState(initialCompetition);
   const [syncState, setSyncState] = useState<LiveSyncState>("idle");
-  const leaderEntry = competition.entries[0] ?? null;
   const visibleEntries = competition.entries.slice(0, 6);
-  const primaryTitle = competition.roundLabel ?? competition.title;
+  const leaderEntry = visibleEntries[0] ?? null;
+  const primaryTitle = competition.title;
   const secondaryTitle =
-    competition.location ?? competition.formatLabel ?? competition.statusLabel;
+    competition.roundLabel ?? competition.formatLabel ?? competition.statusLabel;
 
   async function refreshCompetition(slug: string) {
     try {
@@ -171,13 +171,14 @@ export default function StreamScoreboardOverlay({
             <Image
               src="/cgs-logo.png"
               alt="Crossodog Golf Society"
-              width={72}
-              height={72}
+              width={64}
+              height={64}
               priority
             />
             <div>
-              <p className="stream-label">CGS live scoreboard</p>
+              <p className="stream-label">CGS stream scoreboard</p>
               <strong>{competition.title}</strong>
+              <span>{secondaryTitle}</span>
             </div>
           </div>
 
@@ -190,34 +191,27 @@ export default function StreamScoreboardOverlay({
           </div>
         </div>
 
-        <div className="stream-board-body">
-          <div className="stream-leader">
-            <p className="stream-label">
-              {competition.roundLabel ?? competition.formatLabel ?? "Competition"}
-            </p>
-            <h1 className="stream-title">{primaryTitle}</h1>
-            <p className="stream-subtitle">{secondaryTitle}</p>
-
-            {leaderEntry ? (
-              <div className="stream-leader-line">
-                <h2 className="stream-leader-name">
-                  <MemberMark entry={leaderEntry} />
-                  {leaderEntry.playerName}
-                </h2>
-                <span className="stream-leader-score">{leaderEntry.grossLabel}</span>
-              </div>
-            ) : (
-              <div className="stream-leader-line">
-                <h2 className="stream-leader-name">Waiting for scores</h2>
-                <span className="stream-leader-score">--</span>
-              </div>
-            )}
+        <div className="stream-score-flash">
+          <div>
+            <span>{competition.location ?? "Weekly CGS stream"}</span>
+            <strong>{primaryTitle}</strong>
           </div>
+          {leaderEntry ? (
+            <div className="stream-leader-chip">
+              <span>Leader</span>
+              <strong>{leaderEntry.grossLabel}</strong>
+            </div>
+          ) : null}
+        </div>
 
+        <div className="stream-board-body">
           {visibleEntries.length > 0 ? (
             <div className="stream-rows">
-              {visibleEntries.map((entry) => (
-                <div key={entry.id} className="stream-row">
+              {visibleEntries.map((entry, index) => (
+                <div
+                  key={entry.id}
+                  className={`stream-row ${index === 0 ? "stream-row-leading" : ""}`}
+                >
                   <span className="stream-row-position">{entry.position}</span>
                   <span className="stream-row-player">
                     <MemberMark entry={entry} />

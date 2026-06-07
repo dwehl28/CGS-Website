@@ -10,6 +10,7 @@ import {
   createCompetitionScoreboard,
   deleteCompetitionScoreEntry,
   updateCompetitionScoreEntry,
+  updateCompetitionScoreEntryScore,
   updateCompetitionScoreboard,
 } from "@/lib/scoreboards";
 
@@ -56,7 +57,12 @@ function isValidCallToActionHref(value: string) {
 function revalidateScoreboardPaths(slug: string) {
   revalidatePath("/scoreboard");
   revalidatePath(`/scoreboard/${slug}`);
+  revalidatePath(`/scoreboard/${slug}/stream`);
   revalidatePath("/clubhouse-admin/scoreboard");
+}
+
+function getScoreboardAdminAnchor(competitionId: number) {
+  return `/clubhouse-admin/scoreboard#scoreboard-${competitionId}`;
 }
 
 const initialScoreboardAdminActionState: ScoreboardAdminActionState = {
@@ -163,11 +169,19 @@ export async function updateCompetitionScoreboardAction(formData: FormData) {
   const isPublished = formData.get("is_published") === "on";
 
   if (!Number.isFinite(id) || !title || !slug || !summary) {
-    redirect("/clubhouse-admin/scoreboard");
+    redirect(
+      Number.isFinite(id)
+        ? getScoreboardAdminAnchor(id)
+        : "/clubhouse-admin/scoreboard"
+    );
   }
 
   if ((ctaLabel && !ctaHref) || (!ctaLabel && ctaHref) || (ctaHref && !isValidCallToActionHref(ctaHref))) {
-    redirect("/clubhouse-admin/scoreboard");
+    redirect(
+      Number.isFinite(id)
+        ? getScoreboardAdminAnchor(id)
+        : "/clubhouse-admin/scoreboard"
+    );
   }
 
   try {
@@ -191,7 +205,7 @@ export async function updateCompetitionScoreboardAction(formData: FormData) {
   }
 
   revalidateScoreboardPaths(slug);
-  redirect("/clubhouse-admin/scoreboard");
+  redirect(getScoreboardAdminAnchor(id));
 }
 
 export async function createCompetitionScoreEntryAction(
@@ -262,7 +276,11 @@ export async function updateCompetitionScoreEntryAction(formData: FormData) {
     !playerName ||
     grossScore === null
   ) {
-    redirect("/clubhouse-admin/scoreboard");
+    redirect(
+      Number.isFinite(competitionId)
+        ? getScoreboardAdminAnchor(competitionId)
+        : "/clubhouse-admin/scoreboard"
+    );
   }
 
   try {
@@ -278,25 +296,63 @@ export async function updateCompetitionScoreEntryAction(formData: FormData) {
   }
 
   revalidateScoreboardPaths(competitionSlug);
-  redirect("/clubhouse-admin/scoreboard");
+  redirect(getScoreboardAdminAnchor(competitionId));
+}
+
+export async function adjustCompetitionScoreEntryAction(formData: FormData) {
+  await requireAdminAuthenticated();
+
+  const id = Number(formData.get("id"));
+  const competitionId = Number(formData.get("competition_id"));
+  const competitionSlug = normalizeString(formData.get("competition_slug"), 120);
+  const currentScore =
+    parseNullableNumber(normalizeString(formData.get("current_score"), 20)) ?? 0;
+  const scoreDelta = parseNullableNumber(
+    normalizeString(formData.get("score_delta"), 20)
+  );
+
+  if (
+    !Number.isFinite(id) ||
+    !Number.isFinite(competitionId) ||
+    !competitionSlug ||
+    scoreDelta === null
+  ) {
+    redirect("/clubhouse-admin/scoreboard");
+  }
+
+  const grossScore = Number((currentScore + scoreDelta).toFixed(1));
+
+  try {
+    await updateCompetitionScoreEntryScore(id, competitionId, grossScore);
+  } catch (error) {
+    console.error("Adjust competition score entry action error:", error);
+  }
+
+  revalidateScoreboardPaths(competitionSlug);
+  redirect(getScoreboardAdminAnchor(competitionId));
 }
 
 export async function deleteCompetitionScoreEntryAction(formData: FormData) {
   await requireAdminAuthenticated();
 
   const id = Number(formData.get("id"));
+  const competitionId = Number(formData.get("competition_id"));
   const competitionSlug = normalizeString(formData.get("competition_slug"), 120);
 
-  if (!Number.isFinite(id) || !competitionSlug) {
+  if (!Number.isFinite(id) || !Number.isFinite(competitionId) || !competitionSlug) {
     redirect("/clubhouse-admin/scoreboard");
   }
 
   try {
-    await deleteCompetitionScoreEntry(id);
+    await deleteCompetitionScoreEntry(id, competitionId);
   } catch (error) {
     console.error("Delete competition score entry action error:", error);
   }
 
   revalidateScoreboardPaths(competitionSlug);
-  redirect("/clubhouse-admin/scoreboard");
+  redirect(
+    Number.isFinite(competitionId)
+      ? getScoreboardAdminAnchor(competitionId)
+      : "/clubhouse-admin/scoreboard"
+  );
 }

@@ -260,6 +260,19 @@ async function loadCompetitionEntries(competitionIds: number[]) {
   return (data ?? []) as Record<string, unknown>[];
 }
 
+async function touchCompetitionScoreboard(competitionId: number) {
+  const supabaseAdmin = getSupabaseAdmin();
+
+  const { error } = await supabaseAdmin
+    .from("competition_scoreboards")
+    .update({ updated_at: new Date().toISOString() })
+    .eq("id", competitionId);
+
+  if (error) {
+    throw error;
+  }
+}
+
 export async function getPublishedCompetitionScoreboards(
   limit = 12
 ): Promise<ScoreboardFeed> {
@@ -483,6 +496,8 @@ export async function createCompetitionScoreEntry(input: CompetitionScoreEntryIn
   if (error) {
     throw error;
   }
+
+  await touchCompetitionScoreboard(input.competitionId);
 }
 
 export async function updateCompetitionScoreEntry(
@@ -511,9 +526,35 @@ export async function updateCompetitionScoreEntry(
   if (error) {
     throw error;
   }
+
+  await touchCompetitionScoreboard(input.competitionId);
 }
 
-export async function deleteCompetitionScoreEntry(id: number) {
+export async function updateCompetitionScoreEntryScore(
+  id: number,
+  competitionId: number,
+  grossScore: number | null
+) {
+  const supabaseAdmin = getSupabaseAdmin();
+
+  const { error } = await supabaseAdmin
+    .from("competition_score_entries")
+    .update({
+      gross_score: grossScore,
+      score_display: formatGolfScore(grossScore),
+      score_sort: grossScore ?? 0,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  if (error) {
+    throw error;
+  }
+
+  await touchCompetitionScoreboard(competitionId);
+}
+
+export async function deleteCompetitionScoreEntry(id: number, competitionId: number) {
   const supabaseAdmin = getSupabaseAdmin();
   const { error } = await supabaseAdmin
     .from("competition_score_entries")
@@ -523,4 +564,6 @@ export async function deleteCompetitionScoreEntry(id: number) {
   if (error) {
     throw error;
   }
+
+  await touchCompetitionScoreboard(competitionId);
 }

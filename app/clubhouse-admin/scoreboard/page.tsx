@@ -8,6 +8,7 @@ import AdminShell, {
 } from "@/components/admin/AdminShell";
 import ScoreEntryComposer from "@/components/scoreboard/ScoreEntryComposer";
 import ScoreboardCompetitionComposer from "@/components/scoreboard/ScoreboardCompetitionComposer";
+import StreamScoreQuickControls from "@/components/scoreboard/StreamScoreQuickControls";
 import { logoutAdminAction } from "@/app/clubhouse-admin/actions";
 import {
   deleteCompetitionScoreEntryAction,
@@ -99,7 +100,7 @@ export default async function ScoreboardAdminPage() {
     <AdminShell
       eyebrow="Internal tools"
       title="Live scoreboard admin"
-      description="Create each competition board, control when it becomes public, and update live scoring without touching the codebase. Positions are calculated automatically from the score values."
+      description="Create each competition board, control when it becomes public, and run weekly stream scores without touching the codebase. Positions are calculated automatically from the score values."
       actions={
         <>
           <Link href="/clubhouse-admin" className="btn-secondary">
@@ -152,7 +153,7 @@ export default async function ScoreboardAdminPage() {
         <div className="panel rounded-[2rem] p-8">
           <h2 className="text-3xl">Create a competition board</h2>
           <p className="mt-3 text-sm leading-7 text-zinc-400">
-            Build the board first, then drop score rows into it. You can keep a
+            Build the board first, then drop team rows into it. You can keep a
             board hidden until you are ready for it to appear publicly.
           </p>
 
@@ -185,15 +186,15 @@ export default async function ScoreboardAdminPage() {
 
           <div className="mt-6 rounded-[1.35rem] border border-white/8 bg-black/16 p-5 text-sm leading-7 text-zinc-300">
             <p>
-              Public board order is automatic from the score, so you only need to
-              update player rows and live status.
+              Public and stream board order is automatic from the score, so you
+              only need to update team rows and live status.
             </p>
             <p className="mt-3">
-              If you want a handicap shown, keep including it in the player name.
+              If you want a handicap shown, keep including it in the team name.
               The score value itself is what drives ranking.
             </p>
             <p className="mt-3">
-              Tick the CGS member option on a player row and the public board will
+              Tick the CGS member option on a team row and the public board will
               show the club marker next to that name.
             </p>
           </div>
@@ -234,8 +235,16 @@ export default async function ScoreboardAdminPage() {
                   <Link href={`/scoreboard/${competition.slug}`} className="btn-secondary">
                     Open public board
                   </Link>
+                  <Link
+                    href={`/scoreboard/${competition.slug}/stream`}
+                    className="btn-primary"
+                  >
+                    OBS stream asset
+                  </Link>
                 </div>
               </div>
+
+              <StreamScoreQuickControls competition={competition} />
 
               <form
                 action={updateCompetitionScoreboardAction}
@@ -420,9 +429,9 @@ export default async function ScoreboardAdminPage() {
 
               <div className="mt-8 grid gap-8 xl:grid-cols-[0.92fr_1.08fr]">
                 <div className="rounded-[1.6rem] border border-white/8 bg-black/18 p-5">
-                  <h3 className="text-2xl">Add a score row</h3>
+                  <h3 className="text-2xl">Add a team score row</h3>
                   <p className="mt-3 text-sm leading-7 text-zinc-400">
-                    Add a score and through label. If you want the player handicap
+                    Add a score and through label. If you want the team handicap
                     shown, include it directly in the name field.
                   </p>
 
@@ -527,6 +536,11 @@ export default async function ScoreboardAdminPage() {
                               <input type="hidden" name="id" value={entry.id} />
                               <input
                                 type="hidden"
+                                name="competition_id"
+                                value={competition.id}
+                              />
+                              <input
+                                type="hidden"
                                 name="competition_slug"
                                 value={competition.slug}
                               />
@@ -540,8 +554,8 @@ export default async function ScoreboardAdminPage() {
                     </div>
                   ) : (
                     <div className="mt-5 rounded-[1.3rem] border border-dashed border-white/12 bg-black/10 px-4 py-5 text-sm leading-7 text-zinc-400">
-                      No player rows yet. Add the first row on the left and the public
-                      board will start to come to life.
+                      No team rows yet. Add the first row on the left and the public
+                      board plus stream overlay will start to come to life.
                     </div>
                   )}
                 </div>
