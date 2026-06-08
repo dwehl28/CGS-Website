@@ -179,8 +179,9 @@ export default function StreamScoreQuickControls({
       <div className="stream-control-note">
         <span>Stream tip</span>
         <p>
-          Keep the OBS browser source at 1920 x 1080. The graphic is designed to sit
-          in the top-left half of the screen with transparency around it.
+          Keep the OBS browser source at 407px wide x 1359px high. The graphic is
+          designed as a transparent portrait scoreboard that can be placed over the
+          stream scene.
           {remainingEntryCount > 0
             ? ` ${remainingEntryCount} extra row${
                 remainingEntryCount === 1 ? "" : "s"

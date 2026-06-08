@@ -61,8 +61,9 @@ export default async function ScoreboardPage() {
             <h2 className="home-band-heading mt-5">OBS-ready scoreboards now live here.</h2>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--body-copy)]">
               Published scoreboards now include a dedicated stream overlay URL.
-              Use it as an OBS browser source for a bright top-corner board with
-              up to six teams, live score updates, and no website header or footer.
+              Use it as an OBS browser source for a bright 407px by 1359px portrait
+              board with up to six teams, live score updates, and no website header
+              or footer.
             </p>
             <div className="mt-7 flex flex-wrap gap-4">
               {firstCompetition ? (
@@ -90,8 +91,8 @@ export default async function ScoreboardPage() {
             </div>
             <div className="home-score-row">
               <span>Size</span>
-              <span>Top-left half-screen panel</span>
-              <span>1920</span>
+              <span>407px wide x 1359px high</span>
+              <span>OBS</span>
             </div>
             <div className="home-score-row">
               <span>Data</span>
