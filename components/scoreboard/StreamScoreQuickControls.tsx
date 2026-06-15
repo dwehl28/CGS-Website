@@ -119,8 +119,9 @@ export default function StreamScoreQuickControls({
           <p className="stream-control-kicker">Weekly stream control</p>
           <h3>Top-six scoreboard controls</h3>
           <p>
-            Update scores while the OBS browser source is live. The overlay shows
-            the top six rows, sorted automatically by score.
+            Update scores while the OBS browser sources are live. The portrait
+            overlay and rolling banner both show the top six rows, sorted
+            automatically by score.
           </p>
         </div>
 
@@ -129,7 +130,13 @@ export default function StreamScoreQuickControls({
             href={`/scoreboard/${competition.slug}/stream`}
             className="btn-primary"
           >
-            Open OBS asset
+            Open portrait asset
+          </Link>
+          <Link
+            href={`/scoreboard/${competition.slug}/banner`}
+            className="btn-secondary"
+          >
+            Open banner asset
           </Link>
           <Link href={`/scoreboard/${competition.slug}`} className="btn-secondary">
             Public board
@@ -179,9 +186,9 @@ export default function StreamScoreQuickControls({
       <div className="stream-control-note">
         <span>Stream tip</span>
         <p>
-          Keep the OBS browser source at 407px wide x 1359px high. The graphic is
-          designed as a transparent portrait scoreboard that can be placed over the
-          stream scene.
+          Keep the portrait OBS source at 407px wide x 1359px high, or use the
+          banner source at 1920px wide x 180px high for a top or bottom ticker.
+          Both graphics are transparent stream assets.
           {remainingEntryCount > 0
             ? ` ${remainingEntryCount} extra row${
                 remainingEntryCount === 1 ? "" : "s"

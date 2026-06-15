@@ -60,19 +60,27 @@ export default async function ScoreboardPage() {
             <div className="eyebrow">Twitch stream asset</div>
             <h2 className="home-band-heading mt-5">OBS-ready scoreboards now live here.</h2>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--body-copy)]">
-              Published scoreboards now include a dedicated stream overlay URL.
-              Use it as an OBS browser source for a bright 407px by 1359px portrait
-              board with up to six teams, live score updates, and no website header
-              or footer.
+              Published scoreboards now include dedicated stream asset URLs. Use
+              the bright 407px by 1359px portrait board or the rolling 1920px by
+              180px banner ticker, both with up to six teams, live score updates,
+              and no website header or footer.
             </p>
             <div className="mt-7 flex flex-wrap gap-4">
               {firstCompetition ? (
-                <Link
-                  href={`/scoreboard/${firstCompetition.slug}/stream`}
-                  className="btn-primary"
-                >
-                  Preview stream overlay
-                </Link>
+                <>
+                  <Link
+                    href={`/scoreboard/${firstCompetition.slug}/stream`}
+                    className="btn-primary"
+                  >
+                    Preview portrait overlay
+                  </Link>
+                  <Link
+                    href={`/scoreboard/${firstCompetition.slug}/banner`}
+                    className="btn-secondary"
+                  >
+                    Preview banner ticker
+                  </Link>
+                </>
               ) : null}
               <Link href="/clubhouse-admin/scoreboard" className="btn-secondary">
                 Manage scoreboard
@@ -86,12 +94,12 @@ export default async function ScoreboardPage() {
             </p>
             <div className="home-score-row">
               <span>URL</span>
-              <span>/scoreboard/[board]/stream</span>
+              <span>/scoreboard/[board]/stream or /banner</span>
               <span>OBS</span>
             </div>
             <div className="home-score-row">
               <span>Size</span>
-              <span>407px wide x 1359px high</span>
+              <span>407x1359 portrait, 1920x180 banner</span>
               <span>OBS</span>
             </div>
             <div className="home-score-row">
@@ -189,6 +197,12 @@ export default async function ScoreboardPage() {
                     className="btn-secondary"
                   >
                     Stream overlay
+                  </Link>
+                  <Link
+                    href={`/scoreboard/${competition.slug}/banner`}
+                    className="btn-secondary"
+                  >
+                    Banner ticker
                   </Link>
                   {competition.ctaLabel && competition.ctaHref ? (
                     competition.ctaHref.startsWith("/") ? (

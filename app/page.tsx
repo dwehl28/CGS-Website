@@ -48,7 +48,7 @@ export default async function Home() {
     {
       label: "Scoreboard",
       title: "Live scoring",
-      description: "Open competition boards or capture the stream overlay for Twitch.",
+      description: "Open competition boards or capture Twitch stream assets.",
       href: "/scoreboard",
     },
     {
@@ -191,10 +191,9 @@ export default async function Home() {
                 A scoreboard that works on the site and on Twitch.
               </h2>
               <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--body-copy)]">
-                Each live competition can now expose a dedicated stream overlay:
-                a bright 407px by 1359px portrait board designed for OBS browser
-                sources, quick admin scoring, six visible teams, and chunky
-                on-screen reading.
+                Each live competition can now expose two dedicated OBS assets:
+                a bright 407px by 1359px portrait board and a rolling 1920px by
+                180px banner ticker for the top or bottom of the stream.
               </p>
               <div className="home-actions mt-7">
                 <Link href="/scoreboard" className="btn-primary">
@@ -218,8 +217,8 @@ export default async function Home() {
                 </div>
               ))}
               <p className="text-sm leading-7 text-[var(--body-copy)]">
-                Use the stream link from any published scoreboard card as the OBS
-                browser source. Scores update from the admin control desk.
+                Use the stream or banner link from any published scoreboard card
+                as the OBS browser source. Scores update from the admin control desk.
               </p>
             </div>
           </div>

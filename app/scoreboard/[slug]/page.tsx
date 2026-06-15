@@ -57,6 +57,9 @@ export default async function ScoreboardDetailPage({
             <Link href={`/scoreboard/${competition.slug}/stream`} className="btn-primary">
               Stream overlay
             </Link>
+            <Link href={`/scoreboard/${competition.slug}/banner`} className="btn-secondary">
+              Banner ticker
+            </Link>
             <Link href="/events" className="btn-secondary">
               View events
             </Link>
