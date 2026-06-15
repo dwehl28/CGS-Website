@@ -43,6 +43,7 @@ function formatBannerTime(value: string) {
   }
 
   return new Intl.DateTimeFormat("en-AU", {
+    timeZone: "Australia/Brisbane",
     hour: "numeric",
     minute: "2-digit",
   }).format(parsedDate);

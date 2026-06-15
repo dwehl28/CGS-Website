@@ -38,6 +38,7 @@ function formatBoardTime(value: string | null) {
   }
 
   return new Intl.DateTimeFormat("en-AU", {
+    timeZone: "Australia/Brisbane",
     day: "numeric",
     month: "short",
     hour: "numeric",
