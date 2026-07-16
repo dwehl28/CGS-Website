@@ -3,6 +3,9 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 
 const ADMIN_COOKIE_NAME = "cgs-admin-session";
+const ADMIN_USERNAME = "admin";
+const ADMIN_PASSWORD = "admin";
+const FALLBACK_ADMIN_SESSION_SECRET = "cgs-admin-session-admin";
 
 function digest(value: string) {
   return createHash("sha256").update(value).digest();
@@ -17,23 +20,19 @@ function secureEqual(left: string, right: string) {
 }
 
 export function hasAdminSecretConfigured() {
-  return Boolean(process.env.CGS_ADMIN_SECRET);
+  return true;
 }
 
 export function getAdminSecret() {
-  const adminSecret = process.env.CGS_ADMIN_SECRET;
-
-  if (!adminSecret) {
-    throw new Error(
-      "CGS admin secret is missing. Set CGS_ADMIN_SECRET in the environment."
-    );
-  }
-
-  return adminSecret;
+  return process.env.CGS_ADMIN_SECRET || FALLBACK_ADMIN_SESSION_SECRET;
 }
 
 function getAdminSessionToken(secret: string) {
   return toHexDigest(`cgs-admin-session:${secret}`);
+}
+
+function getAdminAppAccessToken(secret: string) {
+  return toHexDigest(`cgs-admin-app-session:${secret}`);
 }
 
 export function isValidAdminSecret(input: string) {
@@ -41,11 +40,31 @@ export function isValidAdminSecret(input: string) {
   return secureEqual(`cgs-admin-secret:${input}`, `cgs-admin-secret:${secret}`);
 }
 
-export async function isAdminAuthenticated() {
-  if (!hasAdminSecretConfigured()) {
-    return false;
-  }
+export function isValidAdminCredentials(username: string, password: string) {
+  return (
+    secureEqual(
+      `cgs-admin-username:${username}`,
+      `cgs-admin-username:${ADMIN_USERNAME}`
+    ) &&
+    secureEqual(
+      `cgs-admin-password:${password}`,
+      `cgs-admin-password:${ADMIN_PASSWORD}`
+    )
+  );
+}
 
+export function createAdminAppAccessToken() {
+  return getAdminAppAccessToken(getAdminSecret());
+}
+
+export function isValidAdminAppAccessToken(input: string) {
+  return secureEqual(
+    `cgs-admin-app-token:${input}`,
+    `cgs-admin-app-token:${getAdminAppAccessToken(getAdminSecret())}`
+  );
+}
+
+export async function isAdminAuthenticated() {
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get(ADMIN_COOKIE_NAME)?.value;
 

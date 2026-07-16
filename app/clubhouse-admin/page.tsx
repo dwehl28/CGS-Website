@@ -148,6 +148,16 @@ export default async function ClubhouseAdminPage() {
               detail="Create boards, add player rows, and run live competition scoring."
             />
             <AdminQuickLink
+              href="/clubhouse-admin/round-stats"
+              label="Open round stats admin"
+              detail="Enter hole-by-hole Ambrose stats and review richer team/player displays."
+            />
+            <AdminQuickLink
+              href="/clubhouse-admin/ambrose"
+              label="Open Ambrose app admin"
+              detail="Create team Ambrose events, allocate signed-up players, and manage phone entry."
+            />
+            <AdminQuickLink
               href="/scoreboard"
               label="Open public scoreboard"
               detail="Check exactly what visitors can see on the live board side."

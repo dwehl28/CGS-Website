@@ -6,8 +6,7 @@ import { redirect } from "next/navigation";
 import {
   clearAdminSession,
   createAdminSession,
-  hasAdminSecretConfigured,
-  isValidAdminSecret,
+  isValidAdminCredentials,
   requireAdminAuthenticated,
 } from "@/lib/admin-auth";
 import {
@@ -42,18 +41,16 @@ export async function loginAdminAction(
   _previousState: AdminActionState,
   formData: FormData
 ) {
-  if (!hasAdminSecretConfigured()) {
-    return {
-      message:
-        "CGS admin is not configured yet. Add CGS_ADMIN_SECRET to the environment first.",
-    };
-  }
+  const submittedUsername = normalizeString(formData.get("username"), 80);
+  const submittedPassword = normalizeString(formData.get("password"), 200);
 
-  const submittedSecret = normalizeString(formData.get("secret"), 200);
-
-  if (!submittedSecret || !isValidAdminSecret(submittedSecret)) {
+  if (
+    !submittedUsername ||
+    !submittedPassword ||
+    !isValidAdminCredentials(submittedUsername, submittedPassword)
+  ) {
     return {
-      message: "That admin passcode did not match. Try again.",
+      message: "That admin username or password did not match. Try again.",
     };
   }
 

@@ -1,13 +1,15 @@
 import { withTimeout } from "@/lib/async-timeout";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
-export type LeaderboardMode = "gross" | "net";
+export type LeaderboardMode = "gross" | "net" | "points";
 
 export type CompetitionScoreEntry = {
   id: number;
   competitionId: number;
   position: number;
   playerName: string;
+  scoreValue: number | null;
+  scoreLabel: string;
   grossScore: number | null;
   grossLabel: string;
   thruLabel: string | null;
@@ -21,6 +23,7 @@ export type CompetitionScoreboard = {
   title: string;
   summary: string;
   statusLabel: string;
+  leaderboardMode: LeaderboardMode;
   location: string | null;
   formatLabel: string | null;
   roundLabel: string | null;
@@ -46,6 +49,7 @@ type CompetitionScoreboardInput = {
   title: string;
   summary: string;
   statusLabel: string;
+  leaderboardMode: LeaderboardMode;
   location: string;
   formatLabel: string;
   roundLabel: string;
@@ -59,6 +63,7 @@ type CompetitionScoreboardInput = {
 
 type CompetitionScoreEntryInput = {
   competitionId: number;
+  leaderboardMode: LeaderboardMode;
   playerName: string;
   grossScore: number | null;
   thruLabel: string;
@@ -68,6 +73,23 @@ type CompetitionScoreEntryInput = {
 const missingTableMessage =
   "Competition scoreboards are not set up yet. Apply the latest Supabase migration to start using live scoring.";
 const SCOREBOARD_QUERY_TIMEOUT_MS = 3500;
+const leaderboardModes = new Set<LeaderboardMode>(["gross", "net", "points"]);
+
+export function normalizeLeaderboardMode(value: unknown): LeaderboardMode {
+  if (typeof value === "string" && leaderboardModes.has(value as LeaderboardMode)) {
+    return value as LeaderboardMode;
+  }
+
+  return "gross";
+}
+
+export function getScoreNoun(leaderboardMode: LeaderboardMode) {
+  return leaderboardMode === "points" ? "Points" : "Score";
+}
+
+export function getRankingDescription(leaderboardMode: LeaderboardMode) {
+  return leaderboardMode === "points" ? "highest Stableford points" : "score";
+}
 
 function isMissingScoreboardTableError(error: unknown) {
   if (!error || typeof error !== "object" || !("code" in error)) {
@@ -106,6 +128,19 @@ function formatGolfScore(value: number | null) {
   return `${value > 0 ? "+" : "-"}${formattedValue}`;
 }
 
+function formatPointsScore(value: number | null) {
+  if (value === null || !Number.isFinite(value)) {
+    return "--";
+  }
+
+  const formattedValue = Number.isInteger(value) ? value.toString() : value.toFixed(1);
+  return `${formattedValue} pts`;
+}
+
+function formatLeaderboardScore(value: number | null, leaderboardMode: LeaderboardMode) {
+  return leaderboardMode === "points" ? formatPointsScore(value) : formatGolfScore(value);
+}
+
 function mapRowToCompetition(row: Record<string, unknown>): CompetitionScoreboard {
   return {
     id: Number(row.id),
@@ -113,6 +148,7 @@ function mapRowToCompetition(row: Record<string, unknown>): CompetitionScoreboar
     title: String(row.title ?? ""),
     summary: String(row.summary ?? ""),
     statusLabel: String(row.status_label ?? "Scoreboard"),
+    leaderboardMode: normalizeLeaderboardMode(row.leaderboard_mode),
     location:
       typeof row.location === "string" && row.location.trim() ? row.location : null,
     formatLabel:
@@ -139,14 +175,17 @@ function mapRowToCompetition(row: Record<string, unknown>): CompetitionScoreboar
   };
 }
 
-function mapRowToEntry(row: Record<string, unknown>): CompetitionScoreEntry {
-  const grossScore =
+function mapRowToEntry(
+  row: Record<string, unknown>,
+  leaderboardMode: LeaderboardMode
+): CompetitionScoreEntry {
+  const scoreValue =
     parseNumericValue(row.gross_score) ??
     parseNumericValue(row.score_sort) ??
     parseNumericValue(row.score_display);
-  const grossLabel =
-    grossScore !== null
-      ? formatGolfScore(grossScore)
+  const scoreLabel =
+    scoreValue !== null
+      ? formatLeaderboardScore(scoreValue, leaderboardMode)
       : typeof row.score_display === "string" && row.score_display.trim()
         ? row.score_display
         : "--";
@@ -156,8 +195,10 @@ function mapRowToEntry(row: Record<string, unknown>): CompetitionScoreEntry {
     competitionId: Number(row.competition_id),
     position: 99,
     playerName: String(row.player_name ?? ""),
-    grossScore,
-    grossLabel,
+    scoreValue,
+    scoreLabel,
+    grossScore: scoreValue,
+    grossLabel: scoreLabel,
     thruLabel:
       typeof row.thru_label === "string" && row.thru_label.trim() ? row.thru_label : null,
     isCgsMember: Boolean(row.is_cgs_member),
@@ -165,10 +206,14 @@ function mapRowToEntry(row: Record<string, unknown>): CompetitionScoreEntry {
   };
 }
 
-function sortAndRankEntries(entries: CompetitionScoreEntry[]) {
+function sortAndRankEntries(
+  entries: CompetitionScoreEntry[],
+  leaderboardMode: LeaderboardMode
+) {
   const sortedEntries = [...entries].sort((left, right) => {
-    const leftPrimaryValue = left.grossScore;
-    const rightPrimaryValue = right.grossScore;
+    const leftPrimaryValue = left.scoreValue;
+    const rightPrimaryValue = right.scoreValue;
+    const sortDirection = leaderboardMode === "points" ? -1 : 1;
 
     if (leftPrimaryValue === null && rightPrimaryValue !== null) {
       return 1;
@@ -180,17 +225,17 @@ function sortAndRankEntries(entries: CompetitionScoreEntry[]) {
 
     if (leftPrimaryValue !== null && rightPrimaryValue !== null) {
       if (leftPrimaryValue !== rightPrimaryValue) {
-        return leftPrimaryValue - rightPrimaryValue;
+        return (leftPrimaryValue - rightPrimaryValue) * sortDirection;
       }
     }
 
-    if (left.grossScore !== null && right.grossScore !== null) {
-      if (left.grossScore !== right.grossScore) {
-        return left.grossScore - right.grossScore;
+    if (left.scoreValue !== null && right.scoreValue !== null) {
+      if (left.scoreValue !== right.scoreValue) {
+        return (left.scoreValue - right.scoreValue) * sortDirection;
       }
-    } else if (left.grossScore === null && right.grossScore !== null) {
+    } else if (left.scoreValue === null && right.scoreValue !== null) {
       return 1;
-    } else if (left.grossScore !== null && right.grossScore === null) {
+    } else if (left.scoreValue !== null && right.scoreValue === null) {
       return -1;
     }
 
@@ -201,7 +246,7 @@ function sortAndRankEntries(entries: CompetitionScoreEntry[]) {
   let previousPosition = 0;
 
   return sortedEntries.map((entry, index) => {
-    const rankingValue = entry.grossScore;
+    const rankingValue = entry.scoreValue;
     let position = index + 1;
 
     if (rankingValue !== null && previousRankingValue !== null && rankingValue === previousRankingValue) {
@@ -223,9 +268,16 @@ function attachEntries(
   entryRows: Record<string, unknown>[]
 ) {
   const entriesByCompetition = new Map<number, CompetitionScoreEntry[]>();
+  const competitionsById = new Map(
+    competitions.map((competition) => [competition.id, competition])
+  );
 
   entryRows.forEach((row) => {
-    const mappedEntry = mapRowToEntry(row);
+    const competition = competitionsById.get(Number(row.competition_id));
+    const mappedEntry = mapRowToEntry(
+      row,
+      competition?.leaderboardMode ?? "gross"
+    );
     const currentEntries = entriesByCompetition.get(mappedEntry.competitionId) ?? [];
     currentEntries.push(mappedEntry);
     entriesByCompetition.set(mappedEntry.competitionId, currentEntries);
@@ -233,7 +285,10 @@ function attachEntries(
 
   return competitions.map((competition) => ({
     ...competition,
-    entries: sortAndRankEntries(entriesByCompetition.get(competition.id) ?? []),
+    entries: sortAndRankEntries(
+      entriesByCompetition.get(competition.id) ?? [],
+      competition.leaderboardMode
+    ),
   }));
 }
 
@@ -421,7 +476,7 @@ export async function createCompetitionScoreboard(input: CompetitionScoreboardIn
       title: input.title,
       summary: input.summary,
       status_label: input.statusLabel,
-      leaderboard_mode: "gross",
+      leaderboard_mode: input.leaderboardMode,
       location: input.location || null,
       format_label: input.formatLabel || null,
       round_label: input.roundLabel || null,
@@ -453,7 +508,7 @@ export async function updateCompetitionScoreboard(
       title: input.title,
       summary: input.summary,
       status_label: input.statusLabel,
-      leaderboard_mode: "gross",
+      leaderboard_mode: input.leaderboardMode,
       location: input.location || null,
       format_label: input.formatLabel || null,
       round_label: input.roundLabel || null,
@@ -483,7 +538,7 @@ export async function createCompetitionScoreEntry(input: CompetitionScoreEntryIn
       handicap_strokes: 0,
       is_cgs_member: input.isCgsMember,
       position: 99,
-      score_display: formatGolfScore(input.grossScore),
+      score_display: formatLeaderboardScore(input.grossScore, input.leaderboardMode),
       score_sort: input.grossScore ?? 0,
       thru_label: input.thruLabel || null,
       status_label: null,
@@ -513,7 +568,7 @@ export async function updateCompetitionScoreEntry(
       gross_score: input.grossScore,
       handicap_strokes: 0,
       is_cgs_member: input.isCgsMember,
-      score_display: formatGolfScore(input.grossScore),
+      score_display: formatLeaderboardScore(input.grossScore, input.leaderboardMode),
       score_sort: input.grossScore ?? 0,
       thru_label: input.thruLabel || null,
       status_label: null,
@@ -533,7 +588,8 @@ export async function updateCompetitionScoreEntry(
 export async function updateCompetitionScoreEntryScore(
   id: number,
   competitionId: number,
-  grossScore: number | null
+  grossScore: number | null,
+  leaderboardMode: LeaderboardMode
 ) {
   const supabaseAdmin = getSupabaseAdmin();
 
@@ -541,7 +597,7 @@ export async function updateCompetitionScoreEntryScore(
     .from("competition_score_entries")
     .update({
       gross_score: grossScore,
-      score_display: formatGolfScore(grossScore),
+      score_display: formatLeaderboardScore(grossScore, leaderboardMode),
       score_sort: grossScore ?? 0,
       updated_at: new Date().toISOString(),
     })

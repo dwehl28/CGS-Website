@@ -12,6 +12,8 @@ import {
 import {
   type CompetitionScoreEntry,
   type CompetitionScoreboard,
+  getRankingDescription,
+  getScoreNoun,
 } from "@/lib/scoreboards";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
@@ -62,7 +64,7 @@ function getSyncLabel(syncState: LiveSyncState) {
 }
 
 function getPrimaryScoreLabel(entry: CompetitionScoreEntry) {
-  return entry.grossLabel;
+  return entry.scoreLabel;
 }
 
 function MemberMark({ isMember }: { isMember: boolean }) {
@@ -89,6 +91,8 @@ export default function LiveCompetitionBoard({
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const leaderEntry = competition.entries[0] ?? null;
+  const scoreNoun = getScoreNoun(competition.leaderboardMode);
+  const rankingDescription = getRankingDescription(competition.leaderboardMode);
 
   async function refreshCompetition(slug: string) {
     setIsRefreshing(true);
@@ -267,8 +271,10 @@ export default function LiveCompetitionBoard({
               </p>
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
                 <div className="rounded-[1.25rem] border border-white/8 bg-black/18 px-4 py-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Score</p>
-                  <p className="mt-2 text-lg text-white">{leaderEntry.grossLabel}</p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                    {scoreNoun}
+                  </p>
+                  <p className="mt-2 text-lg text-white">{leaderEntry.scoreLabel}</p>
                 </div>
                 <div className="rounded-[1.25rem] border border-white/8 bg-black/18 px-4 py-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Through</p>
@@ -277,7 +283,7 @@ export default function LiveCompetitionBoard({
               </div>
               <p className="mt-5 text-sm leading-7 text-zinc-300">
                 Ranking is automatic on this board. As scores change in admin, the lead
-                updates here based on the score entered for each player.
+                updates here based on {rankingDescription}.
               </p>
             </>
           ) : (
@@ -315,7 +321,8 @@ export default function LiveCompetitionBoard({
           </div>
           <p className="text-sm text-zinc-400">
             {competition.entries.length} player
-            {competition.entries.length === 1 ? "" : "s"} on the board | Ranked by score
+            {competition.entries.length === 1 ? "" : "s"} on the board | Ranked by{" "}
+            {rankingDescription}
           </p>
         </div>
 
@@ -327,7 +334,7 @@ export default function LiveCompetitionBoard({
                   <tr>
                     <th className="px-4 py-4">Pos</th>
                     <th className="px-4 py-4">Player</th>
-                    <th className="px-4 py-4">Score</th>
+                    <th className="px-4 py-4">{scoreNoun}</th>
                     <th className="px-4 py-4">Through</th>
                   </tr>
                 </thead>
@@ -344,7 +351,7 @@ export default function LiveCompetitionBoard({
                         </div>
                       </td>
                       <td className="px-4 py-4 text-lg text-[var(--tan)]">
-                        {entry.grossLabel}
+                        {entry.scoreLabel}
                       </td>
                       <td className="px-4 py-4 text-zinc-300">{entry.thruLabel ?? "--"}</td>
                     </tr>
@@ -374,9 +381,9 @@ export default function LiveCompetitionBoard({
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <div className="rounded-[1rem] border border-white/8 bg-black/16 px-3 py-3">
                       <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">
-                        Score
+                        {scoreNoun}
                       </p>
-                      <p className="mt-2 text-white">{entry.grossLabel}</p>
+                      <p className="mt-2 text-white">{entry.scoreLabel}</p>
                     </div>
                     <div className="rounded-[1rem] border border-white/8 bg-black/16 px-3 py-3">
                       <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">

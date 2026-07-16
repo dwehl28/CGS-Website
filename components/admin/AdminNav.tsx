@@ -7,6 +7,8 @@ const adminLinks = [
   { href: "/clubhouse-admin", label: "Dashboard" },
   { href: "/clubhouse-admin/inbox", label: "Inbox" },
   { href: "/clubhouse-admin/scoreboard", label: "Scoreboards" },
+  { href: "/clubhouse-admin/round-stats", label: "Round Stats" },
+  { href: "/clubhouse-admin/ambrose", label: "Ambrose App" },
 ];
 
 export default function AdminNav() {

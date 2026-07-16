@@ -92,6 +92,8 @@ export const navigationLinks: NavLink[] = [
   { href: "/", label: "Home" },
   { href: "/events", label: "Events" },
   { href: "/scoreboard", label: "Scoreboard" },
+  { href: "/stats", label: "Stats Lab" },
+  { href: "/play", label: "Player App" },
   { href: "/membership", label: "Membership" },
   { href: "/merch", label: "Merch" },
   { href: "/media", label: "Media" },
@@ -517,37 +519,42 @@ export const contactFaqs: FaqItem[] = [
 
 export const privacyPrinciples: ContentCard[] = [
   {
-    title: "Only the details CGS needs",
+    title: "Only what CGS needs",
     description:
-      "Forms on the site are designed to collect enough information to reply properly, not to build an oversized profile on visitors.",
+      "Forms and player accounts collect the details needed to run CGS events, reply to enquiries, and support the CGS Golf scoring app.",
   },
   {
-    title: "Used for the conversation you started",
+    title: "Used for play and broadcast",
     description:
-      "If you submit a membership, event, or contact form, CGS uses those details to follow up about that interest and related club information.",
+      "Player profile details, team memberships, and scoring data are used for competitions, public player profiles, and stream graphics.",
   },
   {
-    title: "Plain-English handling",
+    title: "Delete account available",
     description:
-      "The aim is simple: keep data secure, avoid unnecessary sharing, and give people a clear way to ask what is being stored or to request removal.",
+      "Signed-in players can delete their CGS Golf account from the player app. CGS can also help with privacy requests by email.",
   },
 ];
 
 export const privacyFaqs: FaqItem[] = [
   {
-    question: "What information does the site collect?",
+    question: "What information does CGS collect?",
     answer:
-      "The site collects the details you choose to submit through forms, such as your name, email, phone number, membership interest, or event notes.",
+      "CGS collects details you submit through forms, plus CGS Golf account and player profile data such as email, display name, nickname, handle, handicap, player photo, team memberships, and scoring stats.",
   },
   {
     question: "Why does CGS keep this information?",
     answer:
-      "It is used to respond to your enquiry, manage membership and event expressions of interest, and keep communication relevant to the reason you reached out.",
+      "It is used to respond to enquiries, manage membership and events, run CGS Golf competitions, maintain player profiles, and generate stream assets for CGS broadcasts.",
   },
   {
-    question: "Can I ask for my details to be removed?",
+    question: "Does CGS sell or track this data for advertising?",
     answer:
-      "Yes. If you email CGS and request deletion, the team can review and remove the stored contact details associated with your enquiry where appropriate.",
+      "No. CGS does not sell player data or use the CGS Golf app for cross-app advertising tracking.",
+  },
+  {
+    question: "Can I delete my CGS Golf account?",
+    answer:
+      "Yes. Sign in at /play, open the Account section, and use Delete account. This removes the login, player profile, memberships, and uploaded player photo. Shared competition score history may remain as non-personal event records.",
   },
 ];
 

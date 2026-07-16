@@ -34,12 +34,30 @@ export default function ClubhouseAdminLogin() {
   return (
     <form action={formAction} className="mt-8 space-y-5">
       <div className="page-split-card rounded-[1.35rem] p-5">
-        <label className="field-label">Admin passcode</label>
+        <label className="field-label" htmlFor="admin-username">
+          Username
+        </label>
         <input
-          type="password"
-          name="secret"
+          id="admin-username"
+          type="text"
+          name="username"
           className="field-control"
-          placeholder="Enter the CGS admin passcode"
+          placeholder="admin"
+          autoComplete="username"
+          required
+        />
+      </div>
+
+      <div className="page-split-card rounded-[1.35rem] p-5">
+        <label className="field-label" htmlFor="admin-password">
+          Password
+        </label>
+        <input
+          id="admin-password"
+          type="password"
+          name="password"
+          className="field-control"
+          placeholder="admin"
           autoComplete="current-password"
           required
         />

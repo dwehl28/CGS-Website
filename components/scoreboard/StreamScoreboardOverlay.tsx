@@ -200,7 +200,7 @@ export default function StreamScoreboardOverlay({
           {leaderEntry ? (
             <div className="stream-leader-chip">
               <span>Leader</span>
-              <strong>{leaderEntry.grossLabel}</strong>
+              <strong>{leaderEntry.scoreLabel}</strong>
             </div>
           ) : null}
         </div>
@@ -218,7 +218,7 @@ export default function StreamScoreboardOverlay({
                     <MemberMark entry={entry} />
                     <span className="stream-row-player-name">{entry.playerName}</span>
                   </span>
-                  <span className="stream-row-score">{entry.grossLabel}</span>
+                  <span className="stream-row-score">{entry.scoreLabel}</span>
                   <span className="stream-row-thru">{entry.thruLabel ?? "Thru --"}</span>
                 </div>
               ))}

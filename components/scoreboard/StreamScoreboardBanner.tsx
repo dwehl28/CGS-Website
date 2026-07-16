@@ -74,7 +74,7 @@ function BannerTeamCard({ entry }: { entry: CompetitionScoreEntry }) {
         <MemberMark entry={entry} />
         <span>{entry.playerName}</span>
       </span>
-      <strong>{entry.grossLabel}</strong>
+      <strong>{entry.scoreLabel}</strong>
       <span className="stream-banner-thru">{entry.thruLabel ?? "Thru --"}</span>
     </article>
   );
@@ -219,7 +219,7 @@ export default function StreamScoreboardBanner({
 
         <div className="stream-banner-live-card">
           <span>{competition.isLive ? "Live" : competition.statusLabel}</span>
-          <strong>{leaderEntry ? leaderEntry.grossLabel : "--"}</strong>
+          <strong>{leaderEntry ? leaderEntry.scoreLabel : "--"}</strong>
           <p>
             {leaderEntry ? `Leader: ${leaderEntry.playerName}` : "Waiting for scores"}
           </p>

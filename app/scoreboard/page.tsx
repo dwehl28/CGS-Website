@@ -4,7 +4,10 @@ import Link from "next/link";
 
 import PageIntro from "@/components/PageIntro";
 import { buildMetadata } from "@/lib/seo";
-import { getPublishedCompetitionScoreboards } from "@/lib/scoreboards";
+import {
+  getPublishedCompetitionScoreboards,
+  getScoreNoun,
+} from "@/lib/scoreboards";
 import { competitionArchive } from "@/lib/site-content";
 
 export const metadata: Metadata = buildMetadata({
@@ -177,10 +180,10 @@ export default async function ScoreboardPage() {
                         </div>
                         <div className="text-right">
                           <span className="chip text-zinc-100">
-                            {entry.grossLabel}
+                            {entry.scoreLabel}
                           </span>
                           <p className="mt-2 text-xs uppercase tracking-[0.16em] text-zinc-500">
-                            Score
+                            {getScoreNoun(competition.leaderboardMode)}
                           </p>
                         </div>
                       </div>

@@ -105,6 +105,15 @@ export default function ScoreboardCompetitionComposer() {
         </div>
       </div>
 
+      <div>
+        <label className="mb-2 block text-sm text-zinc-300">Leaderboard scoring</label>
+        <select name="leaderboard_mode" className="field-control" defaultValue="gross">
+          <option value="gross">Golf score - lowest leads</option>
+          <option value="net">Net score - lowest leads</option>
+          <option value="points">Stableford points - highest leads</option>
+        </select>
+      </div>
+
       <div className="grid gap-5 md:grid-cols-2">
         <div>
           <label className="mb-2 block text-sm text-zinc-300">Venue</label>

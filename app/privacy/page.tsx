@@ -15,11 +15,11 @@ import { buildFaqJsonLd, createJsonLd } from "@/lib/structured-data";
 export const metadata: Metadata = buildMetadata({
   title: "Privacy",
   description:
-    "Read the plain-English privacy summary for Crossodog Golf Society and how site enquiries are handled.",
+    "Read the plain-English privacy summary for Crossodog Golf Society, CGS Golf player accounts, and competition data.",
   path: "/privacy",
 });
 
-const lastUpdated = "4 April 2026";
+const lastUpdated = "8 July 2026";
 
 export default function PrivacyPage() {
   return (
@@ -33,7 +33,7 @@ export default function PrivacyPage() {
         <PageIntro
           eyebrow="Plain-English privacy"
           title="Privacy at CGS"
-          description="This site collects the information you choose to send through membership, contact, and event-interest forms so CGS can reply and manage those enquiries properly."
+          description="CGS collects the information needed to run the Crossodog Golf community, handle enquiries, and operate the CGS Golf scoring and player profile app."
           align="center"
         >
           <p className="mt-4 text-sm uppercase tracking-[0.18em] text-zinc-500">
@@ -60,20 +60,44 @@ export default function PrivacyPage() {
             <h2 className="text-4xl">What this means in practice</h2>
             <div className="mt-6 space-y-5 text-sm leading-7 text-zinc-300">
               <p>
-                When you fill out a CGS form, the details you provide are stored
-                so the team can respond to your enquiry, organise membership or
-                event follow-up, and keep the conversation connected to the
-                reason you reached out.
+                When you fill out a CGS form, the details you provide are used
+                to respond to your enquiry, organise membership or event
+                follow-up, and keep the conversation connected to the reason you
+                reached out.
               </p>
               <p>
-                CGS is not trying to collect unnecessary information. The forms
-                focus on the basics needed to respond properly, such as your
-                name, contact details, and any notes relevant to the membership,
-                event, or enquiry you submitted.
+                When you use CGS Golf, the app stores account and player profile
+                details such as email, display name, nickname, handle, handicap,
+                uploaded player photo, team membership, and competition scoring
+                data. Password handling and login sessions are managed through
+                Supabase Auth.
+              </p>
+              <p>
+                Scoring data can include team strokes, putts, fairways in
+                regulation, greens in regulation, drive distance, iron selection,
+                iron distance, and which allocated team member contributed a
+                shot. These details power the player app, public player profiles,
+                competition pages, and stream graphics.
+              </p>
+              <p>
+                CGS does not sell player data or use the app for cross-app
+                advertising tracking. Team join passwords are stored as hashes
+                rather than readable passwords.
+              </p>
+              <p>
+                Signed-in CGS Golf players can delete their account inside the
+                player app at{" "}
+                <Link href="/play" className="text-[var(--accent)]">
+                  /play
+                </Link>
+                . Deleting an account removes the login, player profile, team
+                memberships, and uploaded player photo. Existing competition
+                score rows may remain as shared event history with player
+                references removed where possible.
               </p>
               <p>
                 If you want to ask what information is being held or request
-                that your submitted contact details be removed, you can email{" "}
+                help with a privacy request, you can email{" "}
                 <a
                   href={`mailto:${siteConfig.email}`}
                   className="text-[var(--accent)]"

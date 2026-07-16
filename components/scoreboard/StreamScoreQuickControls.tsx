@@ -8,6 +8,7 @@ import type {
   CompetitionScoreEntry,
   CompetitionScoreboard,
 } from "@/lib/scoreboards";
+import { getRankingDescription, getScoreNoun } from "@/lib/scoreboards";
 
 type StreamScoreQuickControlsProps = {
   competition: CompetitionScoreboard;
@@ -31,6 +32,11 @@ function TeamIdentityFields({
       <input type="hidden" name="id" value={entry.id} />
       <input type="hidden" name="competition_id" value={competition.id} />
       <input type="hidden" name="competition_slug" value={competition.slug} />
+      <input
+        type="hidden"
+        name="leaderboard_mode"
+        value={competition.leaderboardMode}
+      />
     </>
   );
 }
@@ -70,6 +76,7 @@ function ScoreSetForm({
   entry: CompetitionScoreEntry;
 }) {
   const scoreInputId = `quick-score-value-${entry.id}`;
+  const scoreNoun = getScoreNoun(competition.leaderboardMode);
 
   return (
     <form action={updateCompetitionScoreEntryAction} className="quick-score-set-form">
@@ -81,7 +88,7 @@ function ScoreSetForm({
       ) : null}
 
       <label className="sr-only" htmlFor={scoreInputId}>
-        Set score for {entry.playerName}
+        Set {scoreNoun.toLowerCase()} for {entry.playerName}
       </label>
       <input
         id={scoreInputId}
@@ -121,7 +128,7 @@ export default function StreamScoreQuickControls({
           <p>
             Update scores while the OBS browser sources are live. The portrait
             overlay and rolling banner both show the top six rows, sorted
-            automatically by score.
+            automatically by {getRankingDescription(competition.leaderboardMode)}.
           </p>
         </div>
 
@@ -154,7 +161,7 @@ export default function StreamScoreQuickControls({
                   <h4>{entry.playerName}</h4>
                   <span>{entry.thruLabel ?? "Through not set"}</span>
                 </div>
-                <strong>{entry.grossLabel}</strong>
+                <strong>{entry.scoreLabel}</strong>
               </div>
 
               <div className="quick-score-actions" aria-label={`Adjust ${entry.playerName}`}>
@@ -178,7 +185,7 @@ export default function StreamScoreQuickControls({
         </div>
       ) : (
         <div className="quick-score-empty">
-          Add up to six team rows below, then this area becomes your live stream
+          Add up to six player rows below, then this area becomes your live stream
           scoring desk.
         </div>
       )}

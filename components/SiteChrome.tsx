@@ -12,7 +12,11 @@ type SiteChromeProps = {
 };
 
 function isStreamAssetPath(pathname: string) {
-  return /^\/scoreboard\/[^/]+\/(?:stream|banner)\/?$/.test(pathname);
+  return (
+    /^\/scoreboard\/[^/]+\/(?:stream|banner)\/?$/.test(pathname) ||
+    /^\/stream\/ambrose\/[^/]+\/leaderboard\/?$/.test(pathname) ||
+    /^\/stream\/ambrose\/[^/]+\/player\/[^/]+\/?$/.test(pathname)
+  );
 }
 
 export default function SiteChrome({ children }: SiteChromeProps) {

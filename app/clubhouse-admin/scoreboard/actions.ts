@@ -9,6 +9,7 @@ import {
   createCompetitionScoreEntry,
   createCompetitionScoreboard,
   deleteCompetitionScoreEntry,
+  normalizeLeaderboardMode,
   updateCompetitionScoreEntry,
   updateCompetitionScoreEntryScore,
   updateCompetitionScoreboard,
@@ -58,6 +59,7 @@ function revalidateScoreboardPaths(slug: string) {
   revalidatePath("/scoreboard");
   revalidatePath(`/scoreboard/${slug}`);
   revalidatePath(`/scoreboard/${slug}/stream`);
+  revalidatePath(`/scoreboard/${slug}/banner`);
   revalidatePath("/clubhouse-admin/scoreboard");
 }
 
@@ -89,6 +91,7 @@ export async function createCompetitionScoreboardAction(
   const summary = normalizeString(formData.get("summary"), 320);
   const statusLabel =
     normalizeString(formData.get("status_label"), 60) || "Scoreboard";
+  const leaderboardMode = normalizeLeaderboardMode(formData.get("leaderboard_mode"));
   const location = normalizeString(formData.get("location"), 120);
   const formatLabel = normalizeString(formData.get("format_label"), 80);
   const roundLabel = normalizeString(formData.get("round_label"), 80);
@@ -123,6 +126,7 @@ export async function createCompetitionScoreboardAction(
       title,
       summary,
       statusLabel,
+      leaderboardMode,
       location,
       formatLabel,
       roundLabel,
@@ -158,6 +162,7 @@ export async function updateCompetitionScoreboardAction(formData: FormData) {
   const summary = normalizeString(formData.get("summary"), 320);
   const statusLabel =
     normalizeString(formData.get("status_label"), 60) || "Scoreboard";
+  const leaderboardMode = normalizeLeaderboardMode(formData.get("leaderboard_mode"));
   const location = normalizeString(formData.get("location"), 120);
   const formatLabel = normalizeString(formData.get("format_label"), 80);
   const roundLabel = normalizeString(formData.get("round_label"), 80);
@@ -190,6 +195,7 @@ export async function updateCompetitionScoreboardAction(formData: FormData) {
       title,
       summary,
       statusLabel,
+      leaderboardMode,
       location,
       formatLabel,
       roundLabel,
@@ -224,6 +230,7 @@ export async function createCompetitionScoreEntryAction(
 
   const competitionId = Number(formData.get("competition_id"));
   const competitionSlug = normalizeString(formData.get("competition_slug"), 120);
+  const leaderboardMode = normalizeLeaderboardMode(formData.get("leaderboard_mode"));
   const playerName = normalizeString(formData.get("player_name"), 120);
   const grossScore = parseNullableNumber(normalizeString(formData.get("score_value"), 20));
   const thruLabel = normalizeString(formData.get("thru_label"), 40);
@@ -238,6 +245,7 @@ export async function createCompetitionScoreEntryAction(
   try {
     await createCompetitionScoreEntry({
       competitionId,
+      leaderboardMode,
       playerName,
       grossScore,
       thruLabel,
@@ -264,6 +272,7 @@ export async function updateCompetitionScoreEntryAction(formData: FormData) {
   const id = Number(formData.get("id"));
   const competitionId = Number(formData.get("competition_id"));
   const competitionSlug = normalizeString(formData.get("competition_slug"), 120);
+  const leaderboardMode = normalizeLeaderboardMode(formData.get("leaderboard_mode"));
   const playerName = normalizeString(formData.get("player_name"), 120);
   const grossScore = parseNullableNumber(normalizeString(formData.get("score_value"), 20));
   const thruLabel = normalizeString(formData.get("thru_label"), 40);
@@ -286,6 +295,7 @@ export async function updateCompetitionScoreEntryAction(formData: FormData) {
   try {
     await updateCompetitionScoreEntry(id, {
       competitionId,
+      leaderboardMode,
       playerName,
       grossScore,
       thruLabel,
@@ -305,6 +315,7 @@ export async function adjustCompetitionScoreEntryAction(formData: FormData) {
   const id = Number(formData.get("id"));
   const competitionId = Number(formData.get("competition_id"));
   const competitionSlug = normalizeString(formData.get("competition_slug"), 120);
+  const leaderboardMode = normalizeLeaderboardMode(formData.get("leaderboard_mode"));
   const currentScore =
     parseNullableNumber(normalizeString(formData.get("current_score"), 20)) ?? 0;
   const scoreDelta = parseNullableNumber(
@@ -323,7 +334,12 @@ export async function adjustCompetitionScoreEntryAction(formData: FormData) {
   const grossScore = Number((currentScore + scoreDelta).toFixed(1));
 
   try {
-    await updateCompetitionScoreEntryScore(id, competitionId, grossScore);
+    await updateCompetitionScoreEntryScore(
+      id,
+      competitionId,
+      grossScore,
+      leaderboardMode
+    );
   } catch (error) {
     console.error("Adjust competition score entry action error:", error);
   }

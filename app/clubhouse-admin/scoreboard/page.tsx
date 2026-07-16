@@ -20,7 +20,11 @@ import {
   isAdminAuthenticated,
 } from "@/lib/admin-auth";
 import { buildMetadata } from "@/lib/seo";
-import { getAdminCompetitionScoreboards } from "@/lib/scoreboards";
+import {
+  getAdminCompetitionScoreboards,
+  getRankingDescription,
+  getScoreNoun,
+} from "@/lib/scoreboards";
 
 export const metadata: Metadata = {
   ...buildMetadata({
@@ -153,7 +157,7 @@ export default async function ScoreboardAdminPage() {
         <div className="panel rounded-[2rem] p-8">
           <h2 className="text-3xl">Create a competition board</h2>
           <p className="mt-3 text-sm leading-7 text-zinc-400">
-            Build the board first, then drop team rows into it. You can keep a
+            Build the board first, then drop player rows into it. You can keep a
             board hidden until you are ready for it to appear publicly.
           </p>
 
@@ -187,14 +191,14 @@ export default async function ScoreboardAdminPage() {
           <div className="mt-6 rounded-[1.35rem] border border-white/8 bg-black/16 p-5 text-sm leading-7 text-zinc-300">
             <p>
               Public and stream board order is automatic from the score, so you
-              only need to update team rows and live status.
+              only need to update player rows and live status.
             </p>
             <p className="mt-3">
-              If you want a handicap shown, keep including it in the team name.
+              If you want a handicap shown, keep including it in the player name.
               The score value itself is what drives ranking.
             </p>
             <p className="mt-3">
-              Tick the CGS member option on a team row and the public board will
+              Tick the CGS member option on a player row and the public board will
               show the club marker next to that name.
             </p>
           </div>
@@ -334,6 +338,25 @@ export default async function ScoreboardAdminPage() {
                   </div>
                 </div>
 
+                <div>
+                  <label
+                    className="field-label"
+                    htmlFor={`leaderboard-mode-${competition.id}`}
+                  >
+                    Leaderboard scoring
+                  </label>
+                  <select
+                    id={`leaderboard-mode-${competition.id}`}
+                    name="leaderboard_mode"
+                    className="field-control"
+                    defaultValue={competition.leaderboardMode}
+                  >
+                    <option value="gross">Golf score - lowest leads</option>
+                    <option value="net">Net score - lowest leads</option>
+                    <option value="points">Stableford points - highest leads</option>
+                  </select>
+                </div>
+
                 <div className="grid gap-5 lg:grid-cols-4">
                   <div>
                     <label className="field-label" htmlFor={`location-${competition.id}`}>
@@ -429,15 +452,17 @@ export default async function ScoreboardAdminPage() {
 
               <div className="mt-8 grid gap-8 xl:grid-cols-[0.92fr_1.08fr]">
                 <div className="rounded-[1.6rem] border border-white/8 bg-black/18 p-5">
-                  <h3 className="text-2xl">Add a team score row</h3>
+                  <h3 className="text-2xl">Add a player score row</h3>
                   <p className="mt-3 text-sm leading-7 text-zinc-400">
-                    Add a score and through label. If you want the team handicap
-                    shown, include it directly in the name field.
+                    Add {getScoreNoun(competition.leaderboardMode).toLowerCase()} and a
+                    through label. If you want the player handicap shown, include it
+                    directly in the name field.
                   </p>
 
                   <ScoreEntryComposer
                     competitionId={competition.id}
                     competitionSlug={competition.slug}
+                    leaderboardMode={competition.leaderboardMode}
                   />
                 </div>
 
@@ -473,13 +498,19 @@ export default async function ScoreboardAdminPage() {
                                 name="competition_slug"
                                 value={competition.slug}
                               />
+                              <input
+                                type="hidden"
+                                name="leaderboard_mode"
+                                value={competition.leaderboardMode}
+                              />
 
                               <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-400">
                                 <span className="chip text-zinc-100">
                                   Position {entry.position}
                                 </span>
                                 <span className="chip text-zinc-100">
-                                  Score {entry.grossLabel}
+                                  {getScoreNoun(competition.leaderboardMode)}{" "}
+                                  {entry.grossLabel}
                                 </span>
                               </div>
 
@@ -519,7 +550,8 @@ export default async function ScoreboardAdminPage() {
                                   Show CGS member logo
                                 </label>
                                 <div className="rounded-[1rem] border border-white/8 bg-black/10 px-4 py-4 text-sm leading-7 text-zinc-400">
-                                  Public order updates automatically from the score.
+                                  Public order updates automatically from{" "}
+                                  {getRankingDescription(competition.leaderboardMode)}.
                                   Ties share the same position.
                                 </div>
                               </div>

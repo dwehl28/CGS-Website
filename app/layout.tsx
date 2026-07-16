@@ -1,5 +1,4 @@
-import type { Metadata } from "next";
-import { DM_Serif_Display, Space_Grotesk } from "next/font/google";
+import type { Metadata, Viewport } from "next";
 
 import SiteChrome from "@/components/SiteChrome";
 import { absoluteUrl } from "@/lib/seo";
@@ -12,17 +11,6 @@ import {
 
 import "./globals.css";
 
-const spaceGrotesk = Space_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-space-grotesk",
-});
-
-const dmSerifDisplay = DM_Serif_Display({
-  subsets: ["latin"],
-  weight: "400",
-  variable: "--font-dm-serif-display",
-});
-
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.siteUrl),
   title: {
@@ -30,7 +18,7 @@ export const metadata: Metadata = {
     template: `%s | ${siteConfig.name}`,
   },
   description: siteConfig.description,
-  applicationName: siteConfig.name,
+  applicationName: "CGS Golf",
   keywords: [
     "golf",
     "golf community",
@@ -65,9 +53,22 @@ export const metadata: Metadata = {
     images: [absoluteUrl("/twitter-image")],
   },
   icons: {
-    icon: "/cgs-logo.png",
-    apple: "/cgs-logo.png",
+    icon: [
+      { url: "/cgs-golf-icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/cgs-golf-icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
   },
+  appleWebApp: {
+    capable: true,
+    title: "CGS Golf",
+    statusBarStyle: "black-translucent",
+  },
+};
+
+export const viewport: Viewport = {
+  colorScheme: "dark",
+  themeColor: "#050505",
 };
 
 export default function RootLayout({
@@ -76,10 +77,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html
-      lang="en"
-      className={`${spaceGrotesk.variable} ${dmSerifDisplay.variable}`}
-    >
+    <html lang="en">
       <body className="antialiased">
         <script
           type="application/ld+json"
