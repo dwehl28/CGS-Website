@@ -3429,7 +3429,7 @@ main.text-white {
   display: grid;
   min-width: 0;
   min-height: 17px;
-  grid-template-columns: 20px minmax(0, 1fr) 18px;
+  grid-template-columns: 20px minmax(0, 1fr) 30px;
   align-items: center;
   border-bottom: 1px solid #dce3e8;
   padding: 1px 4px 1px 2px;
@@ -3464,6 +3464,7 @@ main.text-white {
 
 .de-stream-result {
   color: #087899;
+  font-size: 8px;
 }
 
 .de-stream-finals {

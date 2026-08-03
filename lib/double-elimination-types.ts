@@ -55,6 +55,21 @@ export function getParticipantName(
   );
 }
 
+export function getParticipantSeed(
+  data: DoubleEliminationData,
+  participantId: number | string | null | undefined
+) {
+  if (participantId === null || participantId === undefined) {
+    return null;
+  }
+
+  const participantIndex = data.participant.findIndex((participant) =>
+    sameId(participant.id, participantId)
+  );
+
+  return participantIndex >= 0 ? participantIndex + 1 : null;
+}
+
 export function getMatchWinnerId(match: DoubleEliminationMatch) {
   if (match.opponent1?.result === "win") {
     return match.opponent1.id;
@@ -80,7 +95,41 @@ function getRoundLabel(
     return section === "upper" ? "Upper Final" : "Lower Final";
   }
 
+  if (roundNumber === roundCount - 1) {
+    return section === "upper" ? "Upper Semi Finals" : "Lower Semi Final";
+  }
+
+  if (section === "upper" && roundNumber === 1) {
+    return "Opening Round";
+  }
+
   return `${section === "upper" ? "Upper" : "Lower"} R${roundNumber}`;
+}
+
+export function isAutomaticByeMatch(match: DoubleEliminationMatch) {
+  const firstParticipantIsSet =
+    match.opponent1?.id !== null && match.opponent1?.id !== undefined;
+  const secondParticipantIsSet =
+    match.opponent2?.id !== null && match.opponent2?.id !== undefined;
+  const hasAutomaticWinner =
+    match.opponent1?.result === "win" || match.opponent2?.result === "win";
+
+  return (
+    hasAutomaticWinner && firstParticipantIsSet !== secondParticipantIsSet
+  );
+}
+
+export function getAutomaticByeParticipantIds(data: DoubleEliminationData) {
+  return new Set(
+    data.match
+      .filter(isAutomaticByeMatch)
+      .map(getMatchWinnerId)
+      .filter(
+        (participantId): participantId is number | string =>
+          participantId !== null
+      )
+      .map(String)
+  );
 }
 
 export function getBracketSections(

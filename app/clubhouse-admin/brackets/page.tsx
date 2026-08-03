@@ -478,7 +478,7 @@ export default async function BracketAdminPage({
               required
             />
             <p className="mt-2 text-sm text-zinc-400">
-              2 to 16 players. The order entered is the seed order; uneven fields receive automatic BYEs.
+              2 to 16 players. The order entered is the seed order; the highest seeds receive any automatic opening-round BYEs.
             </p>
           </div>
           <div className="flex flex-wrap gap-5">

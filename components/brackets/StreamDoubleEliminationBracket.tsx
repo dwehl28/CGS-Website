@@ -11,10 +11,13 @@ import {
 
 import {
   BRACKET_MATCH_COMPLETED,
+  getAutomaticByeParticipantIds,
   getBracketChampion,
   getBracketSections,
   getMatchWinnerId,
   getParticipantName,
+  getParticipantSeed,
+  isAutomaticByeMatch,
   isActionableMatch,
   type BracketRoundView,
   type BracketSectionView,
@@ -62,6 +65,7 @@ function BracketMatch({
   match: DoubleEliminationMatch;
 }) {
   const winnerId = getMatchWinnerId(match);
+  const byeParticipantIds = getAutomaticByeParticipantIds(bracket.bracketData);
   const opponents = [match.opponent1, match.opponent2];
   const isReady = isActionableMatch(match);
   const isComplete = match.status === BRACKET_MATCH_COMPLETED;
@@ -80,6 +84,15 @@ function BracketMatch({
         );
         const isWinner =
           winnerId !== null && String(winnerId) === String(opponent?.id);
+        const participantSeed = getParticipantSeed(
+          bracket.bracketData,
+          opponent?.id
+        );
+        const isWaitingAfterBye =
+          match.status === 1 &&
+          opponent?.id !== null &&
+          opponent?.id !== undefined &&
+          byeParticipantIds.has(String(opponent.id));
 
         return (
           <div
@@ -87,10 +100,14 @@ function BracketMatch({
             key={`${String(match.id)}-${index}`}
           >
             <span className="de-stream-seed">
-              {opponent?.position ?? (participantName === "TBD" ? "-" : "")}
+              {participantSeed ??
+                opponent?.position ??
+                (participantName === "TBD" ? "-" : "")}
             </span>
             <strong>{participantName}</strong>
-            <span className="de-stream-result">{isWinner ? "W" : ""}</span>
+            <span className="de-stream-result">
+              {isWinner ? "W" : isWaitingAfterBye ? "BYE" : ""}
+            </span>
           </div>
         );
       })}
@@ -196,7 +213,18 @@ export default function StreamDoubleEliminationBracket({
   const [bracket, setBracket] = useState(initialBracket);
   const [syncState, setSyncState] = useState<SyncState>("connecting");
   const sections = useMemo(
-    () => getBracketSections(bracket.bracketData),
+    () =>
+      getBracketSections(bracket.bracketData).map((section) => ({
+        ...section,
+        rounds: section.rounds
+          .map((round) => ({
+            ...round,
+            matches: round.matches.filter(
+              (match) => !isAutomaticByeMatch(match)
+            ),
+          }))
+          .filter((round) => round.matches.length > 0),
+      })),
     [bracket.bracketData]
   );
   const upperSection = sections.find((section) => section.key === "upper");

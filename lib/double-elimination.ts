@@ -99,16 +99,21 @@ export async function generateDoubleEliminationData(
 
   const storage = new InMemoryDatabase();
   const manager = new BracketsManager(storage);
+  const size = getBracketSize(names.length);
+  const seededField = [
+    ...names,
+    ...Array<string | null>(size - names.length).fill(null),
+  ];
 
   await manager.create.stage({
     tournamentId: 0,
     name: title,
     type: "double_elimination",
-    seeding: names,
+    seeding: seededField,
     settings: {
-      size: getBracketSize(names.length),
+      size,
       seedOrdering: ["inner_outer"],
-      balanceByes: true,
+      balanceByes: false,
       grandFinal: "double",
     },
   });
