@@ -28,9 +28,18 @@ import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 type StreamDoubleEliminationBracketProps = {
   initialBracket: DoubleEliminationBracket;
+  initialView: StreamBracketView;
 };
 
 type SyncState = "connecting" | "connected" | "polling";
+type StreamBracketView = "overview" | "upper" | "lower" | "live";
+
+const streamViewLabels: Record<StreamBracketView, string> = {
+  overview: "Full bracket",
+  upper: "Upper bracket",
+  lower: "Lower bracket",
+  live: "Matches now",
+};
 
 function formatUpdatedAt(value: string) {
   const date = new Date(value);
@@ -207,8 +216,145 @@ function FinalsLane({
   );
 }
 
+function LiveMatchCard({
+  bracket,
+  match,
+  sectionLabel,
+  roundLabel,
+  index,
+}: {
+  bracket: DoubleEliminationBracket;
+  match: DoubleEliminationMatch;
+  sectionLabel: string;
+  roundLabel: string;
+  index: number;
+}) {
+  const opponents = [match.opponent1, match.opponent2];
+
+  return (
+    <article className="de-stream-live-match">
+      <div className="de-stream-live-match-head">
+        <span>Match {index + 1}</span>
+        <strong>
+          {sectionLabel} · {roundLabel}
+        </strong>
+      </div>
+      <div className="de-stream-live-players">
+        {opponents.map((opponent, opponentIndex) => {
+          const name = getParticipantName(bracket.bracketData, opponent?.id);
+          const seed = getParticipantSeed(bracket.bracketData, opponent?.id);
+
+          return (
+            <div key={`${String(match.id)}-${opponentIndex}`}>
+              <span>{seed ?? "-"}</span>
+              <strong>{name}</strong>
+            </div>
+          );
+        })}
+      </div>
+      <div className="de-stream-live-versus">VS</div>
+    </article>
+  );
+}
+
+function LiveMatchesView({
+  bracket,
+  sections,
+  champion,
+}: {
+  bracket: DoubleEliminationBracket;
+  sections: BracketSectionView[];
+  champion: string | null;
+}) {
+  const matchContext = sections.flatMap((section) =>
+    section.rounds.flatMap((round) =>
+      round.matches.map((match) => ({
+        match,
+        sectionLabel: section.label,
+        roundLabel: round.label,
+      }))
+    )
+  );
+  const readyMatches = matchContext.filter(({ match }) =>
+    isActionableMatch(match)
+  );
+  const decidedMatches = matchContext.filter(
+    ({ match }) => getMatchWinnerId(match) !== null
+  ).length;
+  const totalMatches = matchContext.length;
+  const progress =
+    totalMatches > 0 ? Math.round((decidedMatches / totalMatches) * 100) : 0;
+
+  return (
+    <div className="de-stream-live-board">
+      <section className="de-stream-live-main">
+        <div className="de-stream-live-title">
+          <div>
+            <span>Competition desk</span>
+            <h2>{champion ? "Competition complete" : "Ready to play"}</h2>
+          </div>
+          <strong>
+            {readyMatches.length} match{readyMatches.length === 1 ? "" : "es"} ready
+          </strong>
+        </div>
+
+        <div className="de-stream-live-grid">
+          {readyMatches.length > 0 ? (
+            readyMatches.slice(0, 3).map((context, index) => (
+              <LiveMatchCard
+                key={String(context.match.id)}
+                bracket={bracket}
+                match={context.match}
+                sectionLabel={context.sectionLabel}
+                roundLabel={context.roundLabel}
+                index={index}
+              />
+            ))
+          ) : (
+            <div className="de-stream-live-waiting">
+              <span>{champion ? "Champion" : "Bracket update"}</span>
+              <strong>{champion || "Waiting for the next result"}</strong>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <aside className="de-stream-progress">
+        <div>
+          <span>Bracket progress</span>
+          <strong>{progress}%</strong>
+        </div>
+        <div className="de-stream-progress-track">
+          <span style={{ width: `${progress}%` }} />
+        </div>
+        <dl>
+          <div>
+            <dt>Players</dt>
+            <dd>{bracket.participantCount}</dd>
+          </div>
+          <div>
+            <dt>Results in</dt>
+            <dd>
+              {decidedMatches}/{totalMatches}
+            </dd>
+          </div>
+          <div>
+            <dt>Format</dt>
+            <dd>Double elim</dd>
+          </div>
+        </dl>
+        <div className={`de-stream-progress-champion${champion ? " is-decided" : ""}`}>
+          <span>{champion ? "Champion" : "Still alive"}</span>
+          <strong>{champion || "Two losses to exit"}</strong>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
 export default function StreamDoubleEliminationBracket({
   initialBracket,
+  initialView,
 }: StreamDoubleEliminationBracketProps) {
   const [bracket, setBracket] = useState(initialBracket);
   const [syncState, setSyncState] = useState<SyncState>("connecting");
@@ -311,7 +457,7 @@ export default function StreamDoubleEliminationBracket({
       className="de-stream-canvas"
       aria-label={`${bracket.title} double-elimination bracket`}
     >
-      <div className="de-stream-frame">
+      <div className={`de-stream-frame is-${initialView}`}>
         <header className="de-stream-header">
           <div className="de-stream-brand">
             <Image
@@ -329,6 +475,9 @@ export default function StreamDoubleEliminationBracket({
           </div>
 
           <div className="de-stream-header-meta">
+            <span className="de-stream-view-label">
+              {streamViewLabels[initialView]}
+            </span>
             <span className={bracket.isLive ? "is-live" : ""}>
               {bracket.isLive ? "Live" : bracket.statusLabel}
             </span>
@@ -338,15 +487,31 @@ export default function StreamDoubleEliminationBracket({
           </div>
         </header>
 
-        <div className="de-stream-layout">
-          <BracketLane bracket={bracket} section={upperSection} />
-          <BracketLane bracket={bracket} section={lowerSection} />
-          <FinalsLane
+        {initialView === "live" ? (
+          <LiveMatchesView
             bracket={bracket}
-            section={finalSection}
+            sections={sections}
             champion={champion}
           />
-        </div>
+        ) : (
+          <div
+            className={`de-stream-layout${
+              initialView === "overview" ? "" : " is-focus"
+            }`}
+          >
+            {initialView === "overview" || initialView === "upper" ? (
+              <BracketLane bracket={bracket} section={upperSection} />
+            ) : null}
+            {initialView === "overview" || initialView === "lower" ? (
+              <BracketLane bracket={bracket} section={lowerSection} />
+            ) : null}
+            <FinalsLane
+              bracket={bracket}
+              section={finalSection}
+              champion={champion}
+            />
+          </div>
+        )}
       </div>
     </section>
   );

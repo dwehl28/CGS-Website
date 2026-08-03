@@ -8,6 +8,9 @@ type StreamBracketPageProps = {
   params: Promise<{
     slug: string;
   }>;
+  searchParams: Promise<{
+    view?: string;
+  }>;
 };
 
 export const dynamic = "force-dynamic";
@@ -29,9 +32,17 @@ export async function generateMetadata({
 
 export default async function StreamBracketPage({
   params,
+  searchParams,
 }: StreamBracketPageProps) {
   const { slug } = await params;
+  const { view: requestedView } = await searchParams;
   const bracket = await getPublishedDoubleEliminationBracketBySlug(slug);
+  const view =
+    requestedView === "upper" ||
+    requestedView === "lower" ||
+    requestedView === "live"
+      ? requestedView
+      : "overview";
 
   if (!bracket) {
     notFound();
@@ -39,7 +50,10 @@ export default async function StreamBracketPage({
 
   return (
     <main className="stream-double-elimination-page">
-      <StreamDoubleEliminationBracket initialBracket={bracket} />
+      <StreamDoubleEliminationBracket
+        initialBracket={bracket}
+        initialView={view}
+      />
     </main>
   );
 }

@@ -193,13 +193,37 @@ function BracketController({ bracket }: { bracket: DoubleEliminationBracket }) {
               {champion ? `Champion: ${champion}` : bracket.statusLabel}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex max-w-2xl flex-wrap items-center justify-end gap-2">
+            <span className="mr-1 text-xs font-bold uppercase text-zinc-500">
+              OBS views
+            </span>
             <Link
               href={`/stream/brackets/${bracket.slug}`}
               target="_blank"
               className="btn-primary"
             >
-              Open stream asset
+              Overview
+            </Link>
+            <Link
+              href={`/stream/brackets/${bracket.slug}?view=upper`}
+              target="_blank"
+              className="btn-secondary"
+            >
+              Upper
+            </Link>
+            <Link
+              href={`/stream/brackets/${bracket.slug}?view=lower`}
+              target="_blank"
+              className="btn-secondary"
+            >
+              Lower
+            </Link>
+            <Link
+              href={`/stream/brackets/${bracket.slug}?view=live`}
+              target="_blank"
+              className="btn-secondary"
+            >
+              Matches now
             </Link>
             <Link
               href={`/api/brackets/${bracket.slug}`}

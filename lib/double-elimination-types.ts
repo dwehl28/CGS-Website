@@ -111,11 +111,12 @@ export function isAutomaticByeMatch(match: DoubleEliminationMatch) {
     match.opponent1?.id !== null && match.opponent1?.id !== undefined;
   const secondParticipantIsSet =
     match.opponent2?.id !== null && match.opponent2?.id !== undefined;
-  const hasAutomaticWinner =
-    match.opponent1?.result === "win" || match.opponent2?.result === "win";
+  const firstOpponentHasAutomaticWin = match.opponent1?.result === "win";
+  const secondOpponentHasAutomaticWin = match.opponent2?.result === "win";
 
   return (
-    hasAutomaticWinner && firstParticipantIsSet !== secondParticipantIsSet
+    firstOpponentHasAutomaticWin !== secondOpponentHasAutomaticWin &&
+    !(firstParticipantIsSet && secondParticipantIsSet)
   );
 }
 
