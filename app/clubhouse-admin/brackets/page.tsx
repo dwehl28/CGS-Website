@@ -226,6 +226,20 @@ function BracketController({ bracket }: { bracket: DoubleEliminationBracket }) {
               Matches now
             </Link>
             <Link
+              href={`/stream/brackets/${bracket.slug}?view=banner`}
+              target="_blank"
+              className="btn-secondary"
+            >
+              Lower third
+            </Link>
+            <Link
+              href={`/stream/brackets/${bracket.slug}?view=portrait`}
+              target="_blank"
+              className="btn-secondary"
+            >
+              Portrait roll
+            </Link>
+            <Link
               href={`/api/brackets/${bracket.slug}`}
               target="_blank"
               className="btn-secondary"

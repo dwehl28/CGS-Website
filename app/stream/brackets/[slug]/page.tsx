@@ -40,7 +40,9 @@ export default async function StreamBracketPage({
   const view =
     requestedView === "upper" ||
     requestedView === "lower" ||
-    requestedView === "live"
+    requestedView === "live" ||
+    requestedView === "banner" ||
+    requestedView === "portrait"
       ? requestedView
       : "overview";
 
@@ -49,7 +51,7 @@ export default async function StreamBracketPage({
   }
 
   return (
-    <main className="stream-double-elimination-page">
+    <main className={`stream-double-elimination-page is-${view}`}>
       <StreamDoubleEliminationBracket
         initialBracket={bracket}
         initialView={view}

@@ -32,13 +32,27 @@ type StreamDoubleEliminationBracketProps = {
 };
 
 type SyncState = "connecting" | "connected" | "polling";
-type StreamBracketView = "overview" | "upper" | "lower" | "live";
+type StreamBracketView =
+  | "overview"
+  | "upper"
+  | "lower"
+  | "live"
+  | "banner"
+  | "portrait";
+
+type StreamMatchContext = {
+  match: DoubleEliminationMatch;
+  sectionLabel: string;
+  roundLabel: string;
+};
 
 const streamViewLabels: Record<StreamBracketView, string> = {
   overview: "Full bracket",
   upper: "Upper bracket",
   lower: "Lower bracket",
   live: "Matches now",
+  banner: "Lower third",
+  portrait: "Portrait roll",
 };
 
 function formatUpdatedAt(value: string) {
@@ -64,6 +78,34 @@ function getSyncLabel(syncState: SyncState) {
   }
 
   return "Connecting";
+}
+
+function getMatchContext(sections: BracketSectionView[]) {
+  return sections.flatMap((section) =>
+    section.rounds.flatMap((round) =>
+      round.matches.map((match) => ({
+        match,
+        sectionLabel: section.label,
+        roundLabel: round.label,
+      }))
+    )
+  );
+}
+
+function getBracketProgress(matchContext: StreamMatchContext[]) {
+  const decidedMatches = matchContext.filter(
+    ({ match }) => getMatchWinnerId(match) !== null
+  ).length;
+  const totalMatches = matchContext.length;
+
+  return {
+    decidedMatches,
+    totalMatches,
+    percentage:
+      totalMatches > 0
+        ? Math.round((decidedMatches / totalMatches) * 100)
+        : 0,
+  };
 }
 
 function BracketMatch({
@@ -266,24 +308,12 @@ function LiveMatchesView({
   sections: BracketSectionView[];
   champion: string | null;
 }) {
-  const matchContext = sections.flatMap((section) =>
-    section.rounds.flatMap((round) =>
-      round.matches.map((match) => ({
-        match,
-        sectionLabel: section.label,
-        roundLabel: round.label,
-      }))
-    )
-  );
+  const matchContext = getMatchContext(sections);
   const readyMatches = matchContext.filter(({ match }) =>
     isActionableMatch(match)
   );
-  const decidedMatches = matchContext.filter(
-    ({ match }) => getMatchWinnerId(match) !== null
-  ).length;
-  const totalMatches = matchContext.length;
-  const progress =
-    totalMatches > 0 ? Math.round((decidedMatches / totalMatches) * 100) : 0;
+  const { decidedMatches, totalMatches, percentage } =
+    getBracketProgress(matchContext);
 
   return (
     <div className="de-stream-live-board">
@@ -322,10 +352,10 @@ function LiveMatchesView({
       <aside className="de-stream-progress">
         <div>
           <span>Bracket progress</span>
-          <strong>{progress}%</strong>
+          <strong>{percentage}%</strong>
         </div>
         <div className="de-stream-progress-track">
-          <span style={{ width: `${progress}%` }} />
+          <span style={{ width: `${percentage}%` }} />
         </div>
         <dl>
           <div>
@@ -352,12 +382,274 @@ function LiveMatchesView({
   );
 }
 
+function BannerMatch({
+  bracket,
+  context,
+  index,
+}: {
+  bracket: DoubleEliminationBracket;
+  context: StreamMatchContext;
+  index: number;
+}) {
+  const opponents = [context.match.opponent1, context.match.opponent2];
+
+  return (
+    <article className="de-banner-match">
+      <div className="de-banner-match-label">
+        <span>Next {index + 1}</span>
+        <strong>{context.roundLabel}</strong>
+      </div>
+      <div className="de-banner-matchup">
+        {opponents.map((opponent, opponentIndex) => (
+          <div key={`${String(context.match.id)}-${opponentIndex}`}>
+            <span>
+              {getParticipantSeed(bracket.bracketData, opponent?.id) ?? "-"}
+            </span>
+            <strong>
+              {getParticipantName(bracket.bracketData, opponent?.id)}
+            </strong>
+          </div>
+        ))}
+        <small>VS</small>
+      </div>
+    </article>
+  );
+}
+
+function StreamBracketBanner({
+  bracket,
+  sections,
+  champion,
+  syncState,
+}: {
+  bracket: DoubleEliminationBracket;
+  sections: BracketSectionView[];
+  champion: string | null;
+  syncState: SyncState;
+}) {
+  const matchContext = getMatchContext(sections);
+  const readyMatches = matchContext.filter(({ match }) =>
+    isActionableMatch(match)
+  );
+  const { percentage } = getBracketProgress(matchContext);
+
+  return (
+    <div className="de-banner-frame">
+      <section className="de-banner-brand">
+        <Image
+          src="/cgs-logo.png"
+          alt="Crossodog Golf Society"
+          width={74}
+          height={74}
+          priority
+        />
+        <div>
+          <span>CGS double elimination</span>
+          <h1>{bracket.title}</h1>
+          <strong>{bracket.isLive ? "Live now" : bracket.statusLabel}</strong>
+        </div>
+      </section>
+
+      <div className="de-banner-matches">
+        {readyMatches.length > 0 ? (
+          readyMatches.slice(0, 3).map((context, index) => (
+            <BannerMatch
+              key={String(context.match.id)}
+              bracket={bracket}
+              context={context}
+              index={index}
+            />
+          ))
+        ) : (
+          <div className="de-banner-waiting">
+            <span>{champion ? "Champion" : "Bracket update"}</span>
+            <strong>{champion || "Waiting for the next match"}</strong>
+          </div>
+        )}
+      </div>
+
+      <aside className="de-banner-status">
+        <span>{getSyncLabel(syncState)}</span>
+        <strong>{percentage}%</strong>
+        <small>Bracket complete</small>
+      </aside>
+    </div>
+  );
+}
+
+function PortraitMatchSlide({
+  bracket,
+  context,
+  position,
+  total,
+}: {
+  bracket: DoubleEliminationBracket;
+  context: StreamMatchContext;
+  position: number;
+  total: number;
+}) {
+  const opponents = [context.match.opponent1, context.match.opponent2];
+
+  return (
+    <div className="de-portrait-slide de-portrait-match-slide">
+      <div className="de-portrait-slide-title">
+        <span>
+          Ready match {position} of {total}
+        </span>
+        <h2>{context.roundLabel}</h2>
+        <strong>{context.sectionLabel}</strong>
+      </div>
+
+      <div className="de-portrait-matchup">
+        {opponents.map((opponent, opponentIndex) => (
+          <div key={`${String(context.match.id)}-${opponentIndex}`}>
+            <span>
+              Seed {getParticipantSeed(bracket.bracketData, opponent?.id) ?? "-"}
+            </span>
+            <strong>
+              {getParticipantName(bracket.bracketData, opponent?.id)}
+            </strong>
+          </div>
+        ))}
+        <small>VS</small>
+      </div>
+    </div>
+  );
+}
+
+function PortraitSummarySlide({
+  matchContext,
+  champion,
+}: {
+  matchContext: StreamMatchContext[];
+  champion: string | null;
+}) {
+  const { decidedMatches, totalMatches, percentage } =
+    getBracketProgress(matchContext);
+  const sectionProgress = ["Upper bracket", "Lower bracket", "Finals"].map(
+    (sectionLabel) => {
+      const matches = matchContext.filter(
+        (context) => context.sectionLabel === sectionLabel
+      );
+      return {
+        label: sectionLabel,
+        decided: matches.filter(
+          ({ match }) => getMatchWinnerId(match) !== null
+        ).length,
+        total: matches.length,
+      };
+    }
+  );
+
+  return (
+    <div className="de-portrait-slide de-portrait-summary-slide">
+      <div className="de-portrait-slide-title">
+        <span>Competition progress</span>
+        <h2>{champion ? "Champion decided" : `${percentage}% complete`}</h2>
+        <strong>
+          {decidedMatches} of {totalMatches} results recorded
+        </strong>
+      </div>
+
+      <div className="de-portrait-progress-track">
+        <span style={{ height: `${percentage}%` }} />
+      </div>
+
+      <div className="de-portrait-section-progress">
+        {sectionProgress.map((section) => (
+          <div key={section.label}>
+            <span>{section.label}</span>
+            <strong>
+              {section.decided}/{section.total}
+            </strong>
+          </div>
+        ))}
+      </div>
+
+      <div className={`de-portrait-champion${champion ? " is-decided" : ""}`}>
+        <span>{champion ? "Champion" : "Format"}</span>
+        <strong>{champion || "Two losses to exit"}</strong>
+      </div>
+    </div>
+  );
+}
+
+function StreamBracketPortrait({
+  bracket,
+  sections,
+  champion,
+  syncState,
+  slideIndex,
+}: {
+  bracket: DoubleEliminationBracket;
+  sections: BracketSectionView[];
+  champion: string | null;
+  syncState: SyncState;
+  slideIndex: number;
+}) {
+  const matchContext = getMatchContext(sections);
+  const readyMatches = matchContext.filter(({ match }) =>
+    isActionableMatch(match)
+  );
+  const slideCount = readyMatches.length + 1;
+  const normalizedSlideIndex = slideIndex % slideCount;
+  const activeMatch = readyMatches[normalizedSlideIndex] ?? null;
+
+  return (
+    <div className="de-portrait-frame">
+      <header className="de-portrait-header">
+        <Image
+          src="/cgs-logo.png"
+          alt="Crossodog Golf Society"
+          width={68}
+          height={68}
+          priority
+        />
+        <div>
+          <span>CGS live bracket</span>
+          <h1>{bracket.title}</h1>
+        </div>
+        <strong>{bracket.isLive ? "Live" : "Ready"}</strong>
+      </header>
+
+      <div className="de-portrait-stage" key={normalizedSlideIndex}>
+        {activeMatch ? (
+          <PortraitMatchSlide
+            bracket={bracket}
+            context={activeMatch}
+            position={normalizedSlideIndex + 1}
+            total={readyMatches.length}
+          />
+        ) : (
+          <PortraitSummarySlide
+            matchContext={matchContext}
+            champion={champion}
+          />
+        )}
+      </div>
+
+      <footer className="de-portrait-footer">
+        <div>
+          {Array.from({ length: slideCount }, (_, index) => (
+            <span
+              className={index === normalizedSlideIndex ? "is-active" : ""}
+              key={index}
+            />
+          ))}
+        </div>
+        <strong>{getSyncLabel(syncState)}</strong>
+      </footer>
+    </div>
+  );
+}
+
 export default function StreamDoubleEliminationBracket({
   initialBracket,
   initialView,
 }: StreamDoubleEliminationBracketProps) {
   const [bracket, setBracket] = useState(initialBracket);
   const [syncState, setSyncState] = useState<SyncState>("connecting");
+  const [portraitSlideIndex, setPortraitSlideIndex] = useState(0);
   const sections = useMemo(
     () =>
       getBracketSections(bracket.bracketData).map((section) => ({
@@ -377,6 +669,9 @@ export default function StreamDoubleEliminationBracket({
   const lowerSection = sections.find((section) => section.key === "lower");
   const finalSection = sections.find((section) => section.key === "final");
   const champion = getBracketChampion(bracket.bracketData);
+  const portraitSlideCount =
+    getMatchContext(sections).filter(({ match }) => isActionableMatch(match))
+      .length + 1;
 
   async function refreshBracket() {
     try {
@@ -448,16 +743,46 @@ export default function StreamDoubleEliminationBracket({
     };
   }, [initialBracket.id]);
 
+  useEffect(() => {
+    if (initialView !== "portrait" || portraitSlideCount <= 1) {
+      return;
+    }
+
+    const slideTimer = window.setInterval(() => {
+      setPortraitSlideIndex(
+        (currentIndex) => (currentIndex + 1) % portraitSlideCount
+      );
+    }, 7000);
+
+    return () => window.clearInterval(slideTimer);
+  }, [initialView, portraitSlideCount]);
+
   if (!upperSection || !lowerSection || !finalSection) {
     return null;
   }
 
   return (
     <section
-      className="de-stream-canvas"
+      className={`de-stream-canvas is-${initialView}`}
       aria-label={`${bracket.title} double-elimination bracket`}
     >
-      <div className={`de-stream-frame is-${initialView}`}>
+      {initialView === "banner" ? (
+        <StreamBracketBanner
+          bracket={bracket}
+          sections={sections}
+          champion={champion}
+          syncState={syncState}
+        />
+      ) : initialView === "portrait" ? (
+        <StreamBracketPortrait
+          bracket={bracket}
+          sections={sections}
+          champion={champion}
+          syncState={syncState}
+          slideIndex={portraitSlideIndex}
+        />
+      ) : (
+        <div className={`de-stream-frame is-${initialView}`}>
         <header className="de-stream-header">
           <div className="de-stream-brand">
             <Image
@@ -512,7 +837,8 @@ export default function StreamDoubleEliminationBracket({
             />
           </div>
         )}
-      </div>
+        </div>
+      )}
     </section>
   );
 }
