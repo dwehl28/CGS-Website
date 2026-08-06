@@ -18,6 +18,7 @@ import {
 
 import Par3Countdown from "@/components/par3/Par3Countdown";
 import Par3LiveTournament from "@/components/par3/Par3LiveTournament";
+import Par3MotionStripes from "@/components/par3/Par3MotionStripes";
 import { getPublicPar3Snapshot } from "@/lib/par3-showdown";
 import { absoluteUrl } from "@/lib/seo";
 
@@ -71,6 +72,7 @@ export default async function Home() {
     <main className="par3-home">
       <section className="par3-hero">
         <div className="par3-hero-shade" />
+        <Par3MotionStripes tone="mixed" />
         <div className="par3-hero-inner">
           <div className="par3-hero-copy">
             <div className="par3-status-line">
@@ -178,6 +180,7 @@ export default async function Home() {
       </section>
 
       <section id="live" className="par3-section par3-live-section">
+        <Par3MotionStripes tone="cyan" />
         <div className="par3-section-heading">
           <div>
             <p className="par3-kicker"><Radio /> Tournament updates</p>
@@ -192,6 +195,7 @@ export default async function Home() {
       </section>
 
       <section id="watch" className="par3-watch-band">
+        <Par3MotionStripes tone="gold" />
         <div className="par3-watch-inner">
           <div>
             <p className="par3-kicker"><Play /> Live coverage</p>
@@ -233,6 +237,7 @@ export default async function Home() {
       </section>
 
       <section id="format" className="par3-section par3-format-section">
+        <Par3MotionStripes tone="mixed" />
         <div className="par3-poster-wrap">
           <Image
             src="/par3/par3-format.png"
@@ -287,6 +292,7 @@ export default async function Home() {
       </section>
 
       <section id="enter" className="par3-entry-band">
+        <Par3MotionStripes tone="cyan" />
         <div className="par3-entry-inner">
           <div className="par3-entry-copy">
             <p className="par3-kicker"><CircleDollarSign /> Limited field</p>
