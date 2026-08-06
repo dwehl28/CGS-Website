@@ -85,7 +85,10 @@ export default async function Home() {
               className="par3-hero-logo"
               priority
             />
-            <h1>CGS Par 3 Showdown</h1>
+            <h1>
+              <span>CGS Par 3</span>
+              <strong>Showdown</strong>
+            </h1>
             <p className="par3-hero-offer">
               24 golfers. Six pools. Three-hole match play. One winner.
             </p>
@@ -121,6 +124,35 @@ export default async function Home() {
           </div>
         </div>
       </section>
+
+      <div className="par3-hype-ticker" aria-label="Par 3 Showdown highlights">
+        <div>
+          <span>24 golfers</span>
+          <i />
+          <span>6 pools</span>
+          <i />
+          <span>Cash prizes</span>
+          <i />
+          <span>Live commentary</span>
+          <i />
+          <span>3-hole match play</span>
+          <i />
+          <span>One champion</span>
+          <i />
+          <span aria-hidden="true">24 golfers</span>
+          <i aria-hidden="true" />
+          <span aria-hidden="true">6 pools</span>
+          <i aria-hidden="true" />
+          <span aria-hidden="true">Cash prizes</span>
+          <i aria-hidden="true" />
+          <span aria-hidden="true">Live commentary</span>
+          <i aria-hidden="true" />
+          <span aria-hidden="true">3-hole match play</span>
+          <i aria-hidden="true" />
+          <span aria-hidden="true">One champion</span>
+          <i aria-hidden="true" />
+        </div>
+      </div>
 
       <section className="par3-fact-strip" aria-label="Event summary">
         <div>

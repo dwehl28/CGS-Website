@@ -19,6 +19,11 @@ export default function SiteHeader() {
 
   return (
     <header className="par3-site-header">
+      <div className="par3-header-alert">
+        <span>CGS event of the year</span>
+        <strong>Saturday 12 September</strong>
+        <span>Live at The Tee Lounge</span>
+      </div>
       <div className="par3-header-inner">
         <Link href="/" className="par3-header-brand" onClick={() => setIsOpen(false)}>
           <Image
