@@ -5,7 +5,6 @@ import type { ReactNode } from "react";
 
 import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
-import SiteIntroOverlay from "@/components/SiteIntroOverlay";
 
 type SiteChromeProps = {
   children: ReactNode;
@@ -16,7 +15,8 @@ function isStreamAssetPath(pathname: string) {
     /^\/scoreboard\/[^/]+\/(?:stream|banner)\/?$/.test(pathname) ||
     /^\/stream\/ambrose\/[^/]+\/leaderboard\/?$/.test(pathname) ||
     /^\/stream\/ambrose\/[^/]+\/player\/[^/]+\/?$/.test(pathname) ||
-    /^\/stream\/brackets\/[^/]+\/?$/.test(pathname)
+    /^\/stream\/brackets\/[^/]+\/?$/.test(pathname) ||
+    /^\/stream\/par3-showdown\/?$/.test(pathname)
   );
 }
 
@@ -28,12 +28,15 @@ export default function SiteChrome({ children }: SiteChromeProps) {
     return <div className="site-shell stream-shell">{children}</div>;
   }
 
+  if (pathname.startsWith("/clubhouse-admin")) {
+    return <div className="site-shell admin-shell">{children}</div>;
+  }
+
   return (
     <div className="site-shell">
       <a href="#main-content" className="skip-link">
         Skip to content
       </a>
-      <SiteIntroOverlay />
       <SiteHeader />
       <div id="main-content">{children}</div>
       <SiteFooter />

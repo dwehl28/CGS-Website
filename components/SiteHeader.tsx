@@ -2,140 +2,83 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { ExternalLink, Menu, X } from "lucide-react";
 import { useState } from "react";
 
-import { events, navigationLinks, siteConfig } from "@/lib/site-content";
+const eventLinks = [
+  { href: "/#live", label: "Live" },
+  { href: "/#watch", label: "Watch" },
+  { href: "/#format", label: "Format" },
+  { href: "/#cgs", label: "About CGS" },
+];
 
-const featuredEvent = events[0];
+const shopUrl = "https://crossodoggolfs-shop.bigcartel.com";
 
 export default function SiteHeader() {
-  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-[rgba(16,32,51,0.1)] bg-[rgba(255,255,255,0.82)] backdrop-blur-xl">
-      <div className="mx-auto flex w-full max-w-[94rem] items-center justify-between gap-3 px-4 py-4 sm:gap-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-3">
+    <header className="par3-site-header">
+      <div className="par3-header-inner">
+        <Link href="/" className="par3-header-brand" onClick={() => setIsOpen(false)}>
           <Image
-            src="/cgs-logo.png"
-            alt="Crossodog Golf Society logo"
-            width={44}
-            height={44}
-            className="h-11 w-11 rounded-full border border-[rgba(16,32,51,0.12)] bg-white object-cover shadow-[0_10px_24px_rgba(16,32,51,0.08)]"
+            src="/par3/par3-logo.png"
+            alt="CGS Par 3"
+            width={58}
+            height={58}
             priority
           />
-          <div>
-            <p className="text-sm font-semibold text-[var(--ink)] md:text-base">
-              {siteConfig.name}
-            </p>
-            <p className="hidden text-xs text-[var(--muted-strong)] sm:block">
-              {siteConfig.tagline}
-            </p>
-          </div>
+          <span>
+            <strong>CGS Par 3 Showdown</strong>
+            <small>12 September 2026</small>
+          </span>
         </Link>
 
-        <nav className="hidden items-center gap-1 text-sm text-[var(--muted-strong)] lg:flex">
-          {navigationLinks.map((link) => {
-            const isActive =
-              pathname === link.href ||
-              (link.href !== "/" && pathname.startsWith(link.href));
-
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`nav-pill ${
-                  isActive
-                    ? "nav-pill-active"
-                    : "hover:bg-white hover:text-[var(--ink)]"
-                }`}
-              >
-                {link.label}
-              </Link>
-            );
-          })}
+        <nav className="par3-desktop-nav" aria-label="Par 3 event navigation">
+          {eventLinks.map((link) => (
+            <Link key={link.href} href={link.href}>
+              {link.label}
+            </Link>
+          ))}
         </nav>
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="hidden rounded-full border border-[rgba(16,32,51,0.1)] bg-white/70 px-3 py-2 text-[11px] uppercase tracking-[0.18em] text-[var(--muted-strong)] md:block">
-            {featuredEvent.titleWithDate}
-          </div>
+        <a
+          href={shopUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="par3-header-entry"
+        >
+          Buy entry <ExternalLink />
+        </a>
 
-          <Link
-            href="/scoreboard"
-            className="hidden rounded-full border border-[rgba(16,32,51,0.12)] bg-white/70 px-4 py-2 text-sm font-semibold text-[var(--ink)] hover:bg-white xl:inline-block"
-          >
-            Live Scores
-          </Link>
-
-          <Link
-            href="/membership"
-            className="hidden rounded-full bg-[var(--sun)] px-4 py-2 text-sm font-semibold text-slate-950 shadow-[0_12px_28px_rgba(255,190,24,0.18)] hover:bg-[#ffc843] sm:inline-block"
-          >
-            Join CGS
-          </Link>
-
-          <button
-            type="button"
-            className="rounded-full border border-[rgba(16,32,51,0.12)] bg-white/80 px-4 py-2 text-sm font-semibold text-[var(--ink)] md:hidden"
-            aria-expanded={isOpen}
-            aria-label={isOpen ? "Close menu" : "Open menu"}
-            onClick={() => setIsOpen((current) => !current)}
-          >
-            {isOpen ? "Close" : "Menu"}
-          </button>
-        </div>
+        <button
+          type="button"
+          className="par3-menu-button"
+          aria-expanded={isOpen}
+          aria-label={isOpen ? "Close menu" : "Open menu"}
+          onClick={() => setIsOpen((current) => !current)}
+        >
+          {isOpen ? <X /> : <Menu />}
+        </button>
       </div>
 
-      {isOpen && (
-        <div className="border-t border-[rgba(16,32,51,0.1)] bg-[rgba(255,255,255,0.96)] md:hidden">
-          <div className="mx-auto flex w-full max-w-[94rem] flex-col gap-2 px-4 py-4 sm:px-6">
-            <div className="mb-2 rounded-[1.2rem] border border-[rgba(16,32,51,0.1)] bg-white/70 px-4 py-3 text-sm text-[var(--body-copy)]">
-              {featuredEvent.titleWithDate}
-            </div>
-
-            {navigationLinks.map((link) => {
-              const isActive =
-                pathname === link.href ||
-                (link.href !== "/" && pathname.startsWith(link.href));
-
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setIsOpen(false)}
-                  className={`rounded-xl px-3 py-3 text-base ${
-                    isActive
-                      ? "bg-[var(--accent-soft)] text-[var(--ink)]"
-                      : "text-[var(--ink)] hover:bg-white"
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              );
-            })}
-
-            <Link
-              href="/membership"
-              onClick={() => setIsOpen(false)}
-              className="mt-2 inline-block rounded-full bg-[var(--sun)] px-4 py-3 text-center font-semibold text-slate-950"
-            >
-              Join CGS
+      {isOpen ? (
+        <nav className="par3-mobile-nav" aria-label="Mobile event navigation">
+          {eventLinks.map((link) => (
+            <Link key={link.href} href={link.href} onClick={() => setIsOpen(false)}>
+              {link.label}
             </Link>
-
-            <a
-              href={siteConfig.youtubeChannelUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => setIsOpen(false)}
-              className="mt-1 rounded-xl px-3 py-3 text-base text-[var(--ink)] hover:bg-white"
-            >
-              Watch CGS
-            </a>
-          </div>
-        </div>
-      )}
+          ))}
+          <a
+            href={shopUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setIsOpen(false)}
+          >
+            Buy entry <ExternalLink />
+          </a>
+        </nav>
+      ) : null}
     </header>
   );
 }

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const adminLinks = [
   { href: "/clubhouse-admin", label: "Dashboard" },
+  { href: "/clubhouse-admin/par3", label: "Par 3" },
   { href: "/clubhouse-admin/inbox", label: "Inbox" },
   { href: "/clubhouse-admin/scoreboard", label: "Scoreboards" },
   { href: "/clubhouse-admin/round-stats", label: "Round Stats" },
