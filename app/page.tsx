@@ -72,7 +72,7 @@ export default async function Home() {
     <main className="par3-home">
       <section className="par3-hero">
         <div className="par3-hero-shade" />
-        <Par3MotionStripes tone="mixed" />
+        <Par3MotionStripes tone="mixed" words={["PAR 3", "SHOWDOWN"]} />
         <div className="par3-hero-inner">
           <div className="par3-hero-copy">
             <div className="par3-status-line">
@@ -180,7 +180,11 @@ export default async function Home() {
       </section>
 
       <section id="live" className="par3-section par3-live-section">
-        <Par3MotionStripes tone="cyan" />
+        <Par3MotionStripes tone="cyan" words={["LIVE", "RESULTS"]} />
+        <div className="par3-section-marker" aria-hidden="true">
+          <span>01</span>
+          <strong>Live centre</strong>
+        </div>
         <div className="par3-section-heading">
           <div>
             <p className="par3-kicker"><Radio /> Tournament updates</p>
@@ -195,7 +199,11 @@ export default async function Home() {
       </section>
 
       <section id="watch" className="par3-watch-band">
-        <Par3MotionStripes tone="gold" />
+        <Par3MotionStripes tone="gold" words={["ON AIR", "CGS"]} />
+        <div className="par3-section-marker" aria-hidden="true">
+          <span>02</span>
+          <strong>Broadcast</strong>
+        </div>
         <div className="par3-watch-inner">
           <div>
             <p className="par3-kicker"><Play /> Live coverage</p>
@@ -237,7 +245,11 @@ export default async function Home() {
       </section>
 
       <section id="format" className="par3-section par3-format-section">
-        <Par3MotionStripes tone="mixed" />
+        <Par3MotionStripes tone="mixed" words={["MATCH", "PLAY"]} />
+        <div className="par3-section-marker" aria-hidden="true">
+          <span>03</span>
+          <strong>Format</strong>
+        </div>
         <div className="par3-poster-wrap">
           <Image
             src="/par3/par3-format.png"
@@ -292,7 +304,11 @@ export default async function Home() {
       </section>
 
       <section id="enter" className="par3-entry-band">
-        <Par3MotionStripes tone="cyan" />
+        <Par3MotionStripes tone="cyan" words={["12 SEP", "READY"]} />
+        <div className="par3-section-marker" aria-hidden="true">
+          <span>04</span>
+          <strong>Enter</strong>
+        </div>
         <div className="par3-entry-inner">
           <div className="par3-entry-copy">
             <p className="par3-kicker"><CircleDollarSign /> Limited field</p>
