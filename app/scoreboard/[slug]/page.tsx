@@ -60,6 +60,9 @@ export default async function ScoreboardDetailPage({
             <Link href={`/scoreboard/${competition.slug}/banner`} className="btn-secondary">
               Banner ticker
             </Link>
+            <Link href={`/scoreboard/${competition.slug}/tv`} className="btn-secondary">
+              TV leaderboard
+            </Link>
             <Link href="/events" className="btn-secondary">
               View events
             </Link>

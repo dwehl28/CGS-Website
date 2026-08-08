@@ -14,7 +14,7 @@ type StreamScoreQuickControlsProps = {
   competition: CompetitionScoreboard;
 };
 
-const STREAM_TEAM_LIMIT = 6;
+const STREAM_TEAM_LIMIT = 8;
 
 function getScoreInputValue(score: number | null) {
   return score === null ? "" : score.toString();
@@ -124,11 +124,12 @@ export default function StreamScoreQuickControls({
       <div className="stream-control-header">
         <div>
           <p className="stream-control-kicker">Weekly stream control</p>
-          <h3>Top-six scoreboard controls</h3>
+          <h3>Top-eight scoreboard controls</h3>
           <p>
-            Update scores while the OBS browser sources are live. The portrait
-            overlay and rolling banner both show the top six rows, sorted
-            automatically by {getRankingDescription(competition.leaderboardMode)}.
+            Update scores while the browser sources are live. The portrait ladder
+            shows the top eight, the banner rolls the top six, and the TV source
+            rotates through the full field. All are sorted automatically by{" "}
+            {getRankingDescription(competition.leaderboardMode)}.
           </p>
         </div>
 
@@ -144,6 +145,12 @@ export default function StreamScoreQuickControls({
             className="btn-secondary"
           >
             Open banner asset
+          </Link>
+          <Link
+            href={`/scoreboard/${competition.slug}/tv`}
+            className="btn-secondary"
+          >
+            Open TV asset
           </Link>
           <Link href={`/scoreboard/${competition.slug}`} className="btn-secondary">
             Public board
@@ -185,7 +192,7 @@ export default function StreamScoreQuickControls({
         </div>
       ) : (
         <div className="quick-score-empty">
-          Add up to six player rows below, then this area becomes your live stream
+          Add up to eight player rows below, then this area becomes your live stream
           scoring desk.
         </div>
       )}
@@ -195,11 +202,12 @@ export default function StreamScoreQuickControls({
         <p>
           Keep the portrait OBS source at 407px wide x 1359px high, or use the
           banner source at 1920px wide x 180px high for a top or bottom ticker.
-          Both graphics are transparent stream assets.
+          The full-field TV source is 1920px x 1080px and rolls through every
+          player automatically.
           {remainingEntryCount > 0
             ? ` ${remainingEntryCount} extra row${
                 remainingEntryCount === 1 ? "" : "s"
-              } will stay off the stream overlay until they move into the top six.`
+              } will stay off the portrait ladder until they move into the top eight, but remain visible on the TV source.`
             : ""}
         </p>
       </div>

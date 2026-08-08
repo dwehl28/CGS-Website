@@ -245,6 +245,12 @@ export default async function ScoreboardAdminPage() {
                   >
                     OBS stream asset
                   </Link>
+                  <Link
+                    href={`/scoreboard/${competition.slug}/tv`}
+                    className="btn-secondary"
+                  >
+                    TV leaderboard
+                  </Link>
                 </div>
               </div>
 

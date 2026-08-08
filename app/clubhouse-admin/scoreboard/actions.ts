@@ -60,6 +60,7 @@ function revalidateScoreboardPaths(slug: string) {
   revalidatePath(`/scoreboard/${slug}`);
   revalidatePath(`/scoreboard/${slug}/stream`);
   revalidatePath(`/scoreboard/${slug}/banner`);
+  revalidatePath(`/scoreboard/${slug}/tv`);
   revalidatePath("/clubhouse-admin/scoreboard");
 }
 

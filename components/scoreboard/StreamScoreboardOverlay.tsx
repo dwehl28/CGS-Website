@@ -8,6 +8,7 @@ import type {
   CompetitionScoreEntry,
 } from "@/lib/scoreboards";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { useAnimatedRankOrder } from "@/components/scoreboard/useAnimatedRankOrder";
 
 type StreamScoreboardOverlayProps = {
   initialCompetition: CompetitionScoreboard;
@@ -49,7 +50,13 @@ function formatOverlayTime(value: string) {
   }).format(parsedDate);
 }
 
-function MemberMark({ entry }: { entry: CompetitionScoreEntry }) {
+function MemberMark({
+  entry,
+  className = "stream-member-mark",
+}: {
+  entry: CompetitionScoreEntry;
+  className?: string;
+}) {
   if (!entry.isCgsMember) {
     return null;
   }
@@ -60,7 +67,7 @@ function MemberMark({ entry }: { entry: CompetitionScoreEntry }) {
       alt=""
       width={28}
       height={28}
-      className="stream-member-mark"
+      className={className}
       aria-hidden="true"
     />
   );
@@ -71,11 +78,20 @@ export default function StreamScoreboardOverlay({
 }: StreamScoreboardOverlayProps) {
   const [competition, setCompetition] = useState(initialCompetition);
   const [syncState, setSyncState] = useState<LiveSyncState>("idle");
-  const visibleEntries = competition.entries.slice(0, 6);
+  const isSolosStableford = competition.leaderboardMode === "points";
+  const visibleEntries = competition.entries.slice(0, isSolosStableford ? 8 : 6);
   const leaderEntry = visibleEntries[0] ?? null;
+  const leaderCount = leaderEntry
+    ? competition.entries.filter(
+        (entry) => entry.scoreValue === leaderEntry.scoreValue
+      ).length
+    : 0;
   const primaryTitle = competition.title;
   const secondaryTitle =
     competition.roundLabel ?? competition.formatLabel ?? competition.statusLabel;
+  const registerRankRow = useAnimatedRankOrder(
+    visibleEntries.map((entry) => entry.id)
+  );
 
   async function refreshCompetition(slug: string) {
     try {
@@ -164,6 +180,99 @@ export default function StreamScoreboardOverlay({
     };
   }, [competition.id]);
 
+  if (isSolosStableford) {
+    return (
+      <section
+        className="stream-canvas solos-ladder-canvas"
+        aria-label={`${competition.title} Solos Stableford ladder`}
+      >
+        <div className="solos-ladder-board">
+          <header className="solos-ladder-header">
+            <Image
+              src="/cgs-logo.png"
+              alt="Crossodog Golf Society"
+              width={76}
+              height={76}
+              priority
+            />
+            <div className="solos-ladder-title">
+              <p>The Tee Lounge presents</p>
+              <strong>Solos Stableford</strong>
+              <span>{secondaryTitle}</span>
+            </div>
+            <div className={`solos-live-light is-${syncState}`} aria-label={getSyncLabel(syncState)}>
+              <span />
+              {competition.isLive ? "Live" : competition.statusLabel}
+            </div>
+          </header>
+
+          <div className="solos-ladder-ribbon">
+            <span>Weekly ladder</span>
+            <strong>{competition.location ?? "The Tee Lounge"}</strong>
+          </div>
+
+          <div className="solos-ladder-facts">
+            <div>
+              <span>Field</span>
+              <strong>{competition.entries.length}</strong>
+            </div>
+            <div>
+              <span>Lead score</span>
+              <strong>{leaderEntry?.scoreLabel ?? "--"}</strong>
+            </div>
+            <div>
+              <span>Leaders</span>
+              <strong>{leaderCount || "--"}</strong>
+            </div>
+          </div>
+
+          <div className="solos-ladder-table-head" aria-hidden="true">
+            <span>Pos</span>
+            <span>Player</span>
+            <span>Pts</span>
+          </div>
+
+          <div className="solos-ladder-rows">
+            {visibleEntries.length > 0 ? (
+              visibleEntries.map((entry, index) => (
+                <article
+                  key={entry.id}
+                  ref={(node) => registerRankRow(entry.id, node)}
+                  className={`solos-ladder-row ${
+                    index === 0 ? "is-leading" : ""
+                  }`}
+                >
+                  <span className="solos-ladder-position" key={entry.position}>
+                    {entry.position}
+                  </span>
+                  <span className="solos-ladder-player">
+                    <MemberMark entry={entry} className="solos-member-mark" />
+                    <span>
+                      <strong>{entry.playerName}</strong>
+                      <small>{entry.thruLabel ?? "Awaiting first round"}</small>
+                    </span>
+                  </span>
+                  <strong className="solos-ladder-score">{entry.scoreLabel}</strong>
+                </article>
+              ))
+            ) : (
+              <div className="solos-ladder-empty">
+                <span>Field loading</span>
+                Player scores will appear here
+              </div>
+            )}
+          </div>
+
+          <footer className="solos-ladder-footer">
+            <span>{getSyncLabel(syncState)}</span>
+            <strong>{formatOverlayTime(competition.updatedAt)}</strong>
+            <span>Top 8 shown</span>
+          </footer>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="stream-canvas" aria-label={`${competition.title} stream scoreboard`}>
       <div className="stream-board">
@@ -211,6 +320,7 @@ export default function StreamScoreboardOverlay({
               {visibleEntries.map((entry, index) => (
                 <div
                   key={entry.id}
+                  ref={(node) => registerRankRow(entry.id, node)}
                   className={`stream-row ${index === 0 ? "stream-row-leading" : ""}`}
                 >
                   <span className="stream-row-position">{entry.position}</span>

@@ -64,9 +64,9 @@ export default async function ScoreboardPage() {
             <h2 className="home-band-heading mt-5">OBS-ready scoreboards now live here.</h2>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--body-copy)]">
               Published scoreboards now include dedicated stream asset URLs. Use
-              the bright 407px by 1359px portrait board or the rolling 1920px by
-              180px banner ticker, both with up to six teams, live score updates,
-              and no website header or footer.
+              the 407px by 1359px portrait ladder, the rolling 1920px by 180px
+              banner, or the new 1920px by 1080px full-field TV leaderboard. All
+              receive live score updates without the website header or footer.
             </p>
             <div className="mt-7 flex flex-wrap gap-4">
               {firstCompetition ? (
@@ -83,6 +83,12 @@ export default async function ScoreboardPage() {
                   >
                     Preview banner ticker
                   </Link>
+                  <Link
+                    href={`/scoreboard/${firstCompetition.slug}/tv`}
+                    className="btn-secondary"
+                  >
+                    Preview TV leaderboard
+                  </Link>
                 </>
               ) : null}
               <Link href="/clubhouse-admin/scoreboard" className="btn-secondary">
@@ -97,12 +103,12 @@ export default async function ScoreboardPage() {
             </p>
             <div className="home-score-row">
               <span>URL</span>
-              <span>/scoreboard/[board]/stream or /banner</span>
+              <span>/scoreboard/[board]/stream, /banner or /tv</span>
               <span>OBS</span>
             </div>
             <div className="home-score-row">
               <span>Size</span>
-              <span>407x1359 portrait, 1920x180 banner</span>
+              <span>407x1359 portrait, 1920x180 banner, 1920x1080 TV</span>
               <span>OBS</span>
             </div>
             <div className="home-score-row">
@@ -206,6 +212,12 @@ export default async function ScoreboardPage() {
                     className="btn-secondary"
                   >
                     Banner ticker
+                  </Link>
+                  <Link
+                    href={`/scoreboard/${competition.slug}/tv`}
+                    className="btn-secondary"
+                  >
+                    TV leaderboard
                   </Link>
                   {competition.ctaLabel && competition.ctaHref ? (
                     competition.ctaHref.startsWith("/") ? (

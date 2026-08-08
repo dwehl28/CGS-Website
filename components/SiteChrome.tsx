@@ -12,7 +12,7 @@ type SiteChromeProps = {
 
 function isStreamAssetPath(pathname: string) {
   return (
-    /^\/scoreboard\/[^/]+\/(?:stream|banner)\/?$/.test(pathname) ||
+    /^\/scoreboard\/[^/]+\/(?:stream|banner|tv)\/?$/.test(pathname) ||
     /^\/stream\/ambrose\/[^/]+\/leaderboard\/?$/.test(pathname) ||
     /^\/stream\/ambrose\/[^/]+\/player\/[^/]+\/?$/.test(pathname) ||
     /^\/stream\/brackets\/[^/]+\/?$/.test(pathname) ||

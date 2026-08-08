@@ -4732,6 +4732,7 @@ h3 {
 
 body:has(.stream-overlay-page),
 body:has(.stream-banner-page),
+body:has(.solos-tv-page),
 body:has(.stream-double-elimination-page),
 body:has(.par3-stream-page) {
   overflow: hidden;
@@ -4740,6 +4741,7 @@ body:has(.par3-stream-page) {
 
 body:has(.stream-overlay-page)::before,
 body:has(.stream-banner-page)::before,
+body:has(.solos-tv-page)::before,
 body:has(.stream-double-elimination-page)::before,
 body:has(.par3-stream-page)::before {
   display: none;
@@ -6423,6 +6425,1097 @@ main.text-white {
   color: var(--ink);
   font-size: 1.25rem;
   font-weight: 1000;
+}
+
+.solos-ladder-canvas {
+  font-family: Arial, Helvetica, sans-serif;
+  color: #fff8ee;
+}
+
+.solos-ladder-board,
+.solos-ladder-board * {
+  box-sizing: border-box;
+}
+
+.solos-ladder-board {
+  position: relative;
+  display: grid;
+  grid-template-rows: 154px 44px 88px 28px minmax(0, 1fr) 44px;
+  width: 407px;
+  height: 1359px;
+  border: 2px solid #ff7a1a;
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(12, 9, 7, 0.16), rgba(8, 7, 6, 0.84)),
+    url("/scoreboard/solos-desert-bg.png") center / cover no-repeat,
+    #120b07;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 189, 116, 0.28),
+    0 18px 50px rgba(0, 0, 0, 0.38);
+  overflow: hidden;
+}
+
+.solos-ladder-board::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    repeating-linear-gradient(
+      118deg,
+      transparent 0 48px,
+      rgba(255, 112, 24, 0.08) 49px 51px,
+      transparent 52px 96px
+    ),
+    linear-gradient(90deg, rgba(255, 116, 22, 0.06), transparent 35% 68%, rgba(255, 116, 22, 0.08));
+  pointer-events: none;
+}
+
+.solos-ladder-board > * {
+  position: relative;
+  z-index: 1;
+}
+
+.solos-ladder-header {
+  display: grid;
+  grid-template-columns: 68px minmax(0, 1fr);
+  grid-template-rows: 1fr auto;
+  align-items: center;
+  gap: 0 12px;
+  border-bottom: 1px solid rgba(255, 148, 64, 0.36);
+  background: linear-gradient(100deg, rgba(10, 8, 7, 0.96), rgba(28, 14, 7, 0.78));
+  padding: 15px 16px 11px;
+}
+
+.solos-ladder-header > img {
+  grid-row: 1;
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  filter: drop-shadow(0 5px 12px rgba(0, 0, 0, 0.5));
+}
+
+.solos-ladder-title {
+  min-width: 0;
+}
+
+.solos-ladder-title p,
+.solos-ladder-title span,
+.solos-ladder-title strong {
+  display: block;
+  letter-spacing: 0;
+}
+
+.solos-ladder-title p {
+  color: #ff983d;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.solos-ladder-title strong {
+  margin-top: 5px;
+  overflow: hidden;
+  color: #fffaf3;
+  font-size: 25px;
+  font-weight: 1000;
+  line-height: 0.95;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.solos-ladder-title span {
+  margin-top: 7px;
+  overflow: hidden;
+  color: rgba(255, 240, 224, 0.68);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.solos-live-light {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  border: 1px solid rgba(255, 150, 69, 0.48);
+  background: rgba(0, 0, 0, 0.42);
+  color: rgba(255, 242, 229, 0.8);
+  padding: 5px 9px;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.solos-live-light > span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ff8128;
+  box-shadow: 0 0 12px rgba(255, 119, 26, 0.86);
+  animation: solosLivePulse 1.8s ease-in-out infinite;
+}
+
+.solos-ladder-ribbon {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  border-bottom: 1px solid rgba(255, 148, 64, 0.36);
+  background: #e95f0d;
+  color: #160c07;
+  padding: 0 14px;
+  text-transform: uppercase;
+}
+
+.solos-ladder-ribbon span {
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.solos-ladder-ribbon strong {
+  max-width: 62%;
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.solos-ladder-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-bottom: 1px solid rgba(255, 148, 64, 0.28);
+  background: rgba(13, 9, 7, 0.78);
+}
+
+.solos-ladder-facts > div {
+  display: grid;
+  align-content: center;
+  min-width: 0;
+  border-right: 1px solid rgba(255, 148, 64, 0.24);
+  padding: 9px 12px;
+}
+
+.solos-ladder-facts > div:last-child {
+  border-right: 0;
+}
+
+.solos-ladder-facts span,
+.solos-ladder-facts strong {
+  display: block;
+  overflow: hidden;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.solos-ladder-facts span {
+  color: rgba(255, 227, 201, 0.58);
+  font-size: 8px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.solos-ladder-facts strong {
+  margin-top: 5px;
+  color: #ff9b43;
+  font-size: 19px;
+  font-weight: 1000;
+  line-height: 1;
+}
+
+.solos-ladder-table-head {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 92px;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.72);
+  color: rgba(255, 228, 203, 0.54);
+  padding: 0 13px;
+  font-size: 8px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.solos-ladder-table-head span:last-child {
+  text-align: right;
+}
+
+.solos-ladder-rows {
+  display: grid;
+  grid-template-rows: 1.45fr repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  min-height: 0;
+  padding: 8px 10px;
+  overflow: hidden;
+}
+
+.solos-ladder-row {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 92px;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid rgba(255, 142, 55, 0.32);
+  border-left: 3px solid #bf4610;
+  background: linear-gradient(100deg, rgba(15, 11, 9, 0.94), rgba(39, 20, 10, 0.84));
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+  color: #fff8f0;
+  padding: 8px 10px 8px 8px;
+  transform-origin: center;
+  will-change: transform;
+}
+
+.solos-ladder-row.is-leading {
+  border-color: #ffb466;
+  border-left-color: #ff7a1a;
+  background:
+    linear-gradient(100deg, rgba(255, 111, 20, 0.96), rgba(152, 49, 8, 0.9)),
+    #d6550d;
+  box-shadow:
+    0 0 0 1px rgba(255, 215, 174, 0.24),
+    0 10px 26px rgba(0, 0, 0, 0.3);
+}
+
+.solos-ladder-position {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgba(255, 167, 91, 0.48);
+  background: rgba(0, 0, 0, 0.44);
+  color: #ff9b43;
+  font-size: 18px;
+  font-weight: 1000;
+  line-height: 1;
+  animation: solosRankStamp 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.solos-ladder-row.is-leading .solos-ladder-position {
+  width: 46px;
+  height: 46px;
+  border-color: rgba(255, 255, 255, 0.7);
+  background: #fff7ed;
+  color: #8b2c08;
+}
+
+.solos-ladder-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.solos-ladder-player > span {
+  min-width: 0;
+}
+
+.solos-ladder-player strong,
+.solos-ladder-player small {
+  display: block;
+  overflow: hidden;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.solos-ladder-player strong {
+  color: #fffaf4;
+  font-size: 15px;
+  font-weight: 1000;
+  line-height: 1;
+}
+
+.solos-ladder-row.is-leading .solos-ladder-player strong {
+  font-size: 19px;
+}
+
+.solos-ladder-player small {
+  margin-top: 6px;
+  color: rgba(255, 226, 200, 0.6);
+  font-size: 8px;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.solos-ladder-row.is-leading .solos-ladder-player small {
+  color: rgba(255, 246, 235, 0.78);
+}
+
+.solos-member-mark {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(255, 255, 255, 0.54);
+  border-radius: 50%;
+  background: white;
+  padding: 3px;
+}
+
+.solos-ladder-score {
+  overflow: hidden;
+  color: #ff9b43;
+  font-size: 20px;
+  font-weight: 1000;
+  letter-spacing: 0;
+  line-height: 1;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.solos-ladder-row.is-leading .solos-ladder-score {
+  color: #fffaf4;
+  font-size: 27px;
+}
+
+.solos-ladder-empty {
+  grid-row: 1 / -1;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  border: 1px dashed rgba(255, 146, 58, 0.5);
+  background: rgba(9, 7, 6, 0.72);
+  color: rgba(255, 237, 222, 0.7);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.solos-ladder-empty span {
+  margin-bottom: 9px;
+  color: #ff8c32;
+  font-size: 10px;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.solos-ladder-footer {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid rgba(255, 148, 64, 0.36);
+  background: rgba(7, 6, 5, 0.94);
+  color: rgba(255, 225, 198, 0.52);
+  padding: 0 12px;
+  font-size: 8px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.solos-ladder-footer strong {
+  color: #ff8d32;
+  font-size: 9px;
+  font-weight: 1000;
+}
+
+.solos-ladder-footer span:last-child {
+  text-align: right;
+}
+
+@keyframes solosLivePulse {
+  0%,
+  100% {
+    opacity: 0.52;
+    transform: scale(0.78);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes solosRankStamp {
+  0% {
+    opacity: 0.45;
+    transform: scale(0.72) rotate(-5deg);
+  }
+
+  70% {
+    opacity: 1;
+    transform: scale(1.08) rotate(1deg);
+  }
+
+  100% {
+    transform: scale(1) rotate(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .solos-live-light > span,
+  .solos-ladder-position {
+    animation: none;
+  }
+}
+
+.solos-tv-page {
+  width: 1920px;
+  height: 1080px;
+  min-height: 0;
+  overflow: hidden;
+  background: #0e0906;
+  color: #fff8ef;
+  padding: 0;
+}
+
+.solos-tv-canvas,
+.solos-tv-canvas * {
+  box-sizing: border-box;
+}
+
+.solos-tv-canvas {
+  position: relative;
+  display: grid;
+  grid-template-rows: 154px minmax(0, 1fr) 54px;
+  width: 1920px;
+  height: 1080px;
+  min-height: 0;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, rgba(8, 6, 5, 0.3), rgba(8, 6, 5, 0.66)),
+    #0e0906;
+  color: #fff8ef;
+  font-family: Arial, Helvetica, sans-serif;
+  letter-spacing: 0;
+}
+
+.solos-tv-canvas::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    repeating-linear-gradient(
+      116deg,
+      transparent 0 90px,
+      rgba(255, 124, 32, 0.055) 92px 95px,
+      transparent 97px 180px
+    ),
+    linear-gradient(90deg, transparent 0 66%, rgba(255, 101, 14, 0.08));
+  pointer-events: none;
+}
+
+.solos-tv-atmosphere {
+  position: absolute;
+  inset: -35px;
+  z-index: 0;
+  background:
+    linear-gradient(180deg, rgba(8, 6, 5, 0.1), rgba(8, 6, 5, 0.58)),
+    url("/scoreboard/solos-desert-bg.png") center / cover no-repeat;
+  filter: saturate(0.92) contrast(1.04);
+  animation: solosTvAtmosphere 22s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+.solos-tv-header,
+.solos-tv-main,
+.solos-tv-footer {
+  position: relative;
+  z-index: 1;
+}
+
+.solos-tv-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 40px;
+  border-bottom: 2px solid rgba(255, 135, 47, 0.52);
+  background: linear-gradient(90deg, rgba(8, 7, 6, 0.94), rgba(26, 13, 7, 0.82));
+  padding: 20px 42px;
+}
+
+.solos-tv-brand {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  min-width: 0;
+}
+
+.solos-tv-brand > img {
+  width: 96px;
+  height: 96px;
+  flex: 0 0 auto;
+  object-fit: contain;
+  filter: drop-shadow(0 9px 18px rgba(0, 0, 0, 0.54));
+}
+
+.solos-tv-brand > div {
+  min-width: 0;
+}
+
+.solos-tv-brand p,
+.solos-tv-brand h1,
+.solos-tv-brand span {
+  display: block;
+  overflow: hidden;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.solos-tv-brand p {
+  color: #ff8732;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.solos-tv-brand h1 {
+  margin-top: 8px;
+  color: #fff8ef;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 50px;
+  font-weight: 1000;
+  line-height: 0.88;
+  text-transform: uppercase;
+}
+
+.solos-tv-brand span {
+  margin-top: 10px;
+  color: rgba(255, 226, 201, 0.62);
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.solos-tv-status {
+  display: grid;
+  justify-items: end;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.solos-tv-status > span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(255, 147, 66, 0.54);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.42);
+  color: #fff4e8;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 1000;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.solos-tv-status i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ff761b;
+  box-shadow: 0 0 18px rgba(255, 103, 15, 0.9);
+  animation: solosLivePulse 1.8s ease-in-out infinite;
+}
+
+.solos-tv-status > strong {
+  color: rgba(255, 229, 207, 0.68);
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.solos-tv-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 420px;
+  gap: 24px;
+  min-height: 0;
+  padding: 22px 42px 20px;
+}
+
+.solos-tv-board {
+  display: grid;
+  grid-template-rows: 76px 34px minmax(0, 1fr) 38px;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid rgba(255, 139, 53, 0.42);
+  border-top: 4px solid #ef6e16;
+  border-radius: 7px;
+  background: rgba(10, 8, 7, 0.88);
+  box-shadow: 0 22px 64px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.solos-tv-board-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 1px solid rgba(255, 145, 62, 0.24);
+  background: linear-gradient(90deg, rgba(234, 91, 10, 0.2), transparent);
+  padding: 12px 20px;
+}
+
+.solos-tv-board-heading span,
+.solos-tv-board-heading strong {
+  display: block;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.solos-tv-board-heading span {
+  color: #ff8834;
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.solos-tv-board-heading strong {
+  margin-top: 7px;
+  color: #fff8ef;
+  font-size: 26px;
+  font-weight: 1000;
+}
+
+.solos-tv-board-heading p {
+  flex: 0 0 auto;
+  color: rgba(255, 226, 200, 0.6);
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.solos-tv-table-head,
+.solos-tv-row {
+  display: grid;
+  grid-template-columns: 105px minmax(0, 1fr) 190px 170px;
+  align-items: center;
+  gap: 16px;
+}
+
+.solos-tv-table-head {
+  border-bottom: 1px solid rgba(255, 145, 62, 0.22);
+  background: rgba(0, 0, 0, 0.38);
+  color: rgba(255, 225, 199, 0.5);
+  padding: 0 20px;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.solos-tv-table-head span:last-child {
+  text-align: right;
+}
+
+.solos-tv-standings-page {
+  display: grid;
+  grid-template-rows: repeat(10, minmax(0, 1fr));
+  gap: 5px;
+  min-height: 0;
+  padding: 7px 10px;
+  animation: solosTvPageIn 720ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  overflow: hidden;
+}
+
+.solos-tv-row {
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid rgba(255, 139, 53, 0.2);
+  border-left: 4px solid #9f3910;
+  border-radius: 4px;
+  background: linear-gradient(90deg, rgba(30, 18, 12, 0.9), rgba(13, 10, 8, 0.9));
+  padding: 5px 17px 5px 13px;
+  transform-origin: center;
+  will-change: transform;
+}
+
+.solos-tv-row.is-leading {
+  border-color: #ff9b4d;
+  border-left-color: #ff7d25;
+  background: linear-gradient(90deg, rgba(230, 86, 10, 0.96), rgba(118, 38, 7, 0.9));
+}
+
+.solos-tv-position {
+  display: grid;
+  width: 54px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid rgba(255, 147, 66, 0.46);
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.38);
+  color: #ff913d;
+  font-size: 21px;
+  font-weight: 1000;
+  line-height: 1;
+  animation: solosRankStamp 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.solos-tv-row.is-leading .solos-tv-position {
+  border-color: rgba(255, 255, 255, 0.72);
+  background: #fff8ef;
+  color: #8c2b07;
+}
+
+.solos-tv-player {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.solos-tv-player strong,
+.solos-tv-thru,
+.solos-tv-score {
+  overflow: hidden;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.solos-tv-player strong {
+  color: #fff9f2;
+  font-size: 23px;
+  font-weight: 1000;
+  line-height: 1;
+}
+
+.solos-tv-member-mark {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  background: white;
+  padding: 3px;
+}
+
+.solos-tv-thru {
+  color: rgba(255, 228, 205, 0.62);
+  font-size: 15px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.solos-tv-row.is-leading .solos-tv-thru {
+  color: rgba(255, 246, 236, 0.84);
+}
+
+.solos-tv-score {
+  color: #ff9643;
+  font-size: 27px;
+  font-weight: 1000;
+  line-height: 1;
+  text-align: right;
+}
+
+.solos-tv-row.is-leading .solos-tv-score {
+  color: #fff9f2;
+}
+
+.solos-tv-empty {
+  grid-row: 1 / -1;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  border: 1px dashed rgba(255, 143, 58, 0.44);
+  color: rgba(255, 232, 211, 0.66);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.solos-tv-empty strong {
+  margin-bottom: 12px;
+  color: #ff8c37;
+  font-size: 27px;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.solos-tv-pagination {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top: 1px solid rgba(255, 145, 62, 0.22);
+  background: rgba(0, 0, 0, 0.36);
+  overflow: hidden;
+}
+
+.solos-tv-page-dots {
+  display: flex;
+  gap: 8px;
+}
+
+.solos-tv-page-dots span {
+  width: 24px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 223, 195, 0.2);
+}
+
+.solos-tv-page-dots span.is-active {
+  background: #ff7a24;
+}
+
+.solos-tv-page-progress {
+  position: absolute;
+  inset: auto auto 0 0;
+  width: 100%;
+  height: 2px;
+  background: #ff812a;
+  transform-origin: left;
+  animation: solosTvPageProgress 9s linear forwards;
+}
+
+.solos-tv-insights {
+  display: grid;
+  grid-template-rows: 230px minmax(0, 1fr) 120px;
+  gap: 14px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.solos-tv-leader-card,
+.solos-tv-fact-grid > div,
+.solos-tv-venue-card {
+  border: 1px solid rgba(255, 139, 53, 0.38);
+  border-radius: 7px;
+  background: rgba(12, 9, 7, 0.88);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.26);
+}
+
+.solos-tv-leader-card {
+  position: relative;
+  display: grid;
+  align-content: center;
+  overflow: hidden;
+  border-top: 4px solid #ff7820;
+  background:
+    linear-gradient(135deg, rgba(239, 95, 14, 0.94), rgba(86, 28, 8, 0.94)),
+    #b9410c;
+  padding: 24px;
+}
+
+.solos-tv-leader-card::after {
+  content: "1";
+  position: absolute;
+  right: -8px;
+  bottom: -45px;
+  color: rgba(255, 255, 255, 0.08);
+  font-size: 210px;
+  font-weight: 1000;
+  line-height: 1;
+}
+
+.solos-tv-leader-card span,
+.solos-tv-leader-card strong,
+.solos-tv-leader-card b,
+.solos-tv-leader-card small {
+  position: relative;
+  z-index: 1;
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.solos-tv-leader-card span {
+  color: rgba(255, 244, 234, 0.72);
+  font-size: 13px;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.solos-tv-leader-card strong {
+  margin-top: 12px;
+  color: #fffaf5;
+  font-size: 34px;
+  font-weight: 1000;
+  line-height: 1;
+}
+
+.solos-tv-leader-card b {
+  margin-top: 15px;
+  color: #fffaf5;
+  font-size: 56px;
+  font-weight: 1000;
+  line-height: 0.9;
+}
+
+.solos-tv-leader-card small {
+  margin-top: 12px;
+  color: rgba(255, 244, 234, 0.72);
+  font-size: 14px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.solos-tv-fact-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  min-height: 0;
+}
+
+.solos-tv-fact-grid > div {
+  display: grid;
+  align-content: center;
+  min-width: 0;
+  border-left: 3px solid #be4310;
+  padding: 18px;
+}
+
+.solos-tv-fact-grid span,
+.solos-tv-fact-grid strong,
+.solos-tv-fact-grid small,
+.solos-tv-venue-card span,
+.solos-tv-venue-card strong,
+.solos-tv-venue-card small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+}
+
+.solos-tv-fact-grid span,
+.solos-tv-venue-card span {
+  color: #ff8530;
+  font-size: 11px;
+  font-weight: 1000;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.solos-tv-fact-grid strong {
+  margin-top: 10px;
+  color: #fff8ef;
+  font-size: 34px;
+  font-weight: 1000;
+  line-height: 0.9;
+  white-space: nowrap;
+}
+
+.solos-tv-fact-grid small,
+.solos-tv-venue-card small {
+  margin-top: 9px;
+  color: rgba(255, 228, 204, 0.56);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.solos-tv-venue-card {
+  display: grid;
+  align-content: center;
+  min-width: 0;
+  border-left: 3px solid #ff7d25;
+  padding: 18px 20px;
+}
+
+.solos-tv-venue-card strong {
+  margin-top: 10px;
+  color: #fff8ef;
+  font-size: 24px;
+  font-weight: 1000;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.solos-tv-footer {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr) 180px;
+  align-items: center;
+  gap: 20px;
+  border-top: 2px solid rgba(255, 132, 44, 0.5);
+  background: rgba(8, 7, 6, 0.96);
+  color: rgba(255, 227, 201, 0.64);
+  padding: 0 42px;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.solos-tv-footer > span {
+  color: #ff8530;
+}
+
+.solos-tv-footer p {
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.solos-tv-footer p i {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin: 0 14px 2px;
+  border-radius: 50%;
+  background: #ff7520;
+}
+
+.solos-tv-footer strong {
+  color: #fff8ef;
+  font-size: 15px;
+  font-weight: 1000;
+  text-align: right;
+}
+
+@keyframes solosTvAtmosphere {
+  0% {
+    transform: translate3d(-10px, 0, 0) scale(1.02);
+  }
+
+  100% {
+    transform: translate3d(18px, -8px, 0) scale(1.045);
+  }
+}
+
+@keyframes solosTvPageIn {
+  0% {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  68% {
+    opacity: 1;
+    transform: translateY(-4px);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes solosTvPageProgress {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .solos-tv-atmosphere,
+  .solos-tv-status i,
+  .solos-tv-standings-page,
+  .solos-tv-position,
+  .solos-tv-page-progress {
+    animation: none;
+  }
 }
 
 .stream-player-page {
