@@ -19,7 +19,7 @@ import {
 } from "@/lib/par3-showdown-types";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
-type TournamentTab = "pools" | "matches" | "ctp" | "finals";
+type TournamentTab = "pools" | "matches" | "finals";
 type SyncState = "connecting" | "connected" | "polling";
 
 const tabs: Array<{
@@ -29,7 +29,6 @@ const tabs: Array<{
 }> = [
   { id: "pools", label: "Pools", icon: Users },
   { id: "matches", label: "Matches", icon: Radio },
-  { id: "ctp", label: "CTP", icon: Target },
   { id: "finals", label: "Finals", icon: Trophy },
 ];
 
@@ -41,8 +40,10 @@ export default function Par3LiveTournament({
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [activeTab, setActiveTab] = useState<TournamentTab>(() => {
     if (initialSnapshot.event.currentPhase === "knockout") return "finals";
-    if (initialSnapshot.event.currentPhase === "ctp") return "ctp";
-    if (initialSnapshot.event.currentPhase === "pools") return "matches";
+    if (
+      initialSnapshot.event.currentPhase === "pools" ||
+      initialSnapshot.event.currentPhase === "ctp"
+    ) return "matches";
     return "pools";
   });
   const [syncState, setSyncState] = useState<SyncState>("connecting");
@@ -143,11 +144,6 @@ export default function Par3LiveTournament({
     .filter((match) => match.status === "complete" && match.winnerId !== null)
     .slice()
     .reverse();
-  const ctpPlayers = pools
-    .map((pool) => pool.standings.find((standing) => standing.position === 3)?.player)
-    .filter((player) => Boolean(player))
-    .sort((left, right) => (left?.ctpRank ?? 99) - (right?.ctpRank ?? 99));
-
   return (
     <div className="par3-live-console">
       <div className="par3-live-toolbar">
@@ -291,34 +287,6 @@ export default function Par3LiveTournament({
           )
         ) : null}
 
-        {activeTab === "ctp" ? (
-          ctpPlayers.length ? (
-            <div className="par3-ctp-list">
-              {ctpPlayers.map((player, index) => (
-                <div key={player!.id}>
-                  <span className="par3-ctp-position">
-                    {player!.ctpRank ?? index + 1}
-                  </span>
-                  <div>
-                    <strong>{player!.name}</strong>
-                    <p>
-                      Pool {player!.poolNumber ? String.fromCharCode(64 + player!.poolNumber) : "?"}
-                    </p>
-                  </div>
-                  <span className={player!.ctpRank && player!.ctpRank <= 4 ? "is-qualified" : ""}>
-                    {player!.ctpRank && player!.ctpRank <= 4 ? "Qualified" : "CTP field"}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              title="CTP field not decided"
-              detail="The third-place player from each pool enters the one-shot shootout."
-            />
-          )
-        ) : null}
-
         {activeTab === "finals" ? (
           knockoutRounds.length && snapshot.event.knockoutData ? (
             <div className="par3-bracket-scroll">
@@ -365,7 +333,7 @@ export default function Par3LiveTournament({
           ) : (
             <EmptyState
               title="Finals bracket not set"
-              detail="Twelve pool qualifiers and four CTP qualifiers will form the Round of 16."
+              detail="The top two players from each of the eight pools will form the Round of 16."
             />
           )
         ) : null}

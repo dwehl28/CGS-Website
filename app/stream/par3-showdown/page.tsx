@@ -6,7 +6,7 @@ import { getPublicPar3Snapshot } from "@/lib/par3-showdown";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "CGS Par 3 Showdown Stream Asset",
+  title: "CGS Par 3 Championship Stream Asset",
   robots: { index: false, follow: false },
 };
 

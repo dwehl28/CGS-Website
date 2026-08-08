@@ -139,8 +139,8 @@ export default async function ClubhouseAdminPage() {
           <div className="mt-6 grid gap-4">
             <AdminQuickLink
               href="/clubhouse-admin/par3"
-              label="Run the Par 3 Showdown"
-              detail="Manage entrants, pool results, CTP qualifiers, finals, and OBS assets."
+              label="Run the Par 3 Championship"
+              detail="Manage entrants, pool results, finals, and OBS assets."
             />
             <AdminQuickLink
               href="/clubhouse-admin/inbox"

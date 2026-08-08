@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useEffectEvent, useMemo, useState } from "react";
-import { Check, Radio, Target, Trophy } from "lucide-react";
+import { Check, Radio, Trophy } from "lucide-react";
 
 import {
   buildPar3Pools,
@@ -112,7 +112,7 @@ export default function Par3StreamAsset({
         <div className="par3-stream-brand">
           <Image src="/par3/par3-logo.png" alt="CGS Par 3" width={112} height={112} />
           <div>
-            <strong>Par 3 Showdown</strong>
+            <strong>Par 3 Championship</strong>
             <span>{snapshot.event.statusLabel}</span>
           </div>
         </div>
@@ -147,14 +147,10 @@ export default function Par3StreamAsset({
     );
   }
 
-  const ctpPlayers = pools
-    .map((pool) => pool.standings.find((standing) => standing.position === 3)?.player)
-    .filter((player) => Boolean(player));
-  const slideCount = Math.max(1, pools.length + (ctpPlayers.length ? 1 : 0) + rounds.length);
+  const slideCount = Math.max(1, pools.length + rounds.length);
   const normalizedIndex = slideIndex % slideCount;
   const poolSlide = normalizedIndex < pools.length ? pools[normalizedIndex] : null;
-  const ctpIndex = pools.length;
-  const roundIndex = normalizedIndex - pools.length - (ctpPlayers.length ? 1 : 0);
+  const roundIndex = normalizedIndex - pools.length;
   const roundSlide = roundIndex >= 0 ? rounds[roundIndex] : null;
 
   return (
@@ -162,7 +158,7 @@ export default function Par3StreamAsset({
       <header>
         <Image src="/par3/par3-logo.png" alt="CGS Par 3" width={92} height={92} />
         <div>
-          <strong>Par 3 Showdown</strong>
+          <strong>Par 3 Championship</strong>
           <span>{snapshot.event.statusLabel}</span>
         </div>
       </header>
@@ -185,30 +181,6 @@ export default function Par3StreamAsset({
               {!poolSlide.standings.length ? (
                 <p className="par3-stream-empty">Pool draw coming soon</p>
               ) : null}
-            </div>
-          </section>
-        ) : null}
-
-        {!poolSlide && normalizedIndex === ctpIndex && ctpPlayers.length ? (
-          <section className="par3-stream-ctp-slide">
-            <Target />
-            <div className="par3-stream-slide-title">
-              <span>One-shot shootout</span>
-              <h2>CTP</h2>
-            </div>
-            <div>
-              {ctpPlayers
-                .slice()
-                .sort((left, right) => (left?.ctpRank ?? 99) - (right?.ctpRank ?? 99))
-                .map((player, index) => (
-                  <div key={player!.id}>
-                    <span>{player!.ctpRank ?? index + 1}</span>
-                    <strong>{player!.name}</strong>
-                    <small>
-                      {player!.ctpRank && player!.ctpRank <= 4 ? "Qualified" : "In field"}
-                    </small>
-                  </div>
-                ))}
             </div>
           </section>
         ) : null}

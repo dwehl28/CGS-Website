@@ -15,7 +15,6 @@ import {
   generatePar3PoolFixturesAction,
   recordPar3KnockoutWinnerAction,
   resetPar3KnockoutMatchAction,
-  updatePar3CtpRankAction,
   updatePar3EventAction,
   updatePar3PlayerAction,
   updatePar3PoolMatchAction,
@@ -43,7 +42,7 @@ import { buildMetadata } from "@/lib/seo";
 export const metadata: Metadata = {
   ...buildMetadata({
     title: "Par 3 Tournament Control",
-    description: "Private control room for the 2026 CGS Par 3 Showdown.",
+    description: "Private control room for the 2026 CGS Par 3 Championship.",
     path: "/clubhouse-admin/par3",
   }),
   robots: { index: false, follow: false },
@@ -67,11 +66,9 @@ const noticeMessages: Record<string, string> = {
     "Fixtures could not be generated. Check pool allocations, or existing results.",
   "result-saved": "Pool result updated.",
   "result-failed": "Pool result could not be saved.",
-  "ctp-saved": "CTP placing updated.",
-  "ctp-failed": "CTP placing could not be saved.",
   "knockout-created": "Round of 16 created from the confirmed qualifiers.",
   "knockout-failed":
-    "Finals could not be created. Confirm every pool result and CTP places 1 to 4.",
+    "Finals could not be created. Confirm all eight pools and their results.",
   "final-result-saved": "Finals result updated.",
   "final-result-failed": "Finals result could not be saved.",
   "final-reset": "Finals result reset.",
@@ -99,7 +96,7 @@ function PoolOptions() {
   return (
     <>
       <option value="">Not allocated</option>
-      {Array.from({ length: 6 }, (_, index) => index + 1).map((number) => (
+      {Array.from({ length: 8 }, (_, index) => index + 1).map((number) => (
         <option key={number} value={number}>
           Pool {String.fromCharCode(64 + number)}
         </option>
@@ -344,7 +341,7 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
       <AdminAccessState
         eyebrow="Private route"
         title="Par 3 tournament control"
-        description="Sign in to manage entrants, pool results, CTP qualifiers, and the finals bracket."
+        description="Sign in to manage entrants, pool results, and the finals bracket."
       >
         <ClubhouseAdminLogin />
       </AdminAccessState>
@@ -361,7 +358,7 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
     return (
       <AdminShell
         eyebrow="Event control"
-        title="Par 3 Showdown"
+        title="Par 3 Championship"
         description="The tournament database is not available yet. Apply the latest migration, then reload this page."
       >
         <div className="panel p-6 text-zinc-300">
@@ -378,17 +375,14 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
   const completedPoolMatches = poolMatches.filter(
     (match) => match.winnerId !== null
   ).length;
-  const thirdPlacePlayers = pools
-    .map((pool) => pool.standings.find((standing) => standing.position === 3)?.player)
-    .filter((player): player is AdminPar3Player => Boolean(player));
   const knockoutRounds = getPar3KnockoutRounds(event.knockoutData);
   const champion = getPar3Champion(event.knockoutData);
 
   return (
     <AdminShell
       eyebrow="Event control"
-      title="Par 3 Showdown"
-      description="Work from left to right: entrants, pool play, CTP, then finals. Public results update as soon as you save them."
+      title="Par 3 Championship"
+      description="Work from left to right: entrants, pool play, then finals. Public results update as soon as you save them."
       actions={
         <>
           <Link href="/" target="_blank" className="btn-secondary">
@@ -422,12 +416,11 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
         </div>
       ) : null}
 
-      <nav className="mb-8 grid gap-2 sm:grid-cols-4">
+      <nav className="mb-8 grid gap-2 sm:grid-cols-3">
         {[
           ["entrants", "1. Entrants"],
           ["pool-play", "2. Pool play"],
-          ["ctp", "3. CTP"],
-          ["finals", "4. Finals"],
+          ["finals", "3. Finals"],
         ].map(([href, label]) => (
           <Link
             key={href}
@@ -486,7 +479,6 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
             >
               <option value="registrations">Registrations</option>
               <option value="pools">Pool play</option>
-              <option value="ctp">CTP shootout</option>
               <option value="knockout">Finals</option>
               <option value="complete">Complete</option>
             </select>
@@ -722,62 +714,10 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
         </div>
       </section>
 
-      <section id="ctp" className="scroll-mt-24 pt-12">
-        <p className="eyebrow">Step 3</p>
-        <h2 className="mt-3 text-3xl">Closest-to-pin shootout</h2>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-zinc-400">
-          Each pool&apos;s third-place player enters. Set places 1 to 4 for the players
-          advancing to the Round of 16; places 5 and 6 can also be recorded.
-        </p>
-
-        <div className="panel mt-6 p-6">
-          {thirdPlacePlayers.length ? (
-            <div className="divide-y divide-white/10">
-              {thirdPlacePlayers.map((player) => (
-                <form
-                  key={player.id}
-                  action={updatePar3CtpRankAction}
-                  className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <input type="hidden" name="player_id" value={player.id} />
-                  <div>
-                    <p className="font-semibold text-white">{player.name}</p>
-                    <p className="mt-1 text-xs text-zinc-500">
-                      Pool {player.poolNumber ? String.fromCharCode(64 + player.poolNumber) : "?"}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <select
-                      name="ctp_rank"
-                      className="field-control min-w-36"
-                      defaultValue={player.ctpRank ?? ""}
-                    >
-                      <option value="">No place</option>
-                      {[1, 2, 3, 4, 5, 6].map((rank) => (
-                        <option key={rank} value={rank}>
-                          Place {rank}
-                        </option>
-                      ))}
-                    </select>
-                    <button type="submit" className="btn-secondary">
-                      Save
-                    </button>
-                  </div>
-                </form>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-zinc-400">
-              Third-place players will appear when pools have been allocated.
-            </p>
-          )}
-        </div>
-      </section>
-
       <section id="finals" className="scroll-mt-24 py-12">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="eyebrow">Step 4</p>
+            <p className="eyebrow">Step 3</p>
             <h2 className="mt-3 text-3xl">Finals bracket</h2>
           </div>
           {!event.knockoutData ? (
@@ -881,8 +821,9 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
           </div>
         ) : (
           <div className="panel mt-6 p-6 text-sm leading-7 text-zinc-400">
-            Complete pool play and set CTP places 1 to 4, then generate the Round
-            of 16. The bracket will progress automatically as winners are tapped.
+            Complete all eight pools, then generate the Round of 16 from each pool&apos;s
+            winner and runner-up. The bracket progresses automatically as winners
+            are tapped.
           </div>
         )}
       </section>

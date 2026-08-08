@@ -25,30 +25,30 @@ import { absoluteUrl } from "@/lib/seo";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "CGS Par 3 Showdown | 12 September 2026",
+  title: "CGS Par 3 Championship | 12 September 2026",
   description:
-    "Follow the 2026 CGS Par 3 Showdown live: 24 golfers, six pools, a CTP shootout, and a single-elimination final at The Tee Lounge.",
+    "Follow the 2026 CGS Par 3 Championship live: 32 golfers, eight pools, and a single-elimination Round of 16 at The Tee Lounge.",
   alternates: { canonical: absoluteUrl("/") },
   openGraph: {
-    title: "CGS Par 3 Showdown",
+    title: "CGS Par 3 Championship",
     description:
       "Saturday 12 September at The Tee Lounge. Follow every pool, result, qualifier, and finals match live.",
     url: absoluteUrl("/"),
     type: "website",
     images: [
       {
-        url: absoluteUrl("/par3/par3-showdown.png"),
+        url: absoluteUrl("/par3/par3-championship.png"),
         width: 1122,
         height: 1402,
-        alt: "CGS Par 3 Showdown event poster",
+        alt: "CGS Par 3 Championship event poster",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "CGS Par 3 Showdown",
-    description: "24 golfers. Six pools. One winner. Follow it live on 12 September.",
-    images: [absoluteUrl("/par3/par3-showdown.png")],
+    title: "CGS Par 3 Championship",
+    description: "32 golfers. Eight pools. One winner. Follow it live on 12 September.",
+    images: [absoluteUrl("/par3/par3-championship.png")],
   },
 };
 
@@ -72,7 +72,7 @@ export default async function Home() {
     <main className="par3-home">
       <section className="par3-hero">
         <div className="par3-hero-shade" />
-        <Par3MotionStripes tone="mixed" words={["PAR 3", "SHOWDOWN"]} />
+        <Par3MotionStripes tone="mixed" words={["PAR 3", "CHAMPIONSHIP"]} />
         <div className="par3-hero-inner">
           <div className="par3-hero-copy">
             <div className="par3-status-line">
@@ -89,10 +89,11 @@ export default async function Home() {
             />
             <h1>
               <span>CGS Par 3</span>
-              <strong>Showdown</strong>
+              <strong>Championship</strong>
             </h1>
             <p className="par3-hero-offer">
-              24 golfers. Six pools. Three-hole match play. One winner.
+              {event.maxPlayers} golfers. {event.poolCount} pools. Three-hole match
+              play. One winner.
             </p>
             <div className="par3-hero-meta">
               <span><CalendarDays /> Saturday 12 September 2026</span>
@@ -127,11 +128,11 @@ export default async function Home() {
         </div>
       </section>
 
-      <div className="par3-hype-ticker" aria-label="Par 3 Showdown highlights">
+      <div className="par3-hype-ticker" aria-label="Par 3 Championship highlights">
         <div>
-          <span>24 golfers</span>
+          <span>{event.maxPlayers} golfers</span>
           <i />
-          <span>6 pools</span>
+          <span>{event.poolCount} pools</span>
           <i />
           <span>Cash prizes</span>
           <i />
@@ -141,9 +142,9 @@ export default async function Home() {
           <i />
           <span>One champion</span>
           <i />
-          <span aria-hidden="true">24 golfers</span>
+          <span aria-hidden="true">{event.maxPlayers} golfers</span>
           <i aria-hidden="true" />
-          <span aria-hidden="true">6 pools</span>
+          <span aria-hidden="true">{event.poolCount} pools</span>
           <i aria-hidden="true" />
           <span aria-hidden="true">Cash prizes</span>
           <i aria-hidden="true" />
@@ -159,12 +160,12 @@ export default async function Home() {
       <section className="par3-fact-strip" aria-label="Event summary">
         <div>
           <Users />
-          <strong>{confirmedPlayers || 24}</strong>
+          <strong>{confirmedPlayers || event.maxPlayers}</strong>
           <span>{confirmedPlayers ? "Confirmed players" : "Player capacity"}</span>
         </div>
         <div>
           <Flag />
-          <strong>6 pools</strong>
+          <strong>{event.poolCount} pools</strong>
           <span>Four golfers in each</span>
         </div>
         <div>
@@ -191,8 +192,8 @@ export default async function Home() {
             <h2>Everything happening live</h2>
           </div>
           <p>
-            Pool tables, current fixtures, CTP qualifiers, and the finals bracket
-            update here throughout the night.
+            Pool tables, current fixtures, and the finals bracket update here
+            throughout the night.
           </p>
         </div>
         <Par3LiveTournament initialSnapshot={snapshot} />
@@ -207,7 +208,7 @@ export default async function Home() {
         <div className="par3-watch-inner">
           <div>
             <p className="par3-kicker"><Play /> Live coverage</p>
-            <h2>Watch the Showdown</h2>
+            <h2>Watch the Championship</h2>
             <p>
               Follow the full event with live commentary on the Crossodog Golf
               Society YouTube channel.
@@ -225,7 +226,7 @@ export default async function Home() {
             {embedUrl ? (
               <iframe
                 src={embedUrl}
-                title="CGS Par 3 Showdown live stream"
+                title="CGS Par 3 Championship live stream"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
               />
@@ -252,8 +253,8 @@ export default async function Home() {
         </div>
         <div className="par3-poster-wrap">
           <Image
-            src="/par3/par3-format.png"
-            alt="How the CGS Par 3 Showdown works"
+            src="/par3/par3-championship-format.png"
+            alt="How the CGS Par 3 Championship works"
             width={1122}
             height={1402}
             className="par3-poster"
@@ -267,8 +268,8 @@ export default async function Home() {
               <span>01</span>
               <h3>Pool play</h3>
               <p>
-                Six pools of four. Everyone plays everyone in their pool. A win is
-                one point and a loss is zero.
+                Eight pools of four. Everyone plays everyone in their pool. A win
+                is one point and a loss is zero.
               </p>
             </div>
             <div>
@@ -281,18 +282,18 @@ export default async function Home() {
             </div>
             <div>
               <span>03</span>
-              <h3>CTP shootout</h3>
+              <h3>Round of 16</h3>
               <p>
-                Each third-place player takes one closest-to-pin shot. The best four
-                complete the Round of 16.
+                Eight pool winners face eight runners-up in the opening knockout
+                round.
               </p>
             </div>
             <div>
               <span>04</span>
               <h3>Finals</h3>
               <p>
-                Single elimination from the Round of 16. A match still tied after
-                three holes is decided by a hole-three CTP tiebreak.
+                Every round is single elimination. If a match is tied, hole three
+                becomes a closest-to-pin tiebreak.
               </p>
             </div>
           </div>
@@ -314,8 +315,9 @@ export default async function Home() {
             <p className="par3-kicker"><CircleDollarSign /> Limited field</p>
             <h2>Ready to play?</h2>
             <p>
-              Entry is $30 and open to CGS members and guests. Guest registration
-              requires a name, phone number, tee category, and consent.
+              Entry is $30 with only {event.maxPlayers} places available. CGS members
+              and guests can register with a name, phone number, tee category, and
+              consent.
             </p>
             <div className="par3-entry-details">
               <span><CalendarDays /> Saturday 12 September</span>
@@ -332,8 +334,8 @@ export default async function Home() {
             </a>
           </div>
           <Image
-            src="/par3/par3-ready.png"
-            alt="CGS Par 3 Showdown entry information"
+            src="/par3/par3-championship-details.png"
+            alt="CGS Par 3 Championship entry information"
             width={1122}
             height={1402}
             className="par3-entry-poster"

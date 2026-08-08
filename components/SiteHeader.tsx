@@ -34,7 +34,7 @@ export default function SiteHeader() {
             priority
           />
           <span>
-            <strong>CGS Par 3 Showdown</strong>
+            <strong>CGS Par 3 Championship</strong>
             <small>12 September 2026</small>
           </span>
         </Link>

@@ -100,9 +100,9 @@ export type Par3PlayerInput = {
 const fallbackEvent: Par3Event = {
   id: 0,
   slug: PAR3_EVENT_SLUG,
-  title: "CGS Par 3 Showdown",
+  title: "CGS Par 3 Championship",
   summary:
-    "A 24-player, three-hole match-play tournament with six pools, a closest-to-pin shootout, and a single-elimination final bracket.",
+    "A 32-player, three-hole match-play championship with eight pools and a single-elimination Round of 16.",
   startsAt: "2026-09-12T08:00:00.000Z",
   warmupAt: "2026-09-12T07:30:00.000Z",
   venueName: "The Tee Lounge",
@@ -113,8 +113,8 @@ const fallbackEvent: Par3Event = {
   publicMessage:
     "Secure your place through the CGS shop. Tournament updates and live results will appear here.",
   currentPhase: "registrations",
-  maxPlayers: 24,
-  poolCount: 6,
+  maxPlayers: 32,
+  poolCount: 8,
   poolSize: 4,
   isPublished: true,
   isLive: false,
@@ -520,20 +520,6 @@ export async function updatePar3PoolMatch(
   }
 }
 
-export async function updatePar3CtpRank(playerId: number, rank: number | null) {
-  const { error } = await getSupabaseAdmin()
-    .from("cgs_par3_players")
-    .update({
-      ctp_rank: rank,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", playerId);
-
-  if (error) {
-    throw error;
-  }
-}
-
 function getRequiredPoolQualifier(
   pools: ReturnType<typeof buildPar3Pools>,
   poolNumber: number,
@@ -558,54 +544,25 @@ export async function generatePar3Knockout(eventId: number) {
   }
 
   const pools = buildPar3Pools(snapshot);
-  const ctpQualifiers = snapshot.players
-    .filter(
-      (player) =>
-        !player.isWithdrawn && player.ctpRank !== null && player.ctpRank <= 4
-    )
-    .sort((left, right) => (left.ctpRank ?? 99) - (right.ctpRank ?? 99));
-
-  if (ctpQualifiers.length !== 4) {
-    throw new Error("Set CTP ranks 1 to 4 before generating the Round of 16.");
+  if (snapshot.event.poolCount !== 8) {
+    throw new Error("The championship requires eight completed pools.");
   }
 
   const first = (poolNumber: number) =>
     getRequiredPoolQualifier(pools, poolNumber, 1);
   const second = (poolNumber: number) =>
     getRequiredPoolQualifier(pools, poolNumber, 2);
-  const ctp = (rank: number) => {
-    const player = ctpQualifiers.find((candidate) => candidate.ctpRank === rank);
-
-    if (!player) {
-      throw new Error(`CTP rank ${rank} is not available.`);
-    }
-
-    return player;
-  };
-  const roundOf16Slots = [
-    first(1),
-    ctp(4),
-    first(2),
-    ctp(3),
-    first(3),
-    ctp(2),
-    first(4),
-    ctp(1),
-    first(5),
-    second(6),
-    first(6),
-    second(5),
-    second(1),
-    second(4),
-    second(2),
-    second(3),
-  ];
+  const poolNumbers = Array.from({ length: 8 }, (_, index) => index + 1);
+  const roundOf16Slots = poolNumbers.flatMap((poolNumber, index) => [
+    first(poolNumber),
+    second(poolNumbers[poolNumbers.length - 1 - index]),
+  ]);
   const storage = new InMemoryDatabase();
   const manager = new BracketsManager(storage);
 
   await manager.create.stage({
     tournamentId: 0,
-    name: "CGS Par 3 Showdown Finals",
+    name: "CGS Par 3 Championship Finals",
     type: "single_elimination",
     seeding: roundOf16Slots.map((player) => player.name),
     settings: {

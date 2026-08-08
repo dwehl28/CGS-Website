@@ -38,7 +38,7 @@ export default function Par3Countdown({ startsAt }: { startsAt: string }) {
   }
 
   return (
-    <div className="par3-countdown" aria-label="Time until the Par 3 Showdown">
+    <div className="par3-countdown" aria-label="Time until the Par 3 Championship">
       {[
         [timeLeft.days, "Days"],
         [timeLeft.hours, "Hours"],

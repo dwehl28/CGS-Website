@@ -1517,7 +1517,7 @@
   min-height: 76svh;
   isolation: isolate;
   background-color: #020a13;
-  background-image: url("/par3/par3-showdown.png");
+  background-image: url("/par3/par3-championship.png");
   background-repeat: no-repeat;
   background-position: calc(50% + 390px) 44%;
   background-size: 720px auto;
@@ -1849,7 +1849,7 @@
 
 .par3-tabs {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   border-bottom: 1px solid var(--par3-line);
   background: #04111d;
 }
@@ -2267,7 +2267,7 @@
   place-content: center;
   justify-items: center;
   background-color: #03101c;
-  background-image: url("/par3/par3-showdown.png");
+  background-image: url("/par3/par3-championship.png");
   background-position: center 22%;
   background-size: cover;
 }

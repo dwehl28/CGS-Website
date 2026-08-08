@@ -11,7 +11,6 @@ import {
   generatePar3PoolFixtures,
   recordPar3KnockoutWinner,
   resetPar3KnockoutMatch,
-  updatePar3CtpRank,
   updatePar3EventSettings,
   updatePar3Player,
   updatePar3PoolMatch,
@@ -25,7 +24,6 @@ import type {
 const phases: Par3Phase[] = [
   "registrations",
   "pools",
-  "ctp",
   "knockout",
   "complete",
 ];
@@ -184,26 +182,6 @@ export async function updatePar3PoolMatchAction(formData: FormData) {
 
   revalidatePar3();
   redirect(noticeUrl("result-saved", `match-${matchId}`));
-}
-
-export async function updatePar3CtpRankAction(formData: FormData) {
-  await requireAdminAuthenticated();
-  const playerId = parseNumber(formData.get("player_id"));
-  const rank = parseOptionalNumber(formData.get("ctp_rank"));
-
-  if (!playerId) {
-    redirect(noticeUrl("ctp-failed", "ctp"));
-  }
-
-  try {
-    await updatePar3CtpRank(playerId, rank);
-  } catch (error) {
-    console.error("Update Par 3 CTP rank error:", error);
-    redirect(noticeUrl("ctp-failed", "ctp"));
-  }
-
-  revalidatePar3();
-  redirect(noticeUrl("ctp-saved", "ctp"));
 }
 
 export async function generatePar3KnockoutAction(formData: FormData) {

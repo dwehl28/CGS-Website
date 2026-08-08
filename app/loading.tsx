@@ -12,7 +12,7 @@ export default function Loading() {
       />
       <div>
         <span>12 September 2026</span>
-        <h1>CGS Par 3 Showdown</h1>
+        <h1>CGS Par 3 Championship</h1>
         <p>Loading tournament centre</p>
       </div>
     </main>
