@@ -124,11 +124,11 @@ export default function StreamScoreQuickControls({
       <div className="stream-control-header">
         <div>
           <p className="stream-control-kicker">Weekly stream control</p>
-          <h3>Top-eight scoreboard controls</h3>
+          <h3>Live scoreboard controls</h3>
           <p>
             Update scores while the browser sources are live. The portrait ladder
-            shows the top eight, the banner rolls the top six, and the TV source
-            rotates through the full field. All are sorted automatically by{" "}
+            rotates through up to 20 players, the banner rolls up to 20 names, and
+            the TV source rotates through the full field. All are sorted automatically by{" "}
             {getRankingDescription(competition.leaderboardMode)}.
           </p>
         </div>
@@ -202,12 +202,12 @@ export default function StreamScoreQuickControls({
         <p>
           Keep the portrait OBS source at 407px wide x 1359px high, or use the
           banner source at 1920px wide x 180px high for a top or bottom ticker.
-          The full-field TV source is 1920px x 1080px and rolls through every
-          player automatically.
+          Both support up to 20 players. The full-field TV source is 1920px x
+          1080px and rolls through every player automatically.
           {remainingEntryCount > 0
             ? ` ${remainingEntryCount} extra row${
                 remainingEntryCount === 1 ? "" : "s"
-              } will stay off the portrait ladder until they move into the top eight, but remain visible on the TV source.`
+              } remain visible across the broadcast assets. Edit them in Current rows below because this quick desk shows the first eight.`
             : ""}
         </p>
       </div>

@@ -20,6 +20,8 @@ type LiveSyncState =
   | "reconnecting"
   | "unavailable";
 
+const BANNER_PLAYER_LIMIT = 20;
+
 function getSyncLabel(syncState: LiveSyncState) {
   switch (syncState) {
     case "connected":
@@ -85,7 +87,7 @@ export default function StreamScoreboardBanner({
 }: StreamScoreboardBannerProps) {
   const [competition, setCompetition] = useState(initialCompetition);
   const [syncState, setSyncState] = useState<LiveSyncState>("idle");
-  const visibleEntries = competition.entries.slice(0, 6);
+  const visibleEntries = competition.entries.slice(0, BANNER_PLAYER_LIMIT);
   const leaderEntry = visibleEntries[0] ?? null;
   const secondaryTitle =
     competition.roundLabel ?? competition.formatLabel ?? competition.statusLabel;
@@ -192,15 +194,23 @@ export default function StreamScoreboardBanner({
             priority
           />
           <div>
-            <p>CGS live scores</p>
-            <strong>{competition.title}</strong>
+            <p>The Tee Lounge presents</p>
+            <strong>Solos Stableford</strong>
             <span>{secondaryTitle}</span>
           </div>
         </div>
 
         <div className="stream-banner-track">
           {visibleEntries.length > 0 ? (
-            <div className="stream-banner-marquee">
+            <div
+              className="stream-banner-marquee"
+              style={{
+                animationDuration: `${Math.max(
+                  36,
+                  visibleEntries.length * 4
+                )}s`,
+              }}
+            >
               <div className="stream-banner-list">
                 {visibleEntries.map((entry) => (
                   <BannerTeamCard key={entry.id} entry={entry} />
@@ -213,7 +223,7 @@ export default function StreamScoreboardBanner({
               </div>
             </div>
           ) : (
-            <div className="stream-banner-empty">Scores will roll here</div>
+            <div className="stream-banner-empty">Leaderboard ready</div>
           )}
         </div>
 

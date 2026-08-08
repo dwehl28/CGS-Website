@@ -3,12 +3,12 @@
 import Image from "next/image";
 import { startTransition, useEffect, useEffectEvent, useState } from "react";
 
+import { useAnimatedRankOrder } from "@/components/scoreboard/useAnimatedRankOrder";
 import type {
   CompetitionScoreboard,
   CompetitionScoreEntry,
 } from "@/lib/scoreboards";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
-import { useAnimatedRankOrder } from "@/components/scoreboard/useAnimatedRankOrder";
 
 type StreamScoreboardOverlayProps = {
   initialCompetition: CompetitionScoreboard;
@@ -20,6 +20,10 @@ type LiveSyncState =
   | "connected"
   | "reconnecting"
   | "unavailable";
+
+const PORTRAIT_ROWS_PER_PAGE = 10;
+const PORTRAIT_PLAYER_LIMIT = 20;
+const PORTRAIT_PAGE_DURATION_MS = 8000;
 
 function getSyncLabel(syncState: LiveSyncState) {
   switch (syncState) {
@@ -78,15 +82,24 @@ export default function StreamScoreboardOverlay({
 }: StreamScoreboardOverlayProps) {
   const [competition, setCompetition] = useState(initialCompetition);
   const [syncState, setSyncState] = useState<LiveSyncState>("idle");
-  const isSolosStableford = competition.leaderboardMode === "points";
-  const visibleEntries = competition.entries.slice(0, isSolosStableford ? 8 : 6);
-  const leaderEntry = visibleEntries[0] ?? null;
+  const [pageIndex, setPageIndex] = useState(0);
+  const portraitEntries = competition.entries.slice(0, PORTRAIT_PLAYER_LIMIT);
+  const pageCount = Math.max(
+    1,
+    Math.ceil(portraitEntries.length / PORTRAIT_ROWS_PER_PAGE)
+  );
+  const activePageIndex = pageIndex % pageCount;
+  const firstVisiblePosition = activePageIndex * PORTRAIT_ROWS_PER_PAGE;
+  const visibleEntries = portraitEntries.slice(
+    firstVisiblePosition,
+    firstVisiblePosition + PORTRAIT_ROWS_PER_PAGE
+  );
+  const leaderEntry = competition.entries[0] ?? null;
   const leaderCount = leaderEntry
     ? competition.entries.filter(
         (entry) => entry.scoreValue === leaderEntry.scoreValue
       ).length
     : 0;
-  const primaryTitle = competition.title;
   const secondaryTitle =
     competition.roundLabel ?? competition.formatLabel ?? competition.statusLabel;
   const registerRankRow = useAnimatedRankOrder(
@@ -116,6 +129,18 @@ export default function StreamScoreboardOverlay({
   const handleRealtimeRefresh = useEffectEvent(async () => {
     await refreshCompetition(initialCompetition.slug);
   });
+
+  useEffect(() => {
+    if (pageCount <= 1) {
+      return;
+    }
+
+    const pageTimer = window.setInterval(() => {
+      setPageIndex((currentPage) => (currentPage + 1) % pageCount);
+    }, PORTRAIT_PAGE_DURATION_MS);
+
+    return () => window.clearInterval(pageTimer);
+  }, [pageCount]);
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
@@ -180,8 +205,7 @@ export default function StreamScoreboardOverlay({
     };
   }, [competition.id]);
 
-  if (isSolosStableford) {
-    return (
+  return (
       <section
         className="stream-canvas solos-ladder-canvas"
         aria-label={`${competition.title} Solos Stableford ladder`}
@@ -232,14 +256,19 @@ export default function StreamScoreboardOverlay({
             <span>Pts</span>
           </div>
 
-          <div className="solos-ladder-rows">
+          <div
+            className={`solos-ladder-rows ${
+              activePageIndex > 0 ? "is-continuation" : ""
+            }`}
+            key={activePageIndex}
+          >
             {visibleEntries.length > 0 ? (
-              visibleEntries.map((entry, index) => (
+              visibleEntries.map((entry) => (
                 <article
                   key={entry.id}
                   ref={(node) => registerRankRow(entry.id, node)}
                   className={`solos-ladder-row ${
-                    index === 0 ? "is-leading" : ""
+                    entry.position === 1 ? "is-leading" : ""
                   }`}
                 >
                   <span className="solos-ladder-position" key={entry.position}>
@@ -265,79 +294,19 @@ export default function StreamScoreboardOverlay({
 
           <footer className="solos-ladder-footer">
             <span>{getSyncLabel(syncState)}</span>
-            <strong>{formatOverlayTime(competition.updatedAt)}</strong>
-            <span>Top 8 shown</span>
+            <strong>
+              Page {activePageIndex + 1} / {pageCount}
+            </strong>
+            <span>
+              {portraitEntries.length > 0
+                ? `${firstVisiblePosition + 1}-${Math.min(
+                    firstVisiblePosition + PORTRAIT_ROWS_PER_PAGE,
+                    portraitEntries.length
+                  )} of ${portraitEntries.length}`
+                : formatOverlayTime(competition.updatedAt)}
+            </span>
           </footer>
         </div>
       </section>
-    );
-  }
-
-  return (
-    <section className="stream-canvas" aria-label={`${competition.title} stream scoreboard`}>
-      <div className="stream-board">
-        <div className="stream-board-header">
-          <div className="stream-brand">
-            <Image
-              src="/cgs-logo.png"
-              alt="Crossodog Golf Society"
-              width={64}
-              height={64}
-              priority
-            />
-            <div>
-              <p className="stream-label">CGS stream scoreboard</p>
-              <strong>{competition.title}</strong>
-              <span>{secondaryTitle}</span>
-            </div>
-          </div>
-
-          <div className="stream-meta">
-            <span className="stream-pill">
-              {competition.isLive ? "Live" : competition.statusLabel}
-            </span>
-            <span className="stream-pill">{getSyncLabel(syncState)}</span>
-            <span className="stream-pill">{formatOverlayTime(competition.updatedAt)}</span>
-          </div>
-        </div>
-
-        <div className="stream-score-flash">
-          <div>
-            <span>{competition.location ?? "Weekly CGS stream"}</span>
-            <strong>{primaryTitle}</strong>
-          </div>
-          {leaderEntry ? (
-            <div className="stream-leader-chip">
-              <span>Leader</span>
-              <strong>{leaderEntry.scoreLabel}</strong>
-            </div>
-          ) : null}
-        </div>
-
-        <div className="stream-board-body">
-          {visibleEntries.length > 0 ? (
-            <div className="stream-rows">
-              {visibleEntries.map((entry, index) => (
-                <div
-                  key={entry.id}
-                  ref={(node) => registerRankRow(entry.id, node)}
-                  className={`stream-row ${index === 0 ? "stream-row-leading" : ""}`}
-                >
-                  <span className="stream-row-position">{entry.position}</span>
-                  <span className="stream-row-player">
-                    <MemberMark entry={entry} />
-                    <span className="stream-row-player-name">{entry.playerName}</span>
-                  </span>
-                  <span className="stream-row-score">{entry.scoreLabel}</span>
-                  <span className="stream-row-thru">{entry.thruLabel ?? "Thru --"}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="stream-empty">Scores will appear here</div>
-          )}
-        </div>
-      </div>
-    </section>
   );
 }
