@@ -6447,7 +6447,7 @@ main.text-white {
   border-radius: 18px;
   background:
     linear-gradient(180deg, rgba(12, 9, 7, 0.16), rgba(8, 7, 6, 0.84)),
-    url("/scoreboard/solos-desert-bg.png") center / cover no-repeat,
+    url("/scoreboard/solos-survivor-bg.png") 74% center / cover no-repeat,
     #120b07;
   box-shadow:
     inset 0 0 0 1px rgba(255, 189, 116, 0.28),
@@ -6517,10 +6517,12 @@ main.text-white {
 .solos-ladder-title strong {
   margin-top: 5px;
   overflow: hidden;
-  color: #fffaf3;
+  color: #f7e7ca;
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
   font-size: 25px;
   font-weight: 1000;
   line-height: 0.95;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.8);
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
@@ -6911,7 +6913,7 @@ main.text-white {
   z-index: 0;
   background:
     linear-gradient(180deg, rgba(8, 6, 5, 0.1), rgba(8, 6, 5, 0.58)),
-    url("/scoreboard/solos-desert-bg.png") center / cover no-repeat;
+    url("/scoreboard/solos-survivor-bg.png") center / cover no-repeat;
   filter: saturate(0.92) contrast(1.04);
   animation: solosTvAtmosphere 22s ease-in-out infinite alternate;
   pointer-events: none;
@@ -6973,11 +6975,12 @@ main.text-white {
 
 .solos-tv-brand h1 {
   margin-top: 8px;
-  color: #fff8ef;
-  font-family: Arial, Helvetica, sans-serif;
+  color: #f7e7ca;
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
   font-size: 50px;
   font-weight: 1000;
   line-height: 0.88;
+  text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.76);
   text-transform: uppercase;
 }
 
