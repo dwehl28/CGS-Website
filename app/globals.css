@@ -9763,6 +9763,474 @@ main.text-white {
   font-weight: 1000;
 }
 
+.survivor-ticker-canvas,
+.survivor-ticker-canvas * {
+  box-sizing: border-box;
+}
+
+.survivor-ticker-canvas {
+  display: block;
+  width: 1920px;
+  height: 180px;
+  min-height: 0;
+  overflow: hidden;
+  background: transparent;
+  color: #fff8ef;
+  font-family: Arial, Helvetica, sans-serif;
+  letter-spacing: 0;
+}
+
+.survivor-ticker-shell {
+  position: relative;
+  display: grid;
+  grid-template-columns: 400px minmax(0, 1fr) 315px;
+  width: 1920px;
+  height: 180px;
+  border-top: 3px solid #ff7622;
+  border-bottom: 3px solid #ff7622;
+  background: #100804;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 188, 117, 0.22),
+    0 0 34px rgba(255, 91, 9, 0.3);
+  overflow: hidden;
+}
+
+.survivor-ticker-shell::before,
+.survivor-ticker-shell::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.survivor-ticker-shell::before {
+  inset: 0;
+  z-index: 1;
+  background:
+    repeating-linear-gradient(
+      116deg,
+      transparent 0 46px,
+      rgba(255, 124, 32, 0.075) 47px 49px,
+      transparent 50px 94px
+    ),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.15), transparent 45% 70%, rgba(0, 0, 0, 0.32));
+}
+
+.survivor-ticker-shell::after {
+  top: -44px;
+  bottom: -44px;
+  left: -240px;
+  z-index: 2;
+  width: 210px;
+  background: linear-gradient(90deg, transparent, rgba(255, 136, 52, 0.17), transparent);
+  transform: skewX(-18deg);
+  animation: survivorTickerSweep 11s ease-in-out infinite;
+}
+
+.survivor-ticker-atmosphere {
+  position: absolute;
+  inset: -28px;
+  z-index: 0;
+  background:
+    linear-gradient(90deg, rgba(8, 5, 3, 0.5), rgba(17, 8, 3, 0.42)),
+    url("/scoreboard/solos-survivor-bg.png") center 61% / cover no-repeat;
+  filter: saturate(0.94) contrast(1.06);
+  animation: survivorTickerAtmosphere 20s ease-in-out infinite alternate;
+}
+
+.survivor-ticker-brand,
+.survivor-ticker-standings,
+.survivor-ticker-leader {
+  position: relative;
+  z-index: 3;
+}
+
+.survivor-ticker-brand {
+  display: flex;
+  align-items: center;
+  gap: 17px;
+  min-width: 0;
+  border-right: 2px solid rgba(255, 128, 40, 0.72);
+  background: linear-gradient(105deg, rgba(7, 5, 4, 0.98), rgba(28, 13, 6, 0.9));
+  padding: 17px 20px;
+}
+
+.survivor-ticker-brand > img {
+  width: 88px;
+  height: 88px;
+  flex: 0 0 auto;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.58));
+}
+
+.survivor-ticker-brand > div {
+  min-width: 0;
+}
+
+.survivor-ticker-brand p,
+.survivor-ticker-brand h1,
+.survivor-ticker-brand span {
+  display: block;
+  overflow: hidden;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.survivor-ticker-brand p {
+  color: #ff8732;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.survivor-ticker-brand h1 {
+  margin-top: 7px;
+  color: #f7e7ca;
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-size: 33px;
+  font-weight: 1000;
+  line-height: 0.9;
+  text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.78);
+}
+
+.survivor-ticker-brand span {
+  margin-top: 9px;
+  color: rgba(255, 226, 201, 0.64);
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.survivor-ticker-standings {
+  display: grid;
+  grid-template-columns: 126px minmax(0, 1fr);
+  min-width: 0;
+  border-right: 2px solid rgba(255, 128, 40, 0.72);
+  background: rgba(9, 6, 4, 0.62);
+}
+
+.survivor-ticker-rail-label {
+  display: grid;
+  align-content: center;
+  border-right: 1px solid rgba(255, 142, 62, 0.42);
+  background: rgba(8, 5, 3, 0.88);
+  padding: 18px 14px;
+  text-transform: uppercase;
+}
+
+.survivor-ticker-rail-label span,
+.survivor-ticker-rail-label strong,
+.survivor-ticker-rail-label small {
+  display: block;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.survivor-ticker-rail-label span {
+  color: #ff812a;
+  font-size: 10px;
+  font-weight: 1000;
+}
+
+.survivor-ticker-rail-label strong {
+  margin-top: 9px;
+  color: #fff0d7;
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-size: 28px;
+  font-weight: 1000;
+}
+
+.survivor-ticker-rail-label small {
+  margin-top: 10px;
+  color: rgba(255, 220, 184, 0.54);
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.survivor-ticker-window {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.survivor-ticker-window::before,
+.survivor-ticker-window::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  z-index: 4;
+  width: 58px;
+  pointer-events: none;
+}
+
+.survivor-ticker-window::before {
+  left: 0;
+  background: linear-gradient(90deg, rgba(12, 7, 4, 0.98), transparent);
+}
+
+.survivor-ticker-window::after {
+  right: 0;
+  background: linear-gradient(270deg, rgba(12, 7, 4, 0.98), transparent);
+}
+
+.survivor-ticker-marquee {
+  display: flex;
+  width: max-content;
+  min-width: 100%;
+  animation: survivorTickerScroll 60s linear infinite;
+  will-change: transform;
+}
+
+.survivor-ticker-list {
+  display: flex;
+  align-items: stretch;
+  padding-right: 14px;
+}
+
+.survivor-ticker-entry {
+  display: grid;
+  grid-template-columns: 54px minmax(160px, 1fr) 92px;
+  grid-template-areas:
+    "position player score"
+    "position thru score";
+  align-items: center;
+  gap: 3px 12px;
+  width: 330px;
+  min-width: 330px;
+  margin-block: 25px;
+  border-top: 1px solid rgba(255, 151, 79, 0.44);
+  border-right: 1px solid rgba(255, 123, 38, 0.36);
+  border-bottom: 1px solid rgba(255, 151, 79, 0.44);
+  background: linear-gradient(105deg, rgba(15, 10, 7, 0.94), rgba(45, 19, 8, 0.82));
+  box-shadow: inset 0 1px 0 rgba(255, 221, 184, 0.08);
+  color: #fff7ec;
+  padding: 11px 14px 11px 8px;
+}
+
+.survivor-ticker-position {
+  grid-area: position;
+  display: grid;
+  width: 48px;
+  height: 68px;
+  place-items: center;
+  clip-path: polygon(0 0, 100% 0, 100% 82%, 82% 100%, 0 100%);
+  background: linear-gradient(145deg, #ff842f, #c84808);
+  color: #1c0a04;
+  font-size: 22px;
+  font-weight: 1000;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.survivor-ticker-player {
+  grid-area: player;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: #fff6e9;
+  font-size: 17px;
+  font-weight: 1000;
+  line-height: 1;
+}
+
+.survivor-ticker-player > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.survivor-ticker-member-mark {
+  width: 25px;
+  height: 25px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(255, 255, 255, 0.56);
+  border-radius: 50%;
+  background: white;
+  padding: 3px;
+}
+
+.survivor-ticker-thru {
+  grid-area: thru;
+  overflow: hidden;
+  color: rgba(255, 222, 192, 0.58);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.survivor-ticker-score {
+  grid-area: score;
+  overflow: hidden;
+  color: #ff963f;
+  font-size: 27px;
+  font-weight: 1000;
+  letter-spacing: 0;
+  line-height: 0.95;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.survivor-ticker-empty {
+  display: grid;
+  align-content: center;
+  width: 100%;
+  min-height: 112px;
+  margin: 25px 22px;
+  border-top: 1px solid rgba(255, 137, 55, 0.46);
+  border-bottom: 1px solid rgba(255, 137, 55, 0.46);
+  background: rgba(13, 8, 5, 0.78);
+  padding: 18px 24px;
+  text-transform: uppercase;
+}
+
+.survivor-ticker-empty span,
+.survivor-ticker-empty strong {
+  display: block;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.survivor-ticker-empty span {
+  color: #ff8732;
+  font-size: 10px;
+  font-weight: 1000;
+}
+
+.survivor-ticker-empty strong {
+  margin-top: 10px;
+  color: #f7e7ca;
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-size: 26px;
+  font-weight: 1000;
+}
+
+.survivor-ticker-leader {
+  display: grid;
+  align-content: center;
+  min-width: 0;
+  background:
+    linear-gradient(108deg, rgba(237, 94, 12, 0.98), rgba(135, 39, 4, 0.96)),
+    #d94d08;
+  color: #fff9ef;
+  padding: 17px 22px;
+  box-shadow: inset 10px 0 24px rgba(66, 17, 1, 0.26);
+}
+
+.survivor-ticker-leader > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #2a0c03;
+  font-size: 10px;
+  font-weight: 1000;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.survivor-ticker-leader i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff7e8;
+  box-shadow: 0 0 14px rgba(255, 244, 225, 0.88);
+}
+
+.survivor-ticker-leader > strong {
+  margin-top: 9px;
+  overflow: hidden;
+  color: #fff8e8;
+  font-size: 43px;
+  font-weight: 1000;
+  letter-spacing: 0;
+  line-height: 0.88;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.survivor-ticker-leader p,
+.survivor-ticker-leader small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.survivor-ticker-leader p {
+  margin-top: 9px;
+  color: #fff5e5;
+  font-size: 13px;
+  font-weight: 1000;
+}
+
+.survivor-ticker-leader small {
+  margin-top: 8px;
+  color: rgba(49, 13, 2, 0.72);
+  font-size: 9px;
+  font-weight: 900;
+}
+
+@keyframes survivorTickerScroll {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes survivorTickerAtmosphere {
+  from {
+    transform: translate3d(-10px, -3px, 0) scale(1.02);
+  }
+
+  to {
+    transform: translate3d(12px, 3px, 0) scale(1.035);
+  }
+}
+
+@keyframes survivorTickerSweep {
+  0%,
+  62% {
+    opacity: 0;
+    transform: translateX(0) skewX(-18deg);
+  }
+
+  70% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(2260px) skewX(-18deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .survivor-ticker-atmosphere,
+  .survivor-ticker-shell::after {
+    animation: none;
+  }
+
+  .survivor-ticker-marquee {
+    animation-play-state: paused;
+  }
+}
+
 @media (max-width: 1023px) {
   .home-hero-inner,
   .home-stream-panel,

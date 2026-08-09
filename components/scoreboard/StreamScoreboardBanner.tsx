@@ -62,7 +62,7 @@ function MemberMark({ entry }: { entry: CompetitionScoreEntry }) {
       alt=""
       width={28}
       height={28}
-      className="stream-banner-member-mark"
+      className="survivor-ticker-member-mark"
       aria-hidden="true"
     />
   );
@@ -70,14 +70,14 @@ function MemberMark({ entry }: { entry: CompetitionScoreEntry }) {
 
 function BannerTeamCard({ entry }: { entry: CompetitionScoreEntry }) {
   return (
-    <article className="stream-banner-team">
-      <span className="stream-banner-position">{entry.position}</span>
-      <span className="stream-banner-player">
+    <article className="survivor-ticker-entry">
+      <span className="survivor-ticker-position">{entry.position}</span>
+      <span className="survivor-ticker-player">
         <MemberMark entry={entry} />
         <span>{entry.playerName}</span>
       </span>
-      <strong>{entry.scoreLabel}</strong>
-      <span className="stream-banner-thru">{entry.thruLabel ?? "Thru --"}</span>
+      <span className="survivor-ticker-thru">{entry.thruLabel ?? "Thru --"}</span>
+      <strong className="survivor-ticker-score">{entry.scoreLabel}</strong>
     </article>
   );
 }
@@ -181,54 +181,69 @@ export default function StreamScoreboardBanner({
 
   return (
     <section
-      className="stream-banner-canvas"
+      className="survivor-ticker-canvas"
       aria-label={`${competition.title} stream scoreboard banner`}
     >
-      <div className="stream-banner-board">
-        <div className="stream-banner-brand">
+      <div className="survivor-ticker-shell">
+        <div className="survivor-ticker-atmosphere" aria-hidden="true" />
+
+        <header className="survivor-ticker-brand">
           <Image
             src="/cgs-logo.png"
             alt="Crossodog Golf Society"
-            width={76}
-            height={76}
+            width={88}
+            height={88}
             priority
           />
           <div>
             <p>The Tee Lounge presents</p>
-            <strong>Solos Stableford</strong>
+            <h1>Solos Stableford</h1>
             <span>{secondaryTitle}</span>
+          </div>
+        </header>
+
+        <div className="survivor-ticker-standings">
+          <div className="survivor-ticker-rail-label">
+            <span>{competition.isLive ? "Live" : "Standings"}</span>
+            <strong>Top 20</strong>
+            <small>Higher points lead</small>
+          </div>
+
+          <div className="survivor-ticker-window">
+            {visibleEntries.length > 0 ? (
+              <div
+                className="survivor-ticker-marquee"
+                style={{
+                  animationDuration: `${Math.max(
+                    36,
+                    visibleEntries.length * 4
+                  )}s`,
+                }}
+              >
+                <div className="survivor-ticker-list">
+                  {visibleEntries.map((entry) => (
+                    <BannerTeamCard key={entry.id} entry={entry} />
+                  ))}
+                </div>
+                <div className="survivor-ticker-list" aria-hidden="true">
+                  {visibleEntries.map((entry) => (
+                    <BannerTeamCard key={`repeat-${entry.id}`} entry={entry} />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="survivor-ticker-empty">
+                <span>Field locked in</span>
+                <strong>Leaderboard opens at tee off</strong>
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="stream-banner-track">
-          {visibleEntries.length > 0 ? (
-            <div
-              className="stream-banner-marquee"
-              style={{
-                animationDuration: `${Math.max(
-                  36,
-                  visibleEntries.length * 4
-                )}s`,
-              }}
-            >
-              <div className="stream-banner-list">
-                {visibleEntries.map((entry) => (
-                  <BannerTeamCard key={entry.id} entry={entry} />
-                ))}
-              </div>
-              <div className="stream-banner-list" aria-hidden="true">
-                {visibleEntries.map((entry) => (
-                  <BannerTeamCard key={`repeat-${entry.id}`} entry={entry} />
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="stream-banner-empty">Leaderboard ready</div>
-          )}
-        </div>
-
-        <div className="stream-banner-live-card">
-          <span>{competition.isLive ? "Live" : competition.statusLabel}</span>
+        <aside className="survivor-ticker-leader">
+          <span>
+            <i aria-hidden="true" /> Current leader
+          </span>
           <strong>{leaderEntry ? leaderEntry.scoreLabel : "--"}</strong>
           <p>
             {leaderEntry ? `Leader: ${leaderEntry.playerName}` : "Waiting for scores"}
@@ -236,7 +251,7 @@ export default function StreamScoreboardBanner({
           <small>
             {getSyncLabel(syncState)} | {formatBannerTime(competition.updatedAt)}
           </small>
-        </div>
+        </aside>
       </div>
     </section>
   );
