@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { startTransition, useEffect, useEffectEvent, useState } from "react";
 
+import SolosMotionBackground from "@/components/scoreboard/SolosMotionBackground";
 import { useAnimatedRankOrder } from "@/components/scoreboard/useAnimatedRankOrder";
 import type {
   CompetitionScoreboard,
@@ -211,6 +212,8 @@ export default function StreamScoreboardOverlay({
         aria-label={`${competition.title} Solos Stableford ladder`}
       >
         <div className="solos-ladder-board">
+          <SolosMotionBackground variant="portrait" />
+
           <header className="solos-ladder-header">
             <Image
               src="/cgs-logo.png"

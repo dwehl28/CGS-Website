@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { startTransition, useEffect, useEffectEvent, useState } from "react";
 
+import SolosMotionBackground from "@/components/scoreboard/SolosMotionBackground";
 import type {
   CompetitionScoreboard,
   CompetitionScoreEntry,
@@ -186,6 +187,7 @@ export default function StreamScoreboardBanner({
     >
       <div className="survivor-ticker-shell">
         <div className="survivor-ticker-atmosphere" aria-hidden="true" />
+        <SolosMotionBackground variant="banner" />
 
         <header className="survivor-ticker-brand">
           <Image

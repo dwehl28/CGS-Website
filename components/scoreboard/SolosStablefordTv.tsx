@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 
+import SolosMotionBackground from "@/components/scoreboard/SolosMotionBackground";
 import { useAnimatedRankOrder } from "@/components/scoreboard/useAnimatedRankOrder";
 import type {
   CompetitionScoreboard,
@@ -218,6 +219,7 @@ export default function SolosStablefordTv({
       aria-label={`${competition.title} full field TV leaderboard`}
     >
       <div className="solos-tv-atmosphere" aria-hidden="true" />
+      <SolosMotionBackground variant="tv" />
 
       <header className="solos-tv-header">
         <div className="solos-tv-brand">
