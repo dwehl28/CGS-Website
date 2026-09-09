@@ -11479,6 +11479,16 @@ main.text-white {
   border: 2px solid rgba(36, 185, 255, 0.32);
 }
 
+.par3-broadcast-course-preload {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  opacity: 0;
+  pointer-events: none;
+}
+
 .par3-broadcast-header {
   display: flex;
   position: relative;

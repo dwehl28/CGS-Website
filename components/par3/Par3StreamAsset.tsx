@@ -159,7 +159,7 @@ function CourseRoadBoard() {
       {stages.map((stage, index) => (
         <article key={stage.key}>
           <div className="par3-broadcast-road-photo" aria-hidden="true">
-            <Image src="/par3/par3-course-draw.png" alt="" width={1122} height={1402} />
+            <Image src="/par3/par3-course-draw.png" alt="" width={1122} height={1402} loading="eager" />
           </div>
           <span>{String(index + 1).padStart(2, "0")}</span>
           <div className="par3-broadcast-road-copy"><small>{stage.label}</small><strong>{stage.course}</strong></div>
@@ -251,6 +251,7 @@ export default function Par3StreamAsset({ initialSnapshot, view }: AssetProps) {
 
   return (
     <section className={`par3-broadcast-canvas is-${view}`}>
+      {view === "tv" ? <Image className="par3-broadcast-course-preload" src="/par3/par3-course-draw.png" alt="" width={1122} height={1402} loading="eager" /> : null}
       <BroadcastHeader eyebrow={eyebrow} title={title} detail={detail} />
       <main className="par3-broadcast-body" key={resolvedView}>
         {resolvedView === "live" ? <LiveBoard snapshot={snapshot} pools={pools} playersById={playersById} /> : null}
