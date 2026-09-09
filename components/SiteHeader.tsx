@@ -53,7 +53,7 @@ export default function SiteHeader() {
           rel="noopener noreferrer"
           className="par3-header-entry"
         >
-          Buy entry <ExternalLink />
+          CGS shop <ExternalLink />
         </a>
 
         <button
@@ -80,7 +80,7 @@ export default function SiteHeader() {
             rel="noopener noreferrer"
             onClick={() => setIsOpen(false)}
           >
-            Buy entry <ExternalLink />
+            CGS shop <ExternalLink />
           </a>
         </nav>
       ) : null}

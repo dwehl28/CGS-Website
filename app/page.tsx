@@ -20,6 +20,7 @@ import Par3Countdown from "@/components/par3/Par3Countdown";
 import Par3LiveTournament from "@/components/par3/Par3LiveTournament";
 import Par3MotionStripes from "@/components/par3/Par3MotionStripes";
 import { getPublicPar3Snapshot } from "@/lib/par3-showdown";
+import { PAR3_FINALS_STAGES, PAR3_POOL_STAGES } from "@/lib/par3-showdown-types";
 import { absoluteUrl } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +28,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "CGS Par 3 Championship | 12 September 2026",
   description:
-    "Follow the 2026 CGS Par 3 Championship live: 32 golfers, eight pools, and a single-elimination Round of 16 at The Tee Lounge.",
+    "Follow the 2026 CGS Par 3 Championship live: 20 golfers, five pools, a closest-to-pin playoff, and a single-elimination Round of 16 at The Tee Lounge.",
   alternates: { canonical: absoluteUrl("/") },
   openGraph: {
     title: "CGS Par 3 Championship",
@@ -37,9 +38,9 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: absoluteUrl("/par3/par3-championship.png"),
-        width: 1122,
-        height: 1402,
+        url: absoluteUrl("/opengraph-image"),
+        width: 1200,
+        height: 630,
         alt: "CGS Par 3 Championship event poster",
       },
     ],
@@ -47,8 +48,8 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "CGS Par 3 Championship",
-    description: "32 golfers. Eight pools. One winner. Follow it live on 12 September.",
-    images: [absoluteUrl("/par3/par3-championship.png")],
+    description: "20 golfers. Five pools. One CTP survivor. One champion. Follow it live on 12 September.",
+    images: [absoluteUrl("/opengraph-image")],
   },
 };
 
@@ -251,14 +252,27 @@ export default async function Home() {
           <span>03</span>
           <strong>Format</strong>
         </div>
-        <div className="par3-poster-wrap">
-          <Image
-            src="/par3/par3-championship-format.png"
-            alt="How the CGS Par 3 Championship works"
-            width={1122}
-            height={1402}
-            className="par3-poster"
-          />
+        <div className="par3-road-card" aria-label="Road to the finals bracket">
+          <div>
+            <span>Stage 1</span>
+            <strong>Pool stage</strong>
+            <p>Top three from Pools A-E qualify automatically.</p>
+            <b>15 qualifiers</b>
+          </div>
+          <i aria-hidden="true">+</i>
+          <div>
+            <span>Stage 2</span>
+            <strong>CTP playoff</strong>
+            <p>All five fourth-place players contest Pebble Beach&apos;s 7th.</p>
+            <b>1 survivor</b>
+          </div>
+          <i aria-hidden="true">=</i>
+          <div>
+            <span>Stage 3</span>
+            <strong>Finals bracket</strong>
+            <p>Sixteen players enter a single-elimination knockout.</p>
+            <b>1 champion</b>
+          </div>
         </div>
         <div className="par3-format-copy">
           <p className="par3-kicker"><Flag /> Competition format</p>
@@ -268,7 +282,7 @@ export default async function Home() {
               <span>01</span>
               <h3>Pool play</h3>
               <p>
-                Eight pools of four. Everyone plays everyone in their pool. A win
+                Five pools of four. Everyone plays everyone in their pool. A win
                 is one point and a loss is zero.
               </p>
             </div>
@@ -276,16 +290,16 @@ export default async function Home() {
               <span>02</span>
               <h3>Qualification</h3>
               <p>
-                The top two from every pool advance. Tied players are split by their
-                head-to-head result.
+                The top three from every pool advance. All fourth-place players move
+                to the closest-to-pin playoff.
               </p>
             </div>
             <div>
               <span>03</span>
               <h3>Round of 16</h3>
               <p>
-                Eight pool winners face eight runners-up in the opening knockout
-                round.
+                Pool A&apos;s winner opens against the CTP survivor. The remaining draw
+                balances first, second, and third-place qualifiers.
               </p>
             </div>
             <div>
@@ -305,41 +319,44 @@ export default async function Home() {
       </section>
 
       <section id="enter" className="par3-entry-band">
-        <Par3MotionStripes tone="cyan" words={["12 SEP", "READY"]} />
+        <Par3MotionStripes tone="cyan" words={["12 SEP", "DRAW LOCKED"]} />
         <div className="par3-section-marker" aria-hidden="true">
           <span>04</span>
           <strong>Enter</strong>
         </div>
         <div className="par3-entry-inner">
           <div className="par3-entry-copy">
-            <p className="par3-kicker"><CircleDollarSign /> Limited field</p>
-            <h2>Ready to play?</h2>
+            <p className="par3-kicker"><CircleDollarSign /> Championship field</p>
+            <h2>Twenty players. Draw set.</h2>
             <p>
-              Entry is $30 with only {event.maxPlayers} places available. CGS members
-              and guests can register with a name, phone number, tee category, and
-              consent.
+              Five pools are locked in for Saturday night. Every player has three
+              pool fixtures before the top fifteen and one CTP survivor enter the
+              finals bracket.
             </p>
             <div className="par3-entry-details">
               <span><CalendarDays /> Saturday 12 September</span>
               <span><MapPin /> {event.venueAddress}</span>
               <span><Clock3 /> Warm-up 5:30pm / Tee-off 6:00pm</span>
             </div>
-            <a
-              href={event.registrationUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="par3-button par3-button-primary"
-            >
-              Buy through the CGS shop <ExternalLink />
+            <a href="#live" className="par3-button par3-button-primary">
+              Open the live draw <ArrowRight />
             </a>
           </div>
-          <Image
-            src="/par3/par3-championship-details.png"
-            alt="CGS Par 3 Championship entry information"
-            width={1122}
-            height={1402}
-            className="par3-entry-poster"
-          />
+          <div className="par3-course-road" aria-label="Championship course draw">
+            <p className="par3-kicker">Course draw</p>
+            <h3>Eight stages. A new test every round.</h3>
+            <div>
+              {[...PAR3_POOL_STAGES, ...PAR3_FINALS_STAGES].map((stage, index) => (
+                <span key={stage.key}>
+                  <b>{String(index + 1).padStart(2, "0")}</b>
+                  <span>
+                    <strong>{stage.label}</strong>
+                    <small>{stage.course}</small>
+                  </span>
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 

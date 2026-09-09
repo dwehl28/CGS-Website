@@ -105,13 +105,93 @@ export type Par3KnockoutRound = {
   matches: Database["match"];
 };
 
+export type Par3StreamView =
+  | "banner"
+  | "portrait"
+  | "fixtures"
+  | "results"
+  | "standings"
+  | "bracket"
+  | "tv";
+
+export type Par3CourseStage = {
+  key: string;
+  label: string;
+  course: string;
+  shortCourse: string;
+};
+
+export type Par3BracketSlot = {
+  key: string;
+  label: string;
+  poolNumber?: number;
+  position?: number;
+  isCtp?: boolean;
+};
+
+export type Par3BracketPairing = {
+  matchNumber: number;
+  lane: number;
+  first: Par3BracketSlot;
+  second: Par3BracketSlot;
+};
+
 export const PAR3_EVENT_SLUG = "par-3-showdown-2026";
 export const PAR3_MATCH_READY = 2;
 export const PAR3_MATCH_RUNNING = 3;
 export const PAR3_MATCH_COMPLETED = 4;
 
+export const PAR3_POOL_STAGES: Par3CourseStage[] = [
+  { key: "pool-1", label: "Round 1", course: "Nudge Golf Course", shortCourse: "Nudge GC" },
+  { key: "pool-2", label: "Round 2", course: "Royal Pines Golf Course", shortCourse: "Royal Pines" },
+  { key: "pool-3", label: "Round 3", course: "Bribie Island Golf Course", shortCourse: "Bribie Island" },
+];
+
+export const PAR3_FINALS_STAGES: Par3CourseStage[] = [
+  { key: "ctp", label: "CTP contest", course: "Pebble Beach - 7th Hole", shortCourse: "Pebble Beach 7" },
+  { key: "round-of-16", label: "Round of 16", course: "Pacific Golf Club (Carindale)", shortCourse: "Pacific GC" },
+  { key: "quarter-finals", label: "Quarter Finals", course: "Royal Queensland Golf Club", shortCourse: "Royal Queensland" },
+  { key: "semi-finals", label: "Semi Finals", course: "Redland Bay Golf Club", shortCourse: "Redland Bay" },
+  { key: "grand-final", label: "Grand Final", course: "Mt Coolum Golf Club", shortCourse: "Mt Coolum" },
+];
+
+const slot = (
+  poolNumber: number,
+  position: number
+): Par3BracketSlot => ({
+  key: `${getPoolLabel(poolNumber)}-${position}`,
+  label: `${getPoolLabel(poolNumber)} ${position}${position === 1 ? "st" : position === 2 ? "nd" : "rd"}`,
+  poolNumber,
+  position,
+});
+
+const ctpSlot: Par3BracketSlot = {
+  key: "ctp-winner",
+  label: "CTP winner",
+  isCtp: true,
+};
+
+export const PAR3_ROUND_OF_16_TEMPLATE: Par3BracketPairing[] = [
+  { matchNumber: 1, lane: 1, first: slot(1, 1), second: ctpSlot },
+  { matchNumber: 2, lane: 1, first: slot(2, 1), second: slot(1, 3) },
+  { matchNumber: 3, lane: 2, first: slot(3, 1), second: slot(2, 3) },
+  { matchNumber: 4, lane: 2, first: slot(4, 2), second: slot(5, 2) },
+  { matchNumber: 5, lane: 3, first: slot(4, 1), second: slot(3, 3) },
+  { matchNumber: 6, lane: 3, first: slot(1, 2), second: slot(2, 2) },
+  { matchNumber: 7, lane: 4, first: slot(5, 1), second: slot(4, 3) },
+  { matchNumber: 8, lane: 4, first: slot(3, 2), second: slot(5, 3) },
+];
+
 export function getPoolLabel(poolNumber: number) {
   return `Pool ${String.fromCharCode(64 + poolNumber)}`;
+}
+
+export function getPoolMatchRound(matchNumber: number) {
+  return Math.ceil(matchNumber / 2);
+}
+
+export function getPoolStage(matchNumber: number) {
+  return PAR3_POOL_STAGES[getPoolMatchRound(matchNumber) - 1] ?? null;
 }
 
 export function getTeeCategoryLabel(category: Par3TeeCategory) {
@@ -241,6 +321,40 @@ export function buildPar3Pools(snapshot: Par3Snapshot | AdminPar3Snapshot) {
       standings: buildPoolStandings(players, matches),
     };
   }) satisfies Par3PoolView[];
+}
+
+export function getPar3CtpContestants(
+  snapshot: Par3Snapshot | AdminPar3Snapshot
+) {
+  return buildPar3Pools(snapshot)
+    .map((pool) => pool.standings.find((standing) => standing.position === 4))
+    .filter((standing): standing is Par3Standing => Boolean(standing));
+}
+
+export function getPar3CtpWinner(
+  snapshot: Par3Snapshot | AdminPar3Snapshot
+) {
+  return snapshot.players.find(
+    (player) => !player.isWithdrawn && player.ctpRank === 1
+  ) ?? null;
+}
+
+export function resolvePar3BracketSlot(
+  snapshot: Par3Snapshot | AdminPar3Snapshot,
+  bracketSlot: Par3BracketSlot
+) {
+  if (bracketSlot.isCtp) {
+    return getPar3CtpWinner(snapshot);
+  }
+
+  if (!bracketSlot.poolNumber || !bracketSlot.position) {
+    return null;
+  }
+
+  return buildPar3Pools(snapshot)
+    .find((pool) => pool.number === bracketSlot.poolNumber)
+    ?.standings.find((standing) => standing.position === bracketSlot.position)
+    ?.player ?? null;
 }
 
 export function getKnockoutParticipantName(

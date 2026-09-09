@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useEffectEvent, useMemo, useState } from "react";
 
 import PwaInstallPrompt from "@/components/PwaInstallPrompt";
 import type {
@@ -391,6 +391,8 @@ export default function PlayerAmbroseApp() {
     }
   }
 
+  const loadDashboardFromEffect = useEffectEvent(loadDashboard);
+
   useEffect(() => {
     const storedAdminToken = window.localStorage.getItem(
       ADMIN_APP_SESSION_STORAGE_KEY
@@ -403,7 +405,7 @@ export default function PlayerAmbroseApp() {
       };
 
       setSession(adminSession);
-      void loadDashboard(storedAdminToken);
+      void loadDashboardFromEffect(storedAdminToken);
       return;
     }
 
@@ -423,7 +425,7 @@ export default function PlayerAmbroseApp() {
       setSession(data.session);
 
       if (data.session?.access_token) {
-        void loadDashboard(data.session.access_token);
+        void loadDashboardFromEffect(data.session.access_token);
       } else {
         setIsLoading(false);
       }
@@ -434,7 +436,7 @@ export default function PlayerAmbroseApp() {
         setSession(nextSession);
 
         if (nextSession?.access_token) {
-          void loadDashboard(nextSession.access_token);
+          void loadDashboardFromEffect(nextSession.access_token);
         } else {
           setDashboard(null);
           setIsLoading(false);

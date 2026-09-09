@@ -12,6 +12,7 @@ import {
   recordPar3KnockoutWinner,
   resetPar3KnockoutMatch,
   updatePar3EventSettings,
+  updatePar3CtpWinner,
   updatePar3Player,
   updatePar3PoolMatch,
   type Par3PlayerInput,
@@ -66,6 +67,27 @@ function revalidatePar3() {
   revalidatePath("/clubhouse-admin");
   revalidatePath("/clubhouse-admin/par3");
   revalidatePath("/api/par3-showdown");
+  revalidatePath("/stream/par3-showdown");
+}
+
+export async function updatePar3CtpWinnerAction(formData: FormData) {
+  await requireAdminAuthenticated();
+  const eventId = parseNumber(formData.get("event_id"));
+  const playerId = parseOptionalNumber(formData.get("player_id"));
+
+  if (!eventId) {
+    redirect(noticeUrl("ctp-failed", "ctp-playoff"));
+  }
+
+  try {
+    await updatePar3CtpWinner(eventId, playerId);
+  } catch (error) {
+    console.error("Update Par 3 CTP winner error:", error);
+    redirect(noticeUrl("ctp-failed", "ctp-playoff"));
+  }
+
+  revalidatePar3();
+  redirect(noticeUrl(playerId ? "ctp-saved" : "ctp-reset", "ctp-playoff"));
 }
 
 function noticeUrl(notice: string, anchor = "") {

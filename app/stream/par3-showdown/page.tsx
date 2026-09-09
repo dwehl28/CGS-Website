@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import Par3StreamAsset from "@/components/par3/Par3StreamAsset";
 import { getPublicPar3Snapshot } from "@/lib/par3-showdown";
+import type { Par3StreamView } from "@/lib/par3-showdown-types";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,18 @@ type PageProps = {
 
 export default async function Par3StreamPage({ searchParams }: PageProps) {
   const { view: requestedView } = await searchParams;
-  const view = requestedView === "portrait" ? "portrait" : "banner";
+  const supportedViews: Par3StreamView[] = [
+    "banner",
+    "portrait",
+    "fixtures",
+    "results",
+    "standings",
+    "bracket",
+    "tv",
+  ];
+  const view = supportedViews.includes(requestedView as Par3StreamView)
+    ? (requestedView as Par3StreamView)
+    : "banner";
   const snapshot = await getPublicPar3Snapshot();
 
   return (

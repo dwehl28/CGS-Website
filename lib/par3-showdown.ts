@@ -5,7 +5,10 @@ import { InMemoryDatabase } from "brackets-memory-db";
 
 import {
   PAR3_EVENT_SLUG,
+  PAR3_ROUND_OF_16_TEMPLATE,
   buildPar3Pools,
+  getPar3CtpContestants,
+  resolvePar3BracketSlot,
   type AdminPar3Snapshot,
   type Par3Event,
   type Par3Phase,
@@ -102,28 +105,94 @@ const fallbackEvent: Par3Event = {
   slug: PAR3_EVENT_SLUG,
   title: "CGS Par 3 Championship",
   summary:
-    "A 32-player, three-hole match-play championship with eight pools and a single-elimination Round of 16.",
+    "A 20-player match-play championship with five pools, a closest-to-pin playoff, and a single-elimination Round of 16.",
   startsAt: "2026-09-12T08:00:00.000Z",
   warmupAt: "2026-09-12T07:30:00.000Z",
   venueName: "The Tee Lounge",
   venueAddress: "2892-2896 Logan Rd, Underwood QLD 4119",
   registrationUrl: "https://crossodoggolfs-shop.bigcartel.com",
   youtubeUrl: "https://www.youtube.com/@CrossodogGolfSociety",
-  statusLabel: "Registrations open",
+  statusLabel: "Pool draw locked",
   publicMessage:
-    "Secure your place through the CGS shop. Tournament updates and live results will appear here.",
-  currentPhase: "registrations",
-  maxPlayers: 32,
-  poolCount: 8,
+    "The draw is locked. Follow fixtures, tables, results, the CTP playoff, and every finals matchup live.",
+  currentPhase: "pools",
+  maxPlayers: 20,
+  poolCount: 5,
   poolSize: 4,
   isPublished: true,
   isLive: false,
-  registrationsOpen: true,
+  registrationsOpen: false,
   knockoutData: null,
   knockoutGeneratedAt: null,
   updatedAt: "",
   createdAt: "",
 };
+
+const fallbackPoolNames = [
+  ["Wade", "Dan", "Blake", "Ryobi"],
+  ["Jayden", "Crossdog", "Wombat", "Ben D"],
+  ["Jarrad", "Ricky", "Butters", "Penguin"],
+  ["Macka", "Harry", "Caity", "Chipper"],
+  ["Hitman", "Dylan", "Ben W", "Mystery Player"],
+];
+
+const fallbackPlayers: Par3Player[] = fallbackPoolNames.flatMap(
+  (names, poolIndex) =>
+    names.map((name, playerIndex) => {
+      const id = poolIndex * 4 + playerIndex + 1;
+
+      return {
+        id,
+        eventId: 0,
+        displayOrder: id,
+        name,
+        teeCategory: "championship",
+        poolNumber: poolIndex + 1,
+        poolRankOverride: null,
+        ctpRank: null,
+        isWithdrawn: false,
+        updatedAt: "",
+        createdAt: "",
+      };
+    })
+);
+
+const fixtureSeedPairs = [
+  [0, 3],
+  [1, 2],
+  [0, 2],
+  [3, 1],
+  [0, 1],
+  [2, 3],
+] as const;
+
+const fallbackPoolMatches: Par3PoolMatch[] = fallbackPoolNames.flatMap(
+  (_, poolIndex) => {
+    const poolPlayers = fallbackPlayers.filter(
+      (player) => player.poolNumber === poolIndex + 1
+    );
+
+    return fixtureSeedPairs.map(([firstIndex, secondIndex], matchIndex) => {
+      const ids = [poolPlayers[firstIndex].id, poolPlayers[secondIndex].id].sort(
+        (left, right) => left - right
+      );
+
+      return {
+        id: poolIndex * 6 + matchIndex + 1,
+        eventId: 0,
+        poolNumber: poolIndex + 1,
+        matchNumber: matchIndex + 1,
+        player1Id: ids[0],
+        player2Id: ids[1],
+        winnerId: null,
+        status: "scheduled",
+        bayNumber: null,
+        updatedAt: "",
+        createdAt: "",
+      };
+    });
+  }
+);
 
 function mapEvent(row: EventRow): Par3Event {
   return {
@@ -296,8 +365,8 @@ export async function getPublicPar3Snapshot(): Promise<Par3Snapshot> {
 
   return {
     event: fallbackEvent,
-    players: [],
-    poolMatches: [],
+    players: fallbackPlayers,
+    poolMatches: fallbackPoolMatches,
     source: "fallback",
     warningMessage: "Live tournament data is being prepared.",
   };
@@ -437,27 +506,25 @@ export async function generatePar3PoolFixtures(eventId: number) {
         (player) => player.poolNumber === poolNumber && !player.isWithdrawn
       )
       .sort((left, right) => left.displayOrder - right.displayOrder);
-    let matchNumber = 1;
 
-    for (let firstIndex = 0; firstIndex < players.length; firstIndex += 1) {
-      for (
-        let secondIndex = firstIndex + 1;
-        secondIndex < players.length;
-        secondIndex += 1
-      ) {
-        const ids = [players[firstIndex].id, players[secondIndex].id].sort(
-          (left, right) => left - right
-        );
-        rows.push({
-          event_id: eventId,
-          pool_number: poolNumber,
-          match_number: matchNumber,
-          player1_id: ids[0],
-          player2_id: ids[1],
-          status: "scheduled",
-        });
-        matchNumber += 1;
-      }
+    if (players.length !== snapshot.event.poolSize) {
+      throw new Error(
+        `Pool ${poolNumber} requires exactly ${snapshot.event.poolSize} active players.`
+      );
+    }
+
+    for (const [matchIndex, [firstIndex, secondIndex]] of fixtureSeedPairs.entries()) {
+      const ids = [players[firstIndex].id, players[secondIndex].id].sort(
+        (left, right) => left - right
+      );
+      rows.push({
+        event_id: eventId,
+        pool_number: poolNumber,
+        match_number: matchIndex + 1,
+        player1_id: ids[0],
+        player2_id: ids[1],
+        status: "scheduled",
+      });
     }
   }
 
@@ -478,6 +545,63 @@ export async function generatePar3PoolFixtures(eventId: number) {
 
     if (insertError) {
       throw insertError;
+    }
+  }
+}
+
+export async function updatePar3CtpWinner(
+  eventId: number,
+  playerId: number | null
+) {
+  const snapshot = await getAdminPar3Snapshot();
+
+  if (snapshot.event.id !== eventId) {
+    throw new Error("Par 3 event not found.");
+  }
+
+  if (playerId !== null) {
+    const pools = buildPar3Pools(snapshot);
+    const poolsLocked = pools.every(
+      (pool) =>
+        pool.matches.filter((match) => match.winnerId !== null).length === 6 ||
+        pool.standings.every(
+          (standing) => standing.player.poolRankOverride !== null
+        )
+    );
+
+    if (!poolsLocked) {
+      throw new Error("Complete or manually seed every pool before the CTP playoff.");
+    }
+
+    const eligibleIds = new Set(
+      getPar3CtpContestants(snapshot).map((standing) => standing.player.id)
+    );
+
+    if (!eligibleIds.has(playerId)) {
+      throw new Error("The CTP winner must be a fourth-place pool finisher.");
+    }
+  }
+
+  const supabase = getSupabaseAdmin();
+  const now = new Date().toISOString();
+  const { error: clearError } = await supabase
+    .from("cgs_par3_players")
+    .update({ ctp_rank: null, updated_at: now })
+    .eq("event_id", eventId);
+
+  if (clearError) {
+    throw clearError;
+  }
+
+  if (playerId !== null) {
+    const { error: winnerError } = await supabase
+      .from("cgs_par3_players")
+      .update({ ctp_rank: 1, updated_at: now })
+      .eq("event_id", eventId)
+      .eq("id", playerId);
+
+    if (winnerError) {
+      throw winnerError;
     }
   }
 }
@@ -544,19 +668,31 @@ export async function generatePar3Knockout(eventId: number) {
   }
 
   const pools = buildPar3Pools(snapshot);
-  if (snapshot.event.poolCount !== 8) {
-    throw new Error("The championship requires eight completed pools.");
+  if (snapshot.event.poolCount !== 5) {
+    throw new Error("The championship requires five completed pools.");
   }
 
-  const first = (poolNumber: number) =>
-    getRequiredPoolQualifier(pools, poolNumber, 1);
-  const second = (poolNumber: number) =>
-    getRequiredPoolQualifier(pools, poolNumber, 2);
-  const poolNumbers = Array.from({ length: 8 }, (_, index) => index + 1);
-  const roundOf16Slots = poolNumbers.flatMap((poolNumber, index) => [
-    first(poolNumber),
-    second(poolNumbers[poolNumbers.length - 1 - index]),
+  for (const pool of pools) {
+    const completed = pool.matches.filter((match) => match.winnerId !== null).length;
+    const manuallyRanked = pool.standings.every(
+      (standing) => standing.player.poolRankOverride !== null
+    );
+
+    if (completed !== 6 && !manuallyRanked) {
+      throw new Error(`${pool.label} must be complete or manually seeded.`);
+    }
+
+    getRequiredPoolQualifier(pools, pool.number, 3);
+  }
+
+  const roundOf16Slots = PAR3_ROUND_OF_16_TEMPLATE.flatMap((pairing) => [
+    resolvePar3BracketSlot(snapshot, pairing.first),
+    resolvePar3BracketSlot(snapshot, pairing.second),
   ]);
+
+  if (roundOf16Slots.some((player) => !player)) {
+    throw new Error("Select the CTP winner before generating the Round of 16.");
+  }
   const storage = new InMemoryDatabase();
   const manager = new BracketsManager(storage);
 
@@ -564,7 +700,7 @@ export async function generatePar3Knockout(eventId: number) {
     tournamentId: 0,
     name: "CGS Par 3 Championship Finals",
     type: "single_elimination",
-    seeding: roundOf16Slots.map((player) => player.name),
+    seeding: roundOf16Slots.map((player) => player!.name),
     settings: {
       size: 16,
       seedOrdering: ["natural"],
