@@ -24,6 +24,7 @@ export default async function Par3StreamPage({ searchParams }: PageProps) {
     "results",
     "standings",
     "bracket",
+    "road",
     "tv",
   ];
   const view = supportedViews.includes(requestedView as Par3StreamView)

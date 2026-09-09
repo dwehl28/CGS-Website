@@ -152,7 +152,22 @@ function BracketBoard({ snapshot, pools }: { snapshot: Par3Snapshot; pools: Par3
 }
 
 function CourseRoadBoard() {
-  return <section className="par3-broadcast-road">{[...PAR3_POOL_STAGES, ...PAR3_FINALS_STAGES].map((stage, index, stages) => <article key={stage.key}><span>{String(index + 1).padStart(2, "0")}</span><div><small>{stage.label}</small><strong>{stage.course}</strong></div>{index < stages.length - 1 ? <ArrowRight /> : <Trophy />}</article>)}</section>;
+  const stages = [...PAR3_POOL_STAGES, ...PAR3_FINALS_STAGES];
+
+  return (
+    <section className="par3-broadcast-road">
+      {stages.map((stage, index) => (
+        <article key={stage.key}>
+          <div className="par3-broadcast-road-photo" aria-hidden="true">
+            <Image src="/par3/par3-course-draw.png" alt="" width={1122} height={1402} />
+          </div>
+          <span>{String(index + 1).padStart(2, "0")}</span>
+          <div className="par3-broadcast-road-copy"><small>{stage.label}</small><strong>{stage.course}</strong></div>
+          {index < stages.length - 1 ? <ArrowRight /> : <Trophy />}
+        </article>
+      ))}
+    </section>
+  );
 }
 
 function LiveBoard({ snapshot, pools, playersById }: { snapshot: Par3Snapshot; pools: Par3PoolView[]; playersById: PlayerMap }) {

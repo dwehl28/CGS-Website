@@ -11519,7 +11519,7 @@ main.text-white {
 .par3-broadcast-portrait-ctp > span,
 .par3-broadcast-portrait-final > span {
   color: var(--broadcast-cyan);
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 950;
   letter-spacing: 0.19em;
   text-transform: uppercase;
@@ -11528,14 +11528,14 @@ main.text-white {
 .par3-broadcast-event-mark h1 {
   margin-top: 3px;
   font-family: var(--font-dm-serif-display);
-  font-size: 48px;
+  font-size: 54px;
   line-height: 0.95;
 }
 
 .par3-broadcast-event-mark p {
   margin-top: 8px;
   color: #92a5b2;
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 650;
 }
 
@@ -11550,13 +11550,13 @@ main.text-white {
 .par3-tee-lounge-mark span {
   margin-right: 3px;
   color: var(--broadcast-gold);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 950;
   letter-spacing: 0.35em;
 }
 
 .par3-tee-lounge-mark strong {
-  font-size: 25px;
+  font-size: 30px;
   font-weight: 1000;
   letter-spacing: -0.055em;
 }
@@ -11582,7 +11582,7 @@ main.text-white {
   align-items: center;
   gap: 9px;
   color: #93a6b3;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 850;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -11608,7 +11608,7 @@ main.text-white {
 
 .par3-broadcast-footer > strong {
   color: var(--broadcast-gold);
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 1000;
   text-transform: uppercase;
 }
@@ -11656,7 +11656,7 @@ main.text-white {
 .par3-broadcast-match > div span,
 .par3-broadcast-match > div small {
   color: #7f94a2;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -11678,7 +11678,7 @@ main.text-white {
 
 .par3-broadcast-match > p strong {
   overflow: hidden;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 950;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -11696,7 +11696,7 @@ main.text-white {
 .par3-broadcast-match > i {
   padding-top: 13px;
   color: #657984;
-  font-size: 10px;
+  font-size: 12px;
   font-style: normal;
   font-weight: 900;
   text-align: center;
@@ -11709,7 +11709,7 @@ main.text-white {
 }
 
 .par3-broadcast-match.is-compact > p strong {
-  font-size: 13px;
+  font-size: 18px;
 }
 
 .par3-broadcast-match.is-compact > div {
@@ -11767,7 +11767,7 @@ main.text-white {
 
 .par3-broadcast-standing-head {
   color: #6e8492;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -11789,7 +11789,7 @@ main.text-white {
 
 .par3-broadcast-standing-row strong {
   overflow: hidden;
-  font-size: 18px;
+  font-size: 20px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -11820,7 +11820,7 @@ main.text-white {
   border-top: 1px solid rgba(138, 221, 255, 0.12);
   padding: 0 12px;
   color: #6e8492;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 900;
   text-transform: uppercase;
 }
@@ -11855,12 +11855,12 @@ main.text-white {
 
 .par3-broadcast-round-title > span {
   grid-column: 1 / -1;
-  font-size: 10px;
+  font-size: 14px;
 }
 
 .par3-broadcast-round-title > strong {
   overflow: hidden;
-  font-size: 19px;
+  font-size: 24px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -11868,7 +11868,7 @@ main.text-white {
 .par3-broadcast-round-title > small {
   align-self: center;
   color: #7d929f;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 800;
   text-transform: uppercase;
 }
@@ -11930,7 +11930,7 @@ main.text-white {
 .par3-broadcast-live-board aside p {
   margin-top: 18px;
   color: #a7b7c2;
-  font-size: 15px;
+  font-size: 18px;
   line-height: 1.6;
 }
 
@@ -11951,7 +11951,7 @@ main.text-white {
   border-bottom: 2px solid var(--broadcast-cyan);
   padding: 0 0 12px;
   color: var(--broadcast-cyan-soft);
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 950;
   text-transform: uppercase;
 }
@@ -11983,7 +11983,7 @@ main.text-white {
   transform: translateY(-50%);
   background: var(--broadcast-gold);
   color: #06111b;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 1000;
 }
 
@@ -11992,7 +11992,7 @@ main.text-white {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   padding: 8px 11px;
   color: #cbd6dd;
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -12020,14 +12020,51 @@ main.text-white {
 }
 
 .par3-broadcast-road article {
+  position: relative;
   display: grid;
-  grid-template-columns: 68px minmax(0, 1fr) 26px;
-  align-items: center;
+  isolation: isolate;
+  overflow: hidden;
+  grid-template-columns: 74px minmax(0, 1fr) 32px;
+  align-items: end;
   gap: 18px;
   border: 1px solid var(--broadcast-line);
-  background: linear-gradient(130deg, rgba(36, 185, 255, 0.085), rgba(255, 191, 63, 0.045));
+  background: #06111b;
   padding: 28px;
 }
+
+.par3-broadcast-road article::after {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(2, 7, 13, 0.08) 0%, rgba(2, 7, 13, 0.38) 42%, rgba(2, 7, 13, 0.96) 100%),
+    linear-gradient(90deg, rgba(2, 7, 13, 0.82), transparent 64%);
+  content: "";
+}
+
+.par3-broadcast-road-photo {
+  position: absolute;
+  z-index: -2;
+  inset: 0;
+  overflow: hidden;
+}
+
+.par3-broadcast-road-photo img {
+  position: absolute;
+  width: 2637px;
+  max-width: none;
+  height: auto;
+  filter: saturate(1.15) contrast(1.06);
+}
+
+.par3-broadcast-road article:nth-child(1) img { top: -1300px; left: -145px; }
+.par3-broadcast-road article:nth-child(2) img { top: -1300px; left: -790px; }
+.par3-broadcast-road article:nth-child(3) img { top: -1300px; left: -1430px; }
+.par3-broadcast-road article:nth-child(4) img { top: -1300px; left: -2060px; }
+.par3-broadcast-road article:nth-child(5) img { top: -2100px; left: -145px; }
+.par3-broadcast-road article:nth-child(6) img { top: -2100px; left: -790px; }
+.par3-broadcast-road article:nth-child(7) img { top: -2100px; left: -1430px; }
+.par3-broadcast-road article:nth-child(8) img { top: -2100px; left: -2060px; }
 
 .par3-broadcast-road article > span {
   display: grid;
@@ -12047,14 +12084,14 @@ main.text-white {
 
 .par3-broadcast-road small {
   color: var(--broadcast-cyan);
-  font-size: 11px;
+  font-size: 16px;
   font-weight: 900;
   text-transform: uppercase;
 }
 
 .par3-broadcast-road strong {
   margin-top: 6px;
-  font-size: 22px;
+  font-size: 30px;
   line-height: 1.15;
 }
 
@@ -12094,13 +12131,13 @@ main.text-white {
 
 .par3-broadcast-banner-brand span {
   color: var(--broadcast-cyan);
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 900;
 }
 
 .par3-broadcast-banner-brand strong {
   margin-top: 5px;
-  font-size: 24px;
+  font-size: 27px;
   line-height: 1;
 }
 
@@ -12134,7 +12171,7 @@ main.text-white {
   align-items: center;
   gap: 8px;
   color: #8da0ac;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 900;
   text-transform: uppercase;
 }
@@ -12173,7 +12210,7 @@ main.text-white {
 
 .par3-broadcast-portrait .par3-broadcast-event-mark p {
   max-width: 170px;
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .par3-broadcast-portrait .par3-tee-lounge-mark {
@@ -12284,7 +12321,7 @@ main.text-white {
 .par3-broadcast-portrait-ctp p small,
 .par3-broadcast-portrait-final p {
   color: #8ea1ad;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 850;
   text-transform: uppercase;
 }

@@ -492,6 +492,7 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
             ["results", "Latest results", "1920 x 1080"],
             ["standings", "Pool tables", "1920 x 1080"],
             ["bracket", "Finals bracket", "1920 x 1080"],
+            ["road", "Eight stages", "1920 x 1080"],
             ["tv", "Automatic TV rotation", "1920 x 1080"],
           ].map(([view, label, size]) => (
             <Link

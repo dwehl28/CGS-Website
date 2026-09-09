@@ -112,6 +112,7 @@ export type Par3StreamView =
   | "results"
   | "standings"
   | "bracket"
+  | "road"
   | "tv";
 
 export type Par3CourseStage = {
