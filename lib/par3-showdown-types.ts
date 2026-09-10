@@ -129,6 +129,7 @@ export type Par3BracketSlot = {
   poolNumber?: number;
   position?: number;
   isCtp?: boolean;
+  ctpRank?: number;
 };
 
 export type Par3BracketPairing = {
@@ -167,14 +168,15 @@ const slot = (
   position,
 });
 
-const ctpSlot: Par3BracketSlot = {
-  key: "ctp-winner",
-  label: "CTP winner",
+const ctpSlot = (rank = 1): Par3BracketSlot => ({
+  key: `ctp-${rank}`,
+  label: rank === 1 ? "CTP winner" : `CTP qualifier ${rank}`,
   isCtp: true,
-};
+  ctpRank: rank,
+});
 
 export const PAR3_ROUND_OF_16_TEMPLATE: Par3BracketPairing[] = [
-  { matchNumber: 1, lane: 1, first: slot(1, 1), second: ctpSlot },
+  { matchNumber: 1, lane: 1, first: slot(1, 1), second: ctpSlot() },
   { matchNumber: 2, lane: 1, first: slot(2, 1), second: slot(1, 3) },
   { matchNumber: 3, lane: 2, first: slot(3, 1), second: slot(2, 3) },
   { matchNumber: 4, lane: 2, first: slot(4, 2), second: slot(5, 2) },
@@ -183,6 +185,35 @@ export const PAR3_ROUND_OF_16_TEMPLATE: Par3BracketPairing[] = [
   { matchNumber: 7, lane: 4, first: slot(5, 1), second: slot(4, 3) },
   { matchNumber: 8, lane: 4, first: slot(3, 2), second: slot(5, 3) },
 ];
+
+export const PAR3_SIX_POOL_ROUND_OF_16_TEMPLATE: Par3BracketPairing[] = [
+  { matchNumber: 1, lane: 1, first: slot(1, 1), second: ctpSlot(4) },
+  { matchNumber: 2, lane: 1, first: slot(4, 2), second: slot(5, 2) },
+  { matchNumber: 3, lane: 2, first: slot(2, 1), second: ctpSlot(3) },
+  { matchNumber: 4, lane: 2, first: slot(6, 1), second: slot(1, 2) },
+  { matchNumber: 5, lane: 3, first: slot(3, 1), second: ctpSlot(2) },
+  { matchNumber: 6, lane: 3, first: slot(2, 2), second: slot(6, 2) },
+  { matchNumber: 7, lane: 4, first: slot(4, 1), second: ctpSlot(1) },
+  { matchNumber: 8, lane: 4, first: slot(5, 1), second: slot(3, 2) },
+];
+
+export function getPar3RoundOf16Template(poolCount: number) {
+  return poolCount === 6
+    ? PAR3_SIX_POOL_ROUND_OF_16_TEMPLATE
+    : PAR3_ROUND_OF_16_TEMPLATE;
+}
+
+export function getPar3AutomaticQualifyingPlaces(poolCount: number) {
+  return poolCount === 6 ? 2 : 3;
+}
+
+export function getPar3CtpPoolPosition(poolCount: number) {
+  return poolCount === 6 ? 3 : 4;
+}
+
+export function getPar3CtpQualifierCount(poolCount: number) {
+  return poolCount === 6 ? 4 : 1;
+}
 
 export function getPoolLabel(poolNumber: number) {
   return `Pool ${String.fromCharCode(64 + poolNumber)}`;
@@ -328,17 +359,32 @@ export function buildPar3Pools(snapshot: Par3Snapshot | AdminPar3Snapshot) {
 export function getPar3CtpContestants(
   snapshot: Par3Snapshot | AdminPar3Snapshot
 ) {
+  const ctpPosition = getPar3CtpPoolPosition(snapshot.event.poolCount);
+
   return buildPar3Pools(snapshot)
-    .map((pool) => pool.standings.find((standing) => standing.position === 4))
+    .map((pool) => pool.standings.find((standing) => standing.position === ctpPosition))
     .filter((standing): standing is Par3Standing => Boolean(standing));
+}
+
+export function getPar3CtpQualifiers(
+  snapshot: Par3Snapshot | AdminPar3Snapshot
+) {
+  const qualifierCount = getPar3CtpQualifierCount(snapshot.event.poolCount);
+
+  return snapshot.players
+    .filter(
+      (player) =>
+        !player.isWithdrawn &&
+        player.ctpRank !== null &&
+        player.ctpRank <= qualifierCount
+    )
+    .sort((left, right) => (left.ctpRank ?? 99) - (right.ctpRank ?? 99));
 }
 
 export function getPar3CtpWinner(
   snapshot: Par3Snapshot | AdminPar3Snapshot
 ) {
-  return snapshot.players.find(
-    (player) => !player.isWithdrawn && player.ctpRank === 1
-  ) ?? null;
+  return getPar3CtpQualifiers(snapshot).find((player) => player.ctpRank === 1) ?? null;
 }
 
 export function resolvePar3BracketSlot(
@@ -346,7 +392,8 @@ export function resolvePar3BracketSlot(
   bracketSlot: Par3BracketSlot
 ) {
   if (bracketSlot.isCtp) {
-    return getPar3CtpWinner(snapshot);
+    const rank = bracketSlot.ctpRank ?? 1;
+    return getPar3CtpQualifiers(snapshot).find((player) => player.ctpRank === rank) ?? null;
   }
 
   if (!bracketSlot.poolNumber || !bracketSlot.position) {

@@ -12,8 +12,9 @@ import {
   recordPar3KnockoutWinner,
   resetPar3KnockoutMatch,
   startPar3KnockoutMatch,
+  updatePar3PoolCount,
   updatePar3EventSettings,
-  updatePar3CtpWinner,
+  updatePar3CtpQualifiers,
   updatePar3Player,
   updatePar3PoolMatch,
   type Par3PlayerInput,
@@ -75,20 +76,44 @@ export async function updatePar3CtpWinnerAction(formData: FormData) {
   await requireAdminAuthenticated();
   const eventId = parseNumber(formData.get("event_id"));
   const playerId = parseOptionalNumber(formData.get("player_id"));
+  const rankedPlayerIds = [1, 2, 3, 4].map((rank) =>
+    parseOptionalNumber(formData.get(`qualifier_${rank}`))
+  );
+  const qualifierIds = playerId !== null ? [playerId] : rankedPlayerIds;
 
   if (!eventId) {
     redirect(noticeUrl("ctp-failed", "ctp-playoff"));
   }
 
   try {
-    await updatePar3CtpWinner(eventId, playerId);
+    await updatePar3CtpQualifiers(eventId, qualifierIds);
   } catch (error) {
     console.error("Update Par 3 CTP winner error:", error);
     redirect(noticeUrl("ctp-failed", "ctp-playoff"));
   }
 
   revalidatePar3();
-  redirect(noticeUrl(playerId ? "ctp-saved" : "ctp-reset", "ctp-playoff"));
+  redirect(noticeUrl(qualifierIds.some((id) => id !== null) ? "ctp-saved" : "ctp-reset", "ctp-playoff"));
+}
+
+export async function updatePar3PoolCountAction(formData: FormData) {
+  await requireAdminAuthenticated();
+  const eventId = parseNumber(formData.get("event_id"));
+  const poolCount = parseNumber(formData.get("pool_count"));
+
+  if (!eventId || (poolCount !== 5 && poolCount !== 6)) {
+    redirect(noticeUrl("pool-format-failed", "entrants"));
+  }
+
+  try {
+    await updatePar3PoolCount(eventId, poolCount);
+  } catch (error) {
+    console.error("Update Par 3 pool count error:", error);
+    redirect(noticeUrl("pool-format-failed", "entrants"));
+  }
+
+  revalidatePar3();
+  redirect(noticeUrl("pool-format-saved", "entrants"));
 }
 
 function noticeUrl(notice: string, anchor = "") {

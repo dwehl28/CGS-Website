@@ -19,6 +19,7 @@ import {
   startPar3KnockoutMatchAction,
   updatePar3EventAction,
   updatePar3CtpWinnerAction,
+  updatePar3PoolCountAction,
   updatePar3PlayerAction,
   updatePar3PoolMatchAction,
 } from "@/app/clubhouse-admin/par3/actions";
@@ -33,13 +34,16 @@ import { getAdminPar3Snapshot } from "@/lib/par3-showdown";
 import {
   PAR3_MATCH_COMPLETED,
   PAR3_MATCH_RUNNING,
-  PAR3_ROUND_OF_16_TEMPLATE,
   buildPar3Pools,
   getPar3CtpContestants,
+  getPar3CtpPoolPosition,
+  getPar3CtpQualifierCount,
+  getPar3CtpQualifiers,
   getPar3CtpWinner,
   getKnockoutParticipantName,
   getPar3Champion,
   getPar3KnockoutRounds,
+  getPar3RoundOf16Template,
   getPoolStage,
   getTeeCategoryLabel,
   resolvePar3BracketSlot,
@@ -75,8 +79,10 @@ const noticeMessages: Record<string, string> = {
     "Fixtures could not be generated. Check pool allocations, or existing results.",
   "result-saved": "Pool result updated.",
   "result-failed": "Pool result could not be saved.",
-  "ctp-saved": "CTP winner confirmed for the Round of 16.",
-  "ctp-reset": "CTP winner cleared.",
+  "pool-format-saved": "Tournament pool format updated.",
+  "pool-format-failed": "Pool format could not be changed. Check the current players, results, and finals status.",
+  "ctp-saved": "CTP qualifying places confirmed for the Round of 16.",
+  "ctp-reset": "CTP qualifying places cleared.",
   "ctp-failed": "CTP winner could not be updated. Confirm the pool tables first.",
   "knockout-created": "Round of 16 created from the confirmed qualifiers.",
   "knockout-failed":
@@ -106,11 +112,11 @@ function TeeOptions() {
   );
 }
 
-function PoolOptions() {
+function PoolOptions({ poolCount }: { poolCount: number }) {
   return (
     <>
       <option value="">Not allocated</option>
-      {Array.from({ length: 5 }, (_, index) => index + 1).map((number) => (
+      {Array.from({ length: poolCount }, (_, index) => index + 1).map((number) => (
         <option key={number} value={number}>
           Pool {String.fromCharCode(64 + number)}
         </option>
@@ -122,9 +128,11 @@ function PoolOptions() {
 function PlayerEditor({
   player,
   eventId,
+  poolCount,
 }: {
   player: AdminPar3Player;
   eventId: number;
+  poolCount: number;
 }) {
   return (
     <details
@@ -197,7 +205,7 @@ function PlayerEditor({
             className="field-control"
             defaultValue={player.poolNumber ?? ""}
           >
-            <PoolOptions />
+            <PoolOptions poolCount={poolCount} />
           </select>
         </div>
         <div>
@@ -391,7 +399,11 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
     (match) => match.winnerId !== null
   ).length;
   const ctpContestants = getPar3CtpContestants(snapshot);
+  const ctpQualifiers = getPar3CtpQualifiers(snapshot);
   const ctpWinner = getPar3CtpWinner(snapshot);
+  const ctpPoolPosition = getPar3CtpPoolPosition(event.poolCount);
+  const ctpQualifierCount = getPar3CtpQualifierCount(event.poolCount);
+  const roundOf16Template = getPar3RoundOf16Template(event.poolCount);
   const poolStandingsLocked = pools.every(
     (pool) =>
       pool.matches.filter((match) => match.winnerId !== null).length === 6 ||
@@ -399,7 +411,10 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
         (standing) => standing.player.poolRankOverride !== null
       )
   );
-  const finalsReady = poolStandingsLocked && Boolean(ctpWinner);
+  const finalsReady =
+    poolStandingsLocked &&
+    ctpQualifiers.length === ctpQualifierCount &&
+    ctpQualifiers.every((player, index) => player.ctpRank === index + 1);
   const knockoutRounds = getPar3KnockoutRounds(event.knockoutData);
   const champion = getPar3Champion(event.knockoutData);
 
@@ -599,6 +614,39 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
           </p>
         </div>
 
+        <div className="panel mt-6 flex flex-wrap items-center justify-between gap-5 p-6">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-cyan-300">
+              Tournament format
+            </p>
+            <h3 className="mt-2 text-xl">
+              {event.poolCount} pools / {event.maxPlayers} players
+            </h3>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
+              Five pools uses the current top-three format. Six pools sends the top two from each pool through, then adds the top four third-place players from the CTP playoff.
+            </p>
+          </div>
+          <form action={updatePar3PoolCountAction} className="flex flex-wrap items-end gap-3">
+            <input type="hidden" name="event_id" value={event.id} />
+            <div>
+              <label className="field-label" htmlFor="pool-count">Pool setup</label>
+              <select
+                id="pool-count"
+                name="pool_count"
+                className="field-control min-w-52"
+                defaultValue={event.poolCount}
+                disabled={Boolean(event.knockoutData)}
+              >
+                <option value="5">5 pools / 20 players</option>
+                <option value="6">6 pools / 24 players</option>
+              </select>
+            </div>
+            <button type="submit" className="btn-primary" disabled={Boolean(event.knockoutData)}>
+              Update format
+            </button>
+          </form>
+        </div>
+
         <div className="mt-6 grid gap-6 xl:grid-cols-[0.7fr_1.3fr]">
           <form action={createPar3PlayerAction} className="panel grid content-start gap-4 p-6">
             <input type="hidden" name="event_id" value={event.id} />
@@ -654,7 +702,7 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
                 className="field-control"
                 defaultValue=""
               >
-                <PoolOptions />
+                <PoolOptions poolCount={event.poolCount} />
               </select>
             </div>
             <label className="flex items-center gap-3 text-sm text-zinc-200">
@@ -674,7 +722,12 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
             <div className="mt-4">
               {players.length ? (
                 players.map((player) => (
-                  <PlayerEditor key={player.id} player={player} eventId={event.id} />
+                  <PlayerEditor
+                    key={player.id}
+                    player={player}
+                    eventId={event.id}
+                    poolCount={event.poolCount}
+                  />
                 ))
               ) : (
                 <p className="border border-dashed border-white/15 p-5 text-sm text-zinc-400">
@@ -695,13 +748,12 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
           <form action={generatePar3PoolFixturesAction}>
             <input type="hidden" name="event_id" value={event.id} />
             <button type="submit" className="btn-primary">
-              {poolMatches.length ? "Rebuild fixtures" : "Generate fixtures"}
+              {poolMatches.length ? "Sync fixtures" : "Generate fixtures"}
             </button>
           </form>
         </div>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-zinc-400">
-          Allocate four players to each pool first. Tap a winner once a match is
-          complete; standings and head-to-head tie-breaks update automatically.
+          Allocate four players to each active pool first. Fixture sync creates missing pools and safely rebuilds changed pools without touching valid results. Tap a winner once a match is complete; standings and head-to-head tie-breaks update automatically.
         </p>
 
         <div className="mt-6 grid gap-5 xl:grid-cols-2">
@@ -789,55 +841,98 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
           </span>
         </div>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-zinc-400">
-          The fourth-place player from each pool enters the CTP contest. Select the winner here to unlock the final Round-of-16 place against Pool A&apos;s winner.
+          {event.poolCount === 6
+            ? "The third-place player from every pool enters the CTP contest. Rank the top four finishers to complete the Round of 16."
+            : "The fourth-place player from each pool enters the CTP contest. Select the winner to unlock the final Round-of-16 place."}
         </p>
 
         <div className="panel mt-6 p-6">
           {poolStandingsLocked && ctpContestants.length === event.poolCount ? (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-              {ctpContestants.map((standing) => {
-                const selected = ctpWinner?.id === standing.player.id;
+            event.poolCount === 6 ? (
+              <form action={updatePar3CtpWinnerAction}>
+                <input type="hidden" name="event_id" value={event.id} />
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  {Array.from({ length: ctpQualifierCount }, (_, index) => {
+                    const rank = index + 1;
+                    const selected = ctpQualifiers.find(
+                      (player) => player.ctpRank === rank
+                    );
 
-                return (
-                  <form key={standing.player.id} action={updatePar3CtpWinnerAction}>
-                    <input type="hidden" name="event_id" value={event.id} />
-                    <button
-                      type="submit"
-                      name="player_id"
-                      value={standing.player.id}
-                      className={`min-h-24 w-full border p-4 text-left transition ${
-                        selected
-                          ? "border-amber-300 bg-amber-300/14"
-                          : "border-white/10 bg-white/5 hover:border-cyan-300/55"
-                      }`}
-                    >
-                      <span className="block text-xs font-bold uppercase tracking-wider text-cyan-300">
-                        Pool {String.fromCharCode(64 + (standing.player.poolNumber ?? 1))} fourth
-                      </span>
-                      <strong className="mt-2 block text-lg text-white">
-                        {standing.player.name}
-                      </strong>
-                      <small className="mt-1 block text-xs text-zinc-500">
-                        {selected ? "CTP winner selected" : "Select as CTP winner"}
-                      </small>
-                    </button>
-                  </form>
-                );
-              })}
-            </div>
+                    return (
+                      <div key={rank} className="border border-white/10 bg-white/5 p-4">
+                        <label className="field-label" htmlFor={`ctp-qualifier-${rank}`}>
+                          CTP place {rank}
+                        </label>
+                        <select
+                          id={`ctp-qualifier-${rank}`}
+                          name={`qualifier_${rank}`}
+                          className="field-control"
+                          defaultValue={selected?.id ?? ""}
+                        >
+                          <option value="">Not confirmed</option>
+                          {ctpContestants.map((standing) => (
+                            <option key={standing.player.id} value={standing.player.id}>
+                              Pool {String.fromCharCode(64 + (standing.player.poolNumber ?? 1))} / {standing.player.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-5">
+                  <p className="text-sm text-zinc-400">
+                    All four places must be unique before the finals bracket can be generated.
+                  </p>
+                  <button type="submit" className="btn-primary">Save top four</button>
+                </div>
+              </form>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                {ctpContestants.map((standing) => {
+                  const selected = ctpWinner?.id === standing.player.id;
+
+                  return (
+                    <form key={standing.player.id} action={updatePar3CtpWinnerAction}>
+                      <input type="hidden" name="event_id" value={event.id} />
+                      <button
+                        type="submit"
+                        name="player_id"
+                        value={standing.player.id}
+                        className={`min-h-24 w-full border p-4 text-left transition ${
+                          selected
+                            ? "border-amber-300 bg-amber-300/14"
+                            : "border-white/10 bg-white/5 hover:border-cyan-300/55"
+                        }`}
+                      >
+                        <span className="block text-xs font-bold uppercase tracking-wider text-cyan-300">
+                          Pool {String.fromCharCode(64 + (standing.player.poolNumber ?? 1))} fourth
+                        </span>
+                        <strong className="mt-2 block text-lg text-white">
+                          {standing.player.name}
+                        </strong>
+                        <small className="mt-1 block text-xs text-zinc-500">
+                          {selected ? "CTP winner selected" : "Select as CTP winner"}
+                        </small>
+                      </button>
+                    </form>
+                  );
+                })}
+              </div>
+            )
           ) : (
             <p className="border border-dashed border-white/15 p-5 text-sm text-zinc-400">
-              Complete or manually seed all five pool tables to confirm the CTP field.
+              Complete or manually seed all {event.poolCount} pool tables to confirm the CTP field of {ctpPoolPosition === 3 ? "third" : "fourth"}-place players.
             </p>
           )}
 
-          {ctpWinner ? (
+          {ctpQualifiers.length ? (
             <form action={updatePar3CtpWinnerAction} className="mt-4 flex items-center justify-between gap-4 border-t border-white/10 pt-4">
               <input type="hidden" name="event_id" value={event.id} />
               <p className="text-sm text-zinc-300">
-                Current CTP winner: <strong className="text-amber-300">{ctpWinner.name}</strong>
+                Confirmed: <strong className="text-amber-300">{ctpQualifiers.map((player) => `${player.ctpRank}. ${player.name}`).join(" / ")}</strong>
               </p>
-              <button type="submit" className="btn-secondary">Clear winner</button>
+              <button type="submit" className="btn-secondary">Clear CTP places</button>
             </form>
           ) : null}
         </div>
@@ -983,7 +1078,7 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
               </span>
             </div>
             <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              {PAR3_ROUND_OF_16_TEMPLATE.map((pairing) => {
+              {roundOf16Template.map((pairing) => {
                 const first = resolvePar3BracketSlot(snapshot, pairing.first);
                 const second = resolvePar3BracketSlot(snapshot, pairing.second);
 
@@ -997,16 +1092,16 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
                     </p>
                     <span className="my-1 block text-xs uppercase text-amber-300">vs</span>
                     <p className="font-semibold text-white">
-                      {(pairing.second.isCtp ? ctpWinner : poolStandingsLocked && second)
-                        ? second?.name
-                        : pairing.second.label}
+                      {poolStandingsLocked && second ? second.name : pairing.second.label}
                     </p>
                   </div>
                 );
               })}
             </div>
             <p className="mt-5 text-sm leading-7 text-zinc-400">
-              Lane 1 deliberately places Pool A&apos;s winner against the CTP qualifier, with Pool B&apos;s winner potentially waiting in the quarterfinal. The other first-place lanes feed toward second-place qualifiers.
+              {event.poolCount === 6
+                ? "Four pool winners face CTP qualifiers and the other two face runners-up. All six pool winners are split evenly across the two halves and cannot meet another winner in the Round of 16."
+                : "Lane 1 deliberately places Pool A's winner against the CTP qualifier, with Pool B's winner potentially waiting in the quarterfinal. The other first-place lanes feed toward second-place qualifiers."}
             </p>
           </div>
         )}

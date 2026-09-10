@@ -6,9 +6,13 @@ import { InMemoryDatabase } from "brackets-memory-db";
 import {
   PAR3_EVENT_SLUG,
   PAR3_MATCH_RUNNING,
-  PAR3_ROUND_OF_16_TEMPLATE,
   buildPar3Pools,
+  getPar3AutomaticQualifyingPlaces,
   getPar3CtpContestants,
+  getPar3CtpPoolPosition,
+  getPar3CtpQualifierCount,
+  getPar3CtpQualifiers,
+  getPar3RoundOf16Template,
   resolvePar3BracketSlot,
   type AdminPar3Snapshot,
   type Par3Event,
@@ -405,7 +409,129 @@ export async function updatePar3EventSettings(
   }
 }
 
+export async function updatePar3PoolCount(
+  eventId: number,
+  poolCount: number
+) {
+  if (poolCount !== 5 && poolCount !== 6) {
+    throw new Error("The Par 3 Championship supports five or six pools.");
+  }
+
+  const snapshot = await getAdminPar3Snapshot();
+
+  if (snapshot.event.id !== eventId) {
+    throw new Error("Par 3 event not found.");
+  }
+
+  if (snapshot.event.poolCount === poolCount) {
+    return;
+  }
+
+  if (snapshot.event.knockoutData) {
+    throw new Error("The pool format cannot change after the finals bracket is generated.");
+  }
+
+  if (poolCount < snapshot.event.poolCount) {
+    const assignedPlayerInRemovedPool = snapshot.players.some(
+      (player) => (player.poolNumber ?? 0) > poolCount
+    );
+    const resultInRemovedPool = snapshot.poolMatches.some(
+      (match) => match.poolNumber > poolCount && match.winnerId !== null
+    );
+
+    if (assignedPlayerInRemovedPool || resultInRemovedPool) {
+      throw new Error("Move players and clear results from the removed pool first.");
+    }
+  }
+
+  const supabase = getSupabaseAdmin();
+  const now = new Date().toISOString();
+
+  if (poolCount < snapshot.event.poolCount) {
+    const { error: deleteError } = await supabase
+      .from("cgs_par3_pool_matches")
+      .delete()
+      .eq("event_id", eventId)
+      .gt("pool_number", poolCount);
+
+    if (deleteError) {
+      throw deleteError;
+    }
+  }
+
+  const { error: eventError } = await supabase
+    .from("cgs_par3_events")
+    .update({
+      pool_count: poolCount,
+      max_players: poolCount * snapshot.event.poolSize,
+      summary:
+        poolCount === 6
+          ? "A 24-player match-play championship with six pools, a closest-to-pin playoff, and a single-elimination Round of 16."
+          : "A 20-player match-play championship with five pools, a closest-to-pin playoff, and a single-elimination Round of 16.",
+      knockout_data: null,
+      knockout_generated_at: null,
+      updated_at: now,
+    })
+    .eq("id", eventId);
+
+  if (eventError) {
+    throw eventError;
+  }
+
+  const { error: ctpError } = await supabase
+    .from("cgs_par3_players")
+    .update({ ctp_rank: null, updated_at: now })
+    .eq("event_id", eventId);
+
+  if (ctpError) {
+    throw ctpError;
+  }
+}
+
+function assertPar3PoolAssignment(
+  snapshot: AdminPar3Snapshot,
+  poolNumber: number | null
+) {
+  if (poolNumber !== null && (poolNumber < 1 || poolNumber > snapshot.event.poolCount)) {
+    throw new Error("Choose an active tournament pool.");
+  }
+}
+
+function poolHasRecordedResults(snapshot: AdminPar3Snapshot, poolNumber: number) {
+  return snapshot.poolMatches.some(
+    (match) => match.poolNumber === poolNumber && match.winnerId !== null
+  );
+}
+
 export async function createPar3Player(input: Par3PlayerInput) {
+  const snapshot = await getAdminPar3Snapshot();
+
+  if (snapshot.event.id !== input.eventId) {
+    throw new Error("Par 3 event not found.");
+  }
+
+  assertPar3PoolAssignment(snapshot, input.poolNumber);
+
+  if (
+    input.poolNumber !== null &&
+    !input.isWithdrawn &&
+    poolHasRecordedResults(snapshot, input.poolNumber)
+  ) {
+    throw new Error("Players cannot be added to a pool after results are recorded.");
+  }
+
+  if (input.poolNumber !== null && !input.isWithdrawn) {
+    const activePlayersInPool = snapshot.players.filter(
+      (player) => !player.isWithdrawn && player.poolNumber === input.poolNumber
+    ).length;
+
+    if (activePlayersInPool >= snapshot.event.poolSize) {
+      throw new Error(
+        `Pool ${input.poolNumber} already has ${snapshot.event.poolSize} active players.`
+      );
+    }
+  }
+
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("cgs_par3_players")
@@ -448,6 +574,52 @@ export async function updatePar3Player(
   playerId: number,
   input: Par3PlayerInput
 ) {
+  const snapshot = await getAdminPar3Snapshot();
+  const existingPlayer = snapshot.players.find((player) => player.id === playerId);
+
+  if (!existingPlayer || snapshot.event.id !== input.eventId) {
+    throw new Error("Par 3 player not found.");
+  }
+
+  assertPar3PoolAssignment(snapshot, input.poolNumber);
+
+  const allocationChanged =
+    existingPlayer.poolNumber !== input.poolNumber ||
+    existingPlayer.isWithdrawn !== input.isWithdrawn;
+  const affectedPools = new Set(
+    [existingPlayer.poolNumber, input.poolNumber].filter(
+      (poolNumber): poolNumber is number => poolNumber !== null
+    )
+  );
+
+  if (
+    allocationChanged &&
+    Array.from(affectedPools).some((poolNumber) =>
+      poolHasRecordedResults(snapshot, poolNumber)
+    )
+  ) {
+    throw new Error("Pool allocations cannot change after results are recorded.");
+  }
+
+  if (
+    allocationChanged &&
+    input.poolNumber !== null &&
+    !input.isWithdrawn
+  ) {
+    const otherActivePlayers = snapshot.players.filter(
+      (player) =>
+        player.id !== playerId &&
+        !player.isWithdrawn &&
+        player.poolNumber === input.poolNumber
+    ).length;
+
+    if (otherActivePlayers >= snapshot.event.poolSize) {
+      throw new Error(
+        `Pool ${input.poolNumber} already has ${snapshot.event.poolSize} active players.`
+      );
+    }
+  }
+
   const supabase = getSupabaseAdmin();
   const now = new Date().toISOString();
   const [{ error: playerError }, { error: privateError }] = await Promise.all([
@@ -488,18 +660,16 @@ export async function generatePar3PoolFixtures(eventId: number) {
     throw new Error("Par 3 event not found.");
   }
 
-  if (snapshot.poolMatches.some((match) => match.winnerId !== null)) {
-    throw new Error("Pool fixtures cannot be rebuilt after results are recorded.");
-  }
-
-  const rows: Array<{
+  type PoolFixtureRow = {
     event_id: number;
     pool_number: number;
     match_number: number;
     player1_id: number;
     player2_id: number;
     status: "scheduled";
-  }> = [];
+  };
+
+  const desiredFixtures = new Map<number, PoolFixtureRow[]>();
 
   for (let poolNumber = 1; poolNumber <= snapshot.event.poolCount; poolNumber += 1) {
     const players = snapshot.players
@@ -514,32 +684,71 @@ export async function generatePar3PoolFixtures(eventId: number) {
       );
     }
 
-    for (const [matchIndex, [firstIndex, secondIndex]] of fixtureSeedPairs.entries()) {
+    const poolRows = fixtureSeedPairs.map(([firstIndex, secondIndex], matchIndex) => {
       const ids = [players[firstIndex].id, players[secondIndex].id].sort(
         (left, right) => left - right
       );
-      rows.push({
+
+      return {
         event_id: eventId,
         pool_number: poolNumber,
         match_number: matchIndex + 1,
         player1_id: ids[0],
         player2_id: ids[1],
-        status: "scheduled",
-      });
+        status: "scheduled" as const,
+      };
+    });
+
+    desiredFixtures.set(poolNumber, poolRows);
+  }
+
+  const poolsToRebuild: number[] = [];
+
+  for (const [poolNumber, desiredRows] of desiredFixtures) {
+    const existingMatches = snapshot.poolMatches
+      .filter((match) => match.poolNumber === poolNumber)
+      .sort((left, right) => left.matchNumber - right.matchNumber);
+    const existingPairings = existingMatches
+      .map((match) => `${match.player1Id}:${match.player2Id}`)
+      .sort();
+    const desiredPairings = desiredRows
+      .map((row) => `${row.player1_id}:${row.player2_id}`)
+      .sort();
+    const fixturesMatch =
+      existingPairings.length === desiredPairings.length &&
+      existingPairings.every((pairing, index) => pairing === desiredPairings[index]);
+
+    if (fixturesMatch) {
+      continue;
     }
+
+    if (existingMatches.some((match) => match.winnerId !== null)) {
+      throw new Error(
+        `Pool ${poolNumber} has results and cannot be reshuffled. Reset those results first.`
+      );
+    }
+
+    poolsToRebuild.push(poolNumber);
+  }
+
+  if (!poolsToRebuild.length) {
+    return;
   }
 
   const supabase = getSupabaseAdmin();
-  const { error: deleteError } = await supabase
-    .from("cgs_par3_pool_matches")
-    .delete()
-    .eq("event_id", eventId);
 
-  if (deleteError) {
-    throw deleteError;
-  }
+  for (const poolNumber of poolsToRebuild) {
+    const { error: deleteError } = await supabase
+      .from("cgs_par3_pool_matches")
+      .delete()
+      .eq("event_id", eventId)
+      .eq("pool_number", poolNumber);
 
-  if (rows.length > 0) {
+    if (deleteError) {
+      throw deleteError;
+    }
+
+    const rows = desiredFixtures.get(poolNumber) ?? [];
     const { error: insertError } = await supabase
       .from("cgs_par3_pool_matches")
       .insert(rows);
@@ -550,9 +759,9 @@ export async function generatePar3PoolFixtures(eventId: number) {
   }
 }
 
-export async function updatePar3CtpWinner(
+export async function updatePar3CtpQualifiers(
   eventId: number,
-  playerId: number | null
+  playerIds: Array<number | null>
 ) {
   const snapshot = await getAdminPar3Snapshot();
 
@@ -560,7 +769,16 @@ export async function updatePar3CtpWinner(
     throw new Error("Par 3 event not found.");
   }
 
-  if (playerId !== null) {
+  const qualifierCount = getPar3CtpQualifierCount(snapshot.event.poolCount);
+  const selectedIds = playerIds.slice(0, qualifierCount).filter(
+    (playerId): playerId is number => playerId !== null
+  );
+
+  if (new Set(selectedIds).size !== selectedIds.length) {
+    throw new Error("Each CTP qualifying place must be assigned to a different player.");
+  }
+
+  if (selectedIds.length) {
     const pools = buildPar3Pools(snapshot);
     const poolsLocked = pools.every(
       (pool) =>
@@ -578,8 +796,11 @@ export async function updatePar3CtpWinner(
       getPar3CtpContestants(snapshot).map((standing) => standing.player.id)
     );
 
-    if (!eligibleIds.has(playerId)) {
-      throw new Error("The CTP winner must be a fourth-place pool finisher.");
+    if (selectedIds.some((playerId) => !eligibleIds.has(playerId))) {
+      const position = getPar3CtpPoolPosition(snapshot.event.poolCount);
+      throw new Error(
+        `CTP qualifiers must be ${position === 3 ? "third" : "fourth"}-place pool finishers.`
+      );
     }
   }
 
@@ -594,15 +815,19 @@ export async function updatePar3CtpWinner(
     throw clearError;
   }
 
-  if (playerId !== null) {
-    const { error: winnerError } = await supabase
+  for (const [index, playerId] of playerIds.slice(0, qualifierCount).entries()) {
+    if (playerId === null) {
+      continue;
+    }
+
+    const { error: qualifierError } = await supabase
       .from("cgs_par3_players")
-      .update({ ctp_rank: 1, updated_at: now })
+      .update({ ctp_rank: index + 1, updated_at: now })
       .eq("event_id", eventId)
       .eq("id", playerId);
 
-    if (winnerError) {
-      throw winnerError;
+    if (qualifierError) {
+      throw qualifierError;
     }
   }
 }
@@ -669,9 +894,13 @@ export async function generatePar3Knockout(eventId: number) {
   }
 
   const pools = buildPar3Pools(snapshot);
-  if (snapshot.event.poolCount !== 5) {
-    throw new Error("The championship requires five completed pools.");
+  if (snapshot.event.poolCount !== 5 && snapshot.event.poolCount !== 6) {
+    throw new Error("The championship requires five or six completed pools.");
   }
+
+  const automaticPlaces = getPar3AutomaticQualifyingPlaces(snapshot.event.poolCount);
+  const ctpPosition = getPar3CtpPoolPosition(snapshot.event.poolCount);
+  const ctpQualifierCount = getPar3CtpQualifierCount(snapshot.event.poolCount);
 
   for (const pool of pools) {
     const completed = pool.matches.filter((match) => match.winnerId !== null).length;
@@ -683,16 +912,33 @@ export async function generatePar3Knockout(eventId: number) {
       throw new Error(`${pool.label} must be complete or manually seeded.`);
     }
 
-    getRequiredPoolQualifier(pools, pool.number, 3);
+    getRequiredPoolQualifier(pools, pool.number, automaticPlaces);
+    getRequiredPoolQualifier(pools, pool.number, ctpPosition);
   }
 
-  const roundOf16Slots = PAR3_ROUND_OF_16_TEMPLATE.flatMap((pairing) => [
+  const ctpEligibleIds = new Set(
+    getPar3CtpContestants(snapshot).map((standing) => standing.player.id)
+  );
+  const ctpQualifiers = getPar3CtpQualifiers(snapshot);
+
+  if (
+    ctpQualifiers.length !== ctpQualifierCount ||
+    ctpQualifiers.some((player, index) => player.ctpRank !== index + 1) ||
+    ctpQualifiers.some((player) => !ctpEligibleIds.has(player.id))
+  ) {
+    throw new Error(
+      `Confirm all ${ctpQualifierCount} CTP qualifying place${ctpQualifierCount === 1 ? "" : "s"} before generating the Round of 16.`
+    );
+  }
+
+  const roundOf16Template = getPar3RoundOf16Template(snapshot.event.poolCount);
+  const roundOf16Slots = roundOf16Template.flatMap((pairing) => [
     resolvePar3BracketSlot(snapshot, pairing.first),
     resolvePar3BracketSlot(snapshot, pairing.second),
   ]);
 
   if (roundOf16Slots.some((player) => !player)) {
-    throw new Error("Select the CTP winner before generating the Round of 16.");
+    throw new Error("Every Round-of-16 qualifying position must be confirmed first.");
   }
   const storage = new InMemoryDatabase();
   const manager = new BracketsManager(storage);
