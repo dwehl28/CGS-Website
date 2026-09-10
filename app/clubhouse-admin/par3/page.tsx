@@ -16,6 +16,7 @@ import {
   generatePar3PoolFixturesAction,
   recordPar3KnockoutWinnerAction,
   resetPar3KnockoutMatchAction,
+  startPar3KnockoutMatchAction,
   updatePar3EventAction,
   updatePar3CtpWinnerAction,
   updatePar3PlayerAction,
@@ -31,6 +32,7 @@ import {
 import { getAdminPar3Snapshot } from "@/lib/par3-showdown";
 import {
   PAR3_MATCH_COMPLETED,
+  PAR3_MATCH_RUNNING,
   PAR3_ROUND_OF_16_TEMPLATE,
   buildPar3Pools,
   getPar3CtpContestants,
@@ -81,6 +83,8 @@ const noticeMessages: Record<string, string> = {
     "Finals could not be created. Complete all five pools and confirm the CTP winner.",
   "final-result-saved": "Finals result updated.",
   "final-result-failed": "Finals result could not be saved.",
+  "final-live": "Finals match is now featured on the live centre.",
+  "final-live-failed": "That finals match could not be marked live.",
   "final-reset": "Finals result reset.",
   "final-reset-failed":
     "That result cannot be reset after a later match has been completed.",
@@ -492,6 +496,7 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
             ["results", "Latest results", "1920 x 1080"],
             ["standings", "Pool tables", "1920 x 1080"],
             ["bracket", "Finals bracket", "1920 x 1080"],
+            ["finals", "Finals live centre", "1920 x 1080"],
             ["road", "Eight stages", "1920 x 1080"],
             ["tv", "Automatic TV rotation", "1920 x 1080"],
           ].map(([view, label, size]) => (
@@ -877,6 +882,7 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
                       match.opponent2?.id
                     );
                     const completed = match.status === PAR3_MATCH_COMPLETED;
+                    const isLive = match.status === PAR3_MATCH_RUNNING;
                     const winnerName =
                       match.opponent1?.result === "win"
                         ? firstName
@@ -914,6 +920,28 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
                           </div>
                         ) : actionable ? (
                           <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                            <div className="flex items-center justify-between gap-3 sm:col-span-2">
+                              {isLive ? (
+                                <span className="inline-flex min-h-10 items-center gap-2 border border-red-400/35 bg-red-400/10 px-3 text-xs font-bold uppercase tracking-wider text-red-200">
+                                  <i className="size-2 rounded-full bg-red-400" /> Live on finals centre
+                                </span>
+                              ) : (
+                                <form action={startPar3KnockoutMatchAction}>
+                                  <input type="hidden" name="event_id" value={event.id} />
+                                  <input type="hidden" name="match_id" value={String(match.id)} />
+                                  <button type="submit" className="btn-secondary">
+                                    <Radio className="mr-2 inline size-4" /> Show live
+                                  </button>
+                                </form>
+                              )}
+                              <Link
+                                href="/stream/par3-showdown?view=finals"
+                                target="_blank"
+                                className="text-xs font-bold uppercase tracking-wider text-cyan-300 hover:text-cyan-100"
+                              >
+                                Open display <ExternalLink className="ml-1 inline size-3.5" />
+                              </Link>
+                            </div>
                             {[firstName, secondName].map((name, index) => (
                               <form
                                 key={`${String(match.id)}-${index}`}

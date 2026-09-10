@@ -5,6 +5,7 @@ import { InMemoryDatabase } from "brackets-memory-db";
 
 import {
   PAR3_EVENT_SLUG,
+  PAR3_MATCH_RUNNING,
   PAR3_ROUND_OF_16_TEMPLATE,
   buildPar3Pools,
   getPar3CtpContestants,
@@ -758,6 +759,20 @@ async function saveKnockoutData(eventId: number, manager: BracketsManager) {
   if (error) {
     throw error;
   }
+}
+
+export async function startPar3KnockoutMatch(
+  eventId: number,
+  matchId: number
+) {
+  const manager = await loadKnockoutManager(eventId);
+
+  await manager.update.match({
+    id: matchId,
+    status: PAR3_MATCH_RUNNING,
+  });
+
+  await saveKnockoutData(eventId, manager);
 }
 
 export async function recordPar3KnockoutWinner(

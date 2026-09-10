@@ -11,6 +11,7 @@ import {
   generatePar3PoolFixtures,
   recordPar3KnockoutWinner,
   resetPar3KnockoutMatch,
+  startPar3KnockoutMatch,
   updatePar3EventSettings,
   updatePar3CtpWinner,
   updatePar3Player,
@@ -244,6 +245,26 @@ export async function recordPar3KnockoutWinnerAction(formData: FormData) {
 
   revalidatePar3();
   redirect(noticeUrl("final-result-saved", "finals"));
+}
+
+export async function startPar3KnockoutMatchAction(formData: FormData) {
+  await requireAdminAuthenticated();
+  const eventId = parseNumber(formData.get("event_id"));
+  const matchId = parseNumber(formData.get("match_id"));
+
+  if (!eventId || !matchId) {
+    redirect(noticeUrl("final-live-failed", "finals"));
+  }
+
+  try {
+    await startPar3KnockoutMatch(eventId, matchId);
+  } catch (error) {
+    console.error("Start Par 3 finals match error:", error);
+    redirect(noticeUrl("final-live-failed", "finals"));
+  }
+
+  revalidatePar3();
+  redirect(noticeUrl("final-live", "finals"));
 }
 
 export async function resetPar3KnockoutMatchAction(formData: FormData) {
