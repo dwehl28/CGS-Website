@@ -257,7 +257,12 @@ export async function recordPar3KnockoutWinnerAction(formData: FormData) {
   const matchId = parseNumber(formData.get("match_id"));
   const winnerSide = parseNumber(formData.get("winner_side"));
 
-  if (!eventId || !matchId || (winnerSide !== 1 && winnerSide !== 2)) {
+  if (
+    eventId === null ||
+    eventId <= 0 ||
+    matchId === null ||
+    (winnerSide !== 1 && winnerSide !== 2)
+  ) {
     redirect(noticeUrl("final-result-failed", "finals"));
   }
 
@@ -277,7 +282,7 @@ export async function startPar3KnockoutMatchAction(formData: FormData) {
   const eventId = parseNumber(formData.get("event_id"));
   const matchId = parseNumber(formData.get("match_id"));
 
-  if (!eventId || !matchId) {
+  if (eventId === null || eventId <= 0 || matchId === null) {
     redirect(noticeUrl("final-live-failed", "finals"));
   }
 
@@ -297,7 +302,7 @@ export async function resetPar3KnockoutMatchAction(formData: FormData) {
   const eventId = parseNumber(formData.get("event_id"));
   const matchId = parseNumber(formData.get("match_id"));
 
-  if (!eventId || !matchId) {
+  if (eventId === null || eventId <= 0 || matchId === null) {
     redirect(noticeUrl("final-reset-failed", "finals"));
   }
 
