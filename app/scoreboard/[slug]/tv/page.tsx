@@ -8,20 +8,27 @@ type SolosStablefordTvPageProps = {
   params: Promise<{
     slug: string;
   }>;
+  searchParams: Promise<{
+    brand?: string | string[];
+  }>;
 };
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: SolosStablefordTvPageProps): Promise<Metadata> {
-  const { slug } = await params;
+  const [{ slug }, query] = await Promise.all([params, searchParams]);
   const competition = await getPublishedCompetitionScoreboardBySlug(slug);
+  const isTeeLounge = query.brand === "tee-lounge";
 
   return {
     title: competition
-      ? `${competition.title} TV Leaderboard`
-      : "Solos Stableford TV Leaderboard",
+      ? `${competition.title} ${isTeeLounge ? "Tee Lounge TV" : "TV Leaderboard"}`
+      : isTeeLounge
+        ? "Tee Lounge TV"
+        : "Solos Stableford TV Leaderboard",
     robots: {
       index: false,
       follow: false,
@@ -31,8 +38,9 @@ export async function generateMetadata({
 
 export default async function SolosStablefordTvPage({
   params,
+  searchParams,
 }: SolosStablefordTvPageProps) {
-  const { slug } = await params;
+  const [{ slug }, query] = await Promise.all([params, searchParams]);
   const competition = await getPublishedCompetitionScoreboardBySlug(slug);
 
   if (!competition) {
@@ -41,7 +49,10 @@ export default async function SolosStablefordTvPage({
 
   return (
     <main className="solos-tv-page">
-      <SolosStablefordTv initialCompetition={competition} />
+      <SolosStablefordTv
+        initialCompetition={competition}
+        theme={query.brand === "tee-lounge" ? "tee-lounge" : "cgs"}
+      />
     </main>
   );
 }

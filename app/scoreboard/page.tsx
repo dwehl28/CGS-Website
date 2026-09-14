@@ -65,8 +65,9 @@ export default async function ScoreboardPage() {
             <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--body-copy)]">
               Published scoreboards now include dedicated stream asset URLs. Use
               the 407px by 1359px portrait ladder, the rolling 1920px by 180px
-              banner, or the new 1920px by 1080px full-field TV leaderboard. All
-              receive live score updates without the website header or footer.
+              banner, or a 1920px by 1080px full-field TV leaderboard in either
+              CGS or Tee Lounge styling. All receive live score updates without
+              the website header or footer.
             </p>
             <div className="mt-7 flex flex-wrap gap-4">
               {firstCompetition ? (
@@ -87,7 +88,13 @@ export default async function ScoreboardPage() {
                     href={`/scoreboard/${firstCompetition.slug}/tv`}
                     className="btn-secondary"
                   >
-                    Preview TV leaderboard
+                    Preview CGS TV
+                  </Link>
+                  <Link
+                    href={`/scoreboard/${firstCompetition.slug}/tv?brand=tee-lounge`}
+                    className="btn-secondary"
+                  >
+                    Preview Tee Lounge TV
                   </Link>
                 </>
               ) : null}
@@ -103,7 +110,7 @@ export default async function ScoreboardPage() {
             </p>
             <div className="home-score-row">
               <span>URL</span>
-              <span>/scoreboard/[board]/stream, /banner or /tv</span>
+              <span>/stream, /banner, /tv or /tv?brand=tee-lounge</span>
               <span>OBS</span>
             </div>
             <div className="home-score-row">
@@ -217,7 +224,13 @@ export default async function ScoreboardPage() {
                     href={`/scoreboard/${competition.slug}/tv`}
                     className="btn-secondary"
                   >
-                    TV leaderboard
+                    CGS TV
+                  </Link>
+                  <Link
+                    href={`/scoreboard/${competition.slug}/tv?brand=tee-lounge`}
+                    className="btn-secondary"
+                  >
+                    Tee Lounge TV
                   </Link>
                   {competition.ctaLabel && competition.ctaHref ? (
                     competition.ctaHref.startsWith("/") ? (

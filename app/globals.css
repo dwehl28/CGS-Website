@@ -7798,6 +7798,352 @@ main.text-white {
   text-align: right;
 }
 
+.tee-lounge-tv-logo {
+  position: relative;
+  width: 246px;
+  height: 105px;
+  flex: 0 0 auto;
+  overflow: hidden;
+  background: #00492f;
+}
+
+.tee-lounge-tv-logo > img {
+  position: absolute;
+  top: -128px;
+  left: -54px;
+  width: 360px;
+  max-width: none;
+  height: 360px;
+  object-fit: contain;
+}
+
+.solos-tv-canvas.is-tee-lounge {
+  --tee-lounge-green: #00492f;
+  --tee-lounge-green-deep: #002c20;
+  --tee-lounge-green-ink: #073f2e;
+  --tee-lounge-cream: #fffaf0;
+  --tee-lounge-gold: #ddb458;
+  --tee-lounge-gold-bright: #f2cf73;
+  background:
+    linear-gradient(105deg, rgba(0, 53, 37, 0.6), rgba(0, 31, 23, 0.88)),
+    #003927;
+  color: var(--tee-lounge-cream);
+  font-family: var(--font-space-grotesk);
+}
+
+.solos-tv-canvas.is-tee-lounge::before {
+  background:
+    radial-gradient(circle at 15% 18%, rgba(242, 207, 115, 0.12) 0 3px, transparent 4px),
+    radial-gradient(circle at 78% 75%, rgba(255, 250, 240, 0.055) 0 4px, transparent 5px),
+    repeating-linear-gradient(
+      116deg,
+      transparent 0 92px,
+      rgba(221, 180, 88, 0.075) 94px 96px,
+      transparent 98px 184px
+    ),
+    linear-gradient(90deg, transparent 0 65%, rgba(221, 180, 88, 0.08));
+  background-size: 64px 64px, 90px 90px, auto, auto;
+}
+
+.solos-tv-canvas.is-tee-lounge::after {
+  position: absolute;
+  z-index: 0;
+  top: 175px;
+  right: -185px;
+  width: 590px;
+  height: 590px;
+  border: 3px solid rgba(242, 207, 115, 0.1);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 24%, rgba(255, 250, 240, 0.09) 0 7px, transparent 8px),
+    radial-gradient(circle at 54% 38%, rgba(255, 250, 240, 0.07) 0 9px, transparent 10px),
+    radial-gradient(circle at 35% 62%, rgba(255, 250, 240, 0.06) 0 8px, transparent 9px),
+    radial-gradient(circle at 66% 68%, rgba(255, 250, 240, 0.08) 0 7px, transparent 8px),
+    rgba(0, 26, 18, 0.13);
+  content: "";
+  pointer-events: none;
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-atmosphere {
+  background:
+    linear-gradient(180deg, rgba(0, 52, 36, 0.3), rgba(0, 28, 20, 0.8)),
+    url("/scoreboard/solos-survivor-bg.png") center / cover no-repeat;
+  filter: saturate(0.65) contrast(1.12) brightness(0.67) hue-rotate(48deg);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-motion-dust-rear {
+  background:
+    radial-gradient(ellipse at 32% 54%, rgba(221, 180, 88, 0.32), transparent 51%),
+    radial-gradient(ellipse at 72% 38%, rgba(74, 151, 102, 0.28), transparent 47%);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-motion-dust-rear::before {
+  background: repeating-linear-gradient(
+    171deg,
+    transparent 0 16px,
+    rgba(242, 207, 115, 0.14) 17px 19px,
+    transparent 20px 37px
+  );
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-motion-dust-front {
+  background:
+    radial-gradient(ellipse at 24% 48%, rgba(242, 207, 115, 0.25), transparent 42%),
+    radial-gradient(ellipse at 78% 62%, rgba(24, 110, 75, 0.3), transparent 48%);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-motion-dust-front::after {
+  background: repeating-linear-gradient(
+    174deg,
+    transparent 0 24px,
+    rgba(255, 231, 168, 0.16) 25px 27px,
+    transparent 28px 52px
+  );
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-motion-sun {
+  background: radial-gradient(
+    circle,
+    rgba(255, 252, 223, 0.98) 0 4%,
+    rgba(242, 207, 115, 0.72) 8%,
+    rgba(221, 180, 88, 0.22) 27%,
+    transparent 66%
+  );
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-header {
+  border-bottom-color: rgba(221, 180, 88, 0.72);
+  background:
+    linear-gradient(90deg, rgba(0, 62, 42, 0.98), rgba(0, 39, 29, 0.94)),
+    var(--tee-lounge-green);
+  box-shadow: 0 15px 40px rgba(0, 25, 17, 0.35);
+}
+
+.solos-tv-brand.is-tee-lounge-brand {
+  gap: 35px;
+}
+
+.solos-tv-brand.is-tee-lounge-brand .tee-lounge-tv-logo {
+  flex: 0 0 auto;
+  padding-right: 35px;
+  border-right: 1px solid rgba(255, 250, 240, 0.2);
+}
+
+.solos-tv-brand.is-tee-lounge-brand .solos-tv-event-copy p,
+.solos-tv-brand.is-tee-lounge-brand .solos-tv-event-copy h1,
+.solos-tv-brand.is-tee-lounge-brand .solos-tv-event-copy span {
+  margin: 0;
+  font-family: var(--font-space-grotesk);
+  letter-spacing: 0;
+}
+
+.solos-tv-brand.is-tee-lounge-brand .solos-tv-event-copy p {
+  color: var(--tee-lounge-gold-bright);
+  font-size: 13px;
+  letter-spacing: 0.13em;
+}
+
+.solos-tv-brand.is-tee-lounge-brand .solos-tv-event-copy h1 {
+  max-width: 760px;
+  margin-top: 7px;
+  color: var(--tee-lounge-cream);
+  font-size: 42px;
+  font-weight: 850;
+  letter-spacing: -0.035em;
+  line-height: 0.95;
+  text-shadow: none;
+}
+
+.solos-tv-brand.is-tee-lounge-brand .solos-tv-event-copy span {
+  margin-top: 9px;
+  color: rgba(255, 250, 240, 0.66);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-status > span {
+  border-color: rgba(221, 180, 88, 0.72);
+  background: rgba(0, 30, 21, 0.72);
+  color: var(--tee-lounge-cream);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-status i {
+  background: var(--tee-lounge-gold-bright);
+  box-shadow: 0 0 18px rgba(242, 207, 115, 0.75);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-status > strong {
+  color: rgba(255, 250, 240, 0.66);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-board {
+  border-color: rgba(255, 250, 240, 0.48);
+  border-top-color: var(--tee-lounge-gold);
+  background: rgba(255, 250, 240, 0.96);
+  box-shadow: 0 24px 70px rgba(0, 25, 17, 0.34);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-board-heading {
+  border-bottom-color: rgba(0, 73, 47, 0.18);
+  background: linear-gradient(90deg, rgba(221, 180, 88, 0.34), rgba(255, 250, 240, 0.2));
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-board-heading span {
+  color: var(--tee-lounge-green);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-board-heading strong {
+  color: var(--tee-lounge-green-ink);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-board-heading p {
+  color: rgba(7, 63, 46, 0.62);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-table-head {
+  border-bottom-color: rgba(221, 180, 88, 0.45);
+  background: var(--tee-lounge-green-deep);
+  color: rgba(255, 250, 240, 0.66);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-standings-page {
+  grid-template-rows: repeat(
+    var(--tee-lounge-visible-rows, 10),
+    minmax(0, 1fr)
+  );
+  background: rgba(255, 250, 240, 0.74);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-row {
+  border-color: rgba(0, 73, 47, 0.16);
+  border-left-color: var(--tee-lounge-gold);
+  background: linear-gradient(90deg, #fffef9, #f4f0e5);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-row.is-leading {
+  border-color: var(--tee-lounge-gold-bright);
+  border-left-color: var(--tee-lounge-gold-bright);
+  background: linear-gradient(90deg, #096344, #003b2a);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-position {
+  border-color: rgba(0, 73, 47, 0.28);
+  background: rgba(221, 180, 88, 0.24);
+  color: var(--tee-lounge-green-ink);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-row.is-leading .solos-tv-position {
+  border-color: var(--tee-lounge-gold-bright);
+  background: var(--tee-lounge-gold-bright);
+  color: var(--tee-lounge-green-deep);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-player strong {
+  color: var(--tee-lounge-green-ink);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-row.is-leading .solos-tv-player strong,
+.solos-tv-canvas.is-tee-lounge .solos-tv-row.is-leading .solos-tv-thru,
+.solos-tv-canvas.is-tee-lounge .solos-tv-row.is-leading .solos-tv-score {
+  color: var(--tee-lounge-cream);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-thru {
+  color: rgba(7, 63, 46, 0.58);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-score {
+  color: var(--tee-lounge-green);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-member-mark {
+  border-color: rgba(0, 73, 47, 0.3);
+  background: #fffef9;
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-empty {
+  border-color: rgba(0, 73, 47, 0.36);
+  color: rgba(7, 63, 46, 0.64);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-empty strong {
+  color: var(--tee-lounge-green);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-pagination {
+  border-top-color: rgba(0, 73, 47, 0.18);
+  background: #efeade;
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-page-dots span {
+  background: rgba(0, 73, 47, 0.16);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-page-dots span.is-active,
+.solos-tv-canvas.is-tee-lounge .solos-tv-page-progress {
+  background: var(--tee-lounge-green);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-leader-card,
+.solos-tv-canvas.is-tee-lounge .solos-tv-fact-grid > div,
+.solos-tv-canvas.is-tee-lounge .solos-tv-venue-card {
+  border-color: rgba(221, 180, 88, 0.5);
+  background: rgba(0, 45, 32, 0.94);
+  box-shadow: 0 18px 48px rgba(0, 25, 17, 0.32);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-leader-card {
+  border-top-color: var(--tee-lounge-gold-bright);
+  background:
+    radial-gradient(circle at 100% 0, rgba(242, 207, 115, 0.2), transparent 42%),
+    linear-gradient(135deg, #0a6949, #003323);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-leader-card span,
+.solos-tv-canvas.is-tee-lounge .solos-tv-leader-card small {
+  color: rgba(255, 250, 240, 0.72);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-leader-card strong,
+.solos-tv-canvas.is-tee-lounge .solos-tv-leader-card b {
+  color: var(--tee-lounge-cream);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-fact-grid > div,
+.solos-tv-canvas.is-tee-lounge .solos-tv-venue-card {
+  border-left-color: var(--tee-lounge-gold);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-fact-grid span,
+.solos-tv-canvas.is-tee-lounge .solos-tv-venue-card span {
+  color: var(--tee-lounge-gold-bright);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-fact-grid strong,
+.solos-tv-canvas.is-tee-lounge .solos-tv-venue-card strong {
+  color: var(--tee-lounge-cream);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-fact-grid small,
+.solos-tv-canvas.is-tee-lounge .solos-tv-venue-card small {
+  color: rgba(255, 250, 240, 0.58);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-footer {
+  border-top-color: rgba(221, 180, 88, 0.72);
+  background: rgba(0, 39, 29, 0.98);
+  color: rgba(255, 250, 240, 0.66);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-footer > span,
+.solos-tv-canvas.is-tee-lounge .solos-tv-footer strong {
+  color: var(--tee-lounge-gold-bright);
+}
+
+.solos-tv-canvas.is-tee-lounge .solos-tv-footer p i {
+  background: var(--tee-lounge-gold);
+}
+
 @keyframes solosTvAtmosphere {
   0% {
     transform: translate3d(-10px, 0, 0) scale(1.02);

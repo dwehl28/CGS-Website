@@ -61,7 +61,13 @@ export default async function ScoreboardDetailPage({
               Banner ticker
             </Link>
             <Link href={`/scoreboard/${competition.slug}/tv`} className="btn-secondary">
-              TV leaderboard
+              CGS TV
+            </Link>
+            <Link
+              href={`/scoreboard/${competition.slug}/tv?brand=tee-lounge`}
+              className="btn-secondary"
+            >
+              Tee Lounge TV
             </Link>
             <Link href="/events" className="btn-secondary">
               View events

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import type { CSSProperties } from "react";
 import {
   startTransition,
   useEffect,
@@ -10,6 +11,7 @@ import {
 } from "react";
 
 import SolosMotionBackground from "@/components/scoreboard/SolosMotionBackground";
+import TeeLoungeLogo from "@/components/scoreboard/TeeLoungeLogo";
 import { useAnimatedRankOrder } from "@/components/scoreboard/useAnimatedRankOrder";
 import type {
   CompetitionScoreboard,
@@ -19,6 +21,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 type SolosStablefordTvProps = {
   initialCompetition: CompetitionScoreboard;
+  theme?: "cgs" | "tee-lounge";
 };
 
 type LiveSyncState =
@@ -80,6 +83,7 @@ function TvMemberMark({ entry }: { entry: CompetitionScoreEntry }) {
 
 export default function SolosStablefordTv({
   initialCompetition,
+  theme = "cgs",
 }: SolosStablefordTvProps) {
   const [competition, setCompetition] = useState(initialCompetition);
   const [syncState, setSyncState] = useState<LiveSyncState>("idle");
@@ -113,6 +117,7 @@ export default function SolosStablefordTv({
   const registerRankRow = useAnimatedRankOrder(
     pageEntries.map((entry) => entry.id)
   );
+  const isTeeLounge = theme === "tee-lounge";
 
   async function refreshCompetition(slug: string) {
     try {
@@ -215,27 +220,42 @@ export default function SolosStablefordTv({
 
   return (
     <section
-      className="solos-tv-canvas"
-      aria-label={`${competition.title} full field TV leaderboard`}
+      className={`solos-tv-canvas ${
+        isTeeLounge ? "is-tee-lounge" : "is-cgs"
+      }`}
+      aria-label={`${competition.title} ${
+        isTeeLounge ? "Tee Lounge" : "CGS"
+      } full field TV leaderboard`}
     >
       <div className="solos-tv-atmosphere" aria-hidden="true" />
       <SolosMotionBackground variant="tv" />
 
       <header className="solos-tv-header">
-        <div className="solos-tv-brand">
-          <Image
-            src="/cgs-logo.png"
-            alt="Crossodog Golf Society"
-            width={104}
-            height={104}
-            priority
-          />
-          <div>
-            <p>The Tee Lounge presents</p>
-            <h1>Solos Stableford</h1>
-            <span>{competition.roundLabel ?? competition.title}</span>
+        {isTeeLounge ? (
+          <div className="solos-tv-brand is-tee-lounge-brand">
+            <TeeLoungeLogo />
+            <div className="solos-tv-event-copy">
+              <p>Live competition</p>
+              <h1>{competition.title}</h1>
+              <span>{competition.roundLabel ?? "Live from The Tee Lounge"}</span>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="solos-tv-brand">
+            <Image
+              src="/cgs-logo.png"
+              alt="Crossodog Golf Society"
+              width={104}
+              height={104}
+              priority
+            />
+            <div>
+              <p>The Tee Lounge presents</p>
+              <h1>Solos Stableford</h1>
+              <span>{competition.roundLabel ?? competition.title}</span>
+            </div>
+          </div>
+        )}
 
         <div className="solos-tv-status">
           <span className={`is-${syncState}`}>
@@ -271,7 +291,20 @@ export default function SolosStablefordTv({
             <span>Stableford</span>
           </div>
 
-          <div className="solos-tv-standings-page" key={activePageIndex}>
+          <div
+            className="solos-tv-standings-page"
+            key={activePageIndex}
+            style={
+              isTeeLounge
+                ? ({
+                    "--tee-lounge-visible-rows": Math.max(
+                      6,
+                      pageEntries.length
+                    ),
+                  } as CSSProperties)
+                : undefined
+            }
+          >
             {pageEntries.length > 0 ? (
               pageEntries.map((entry) => (
                 <article
@@ -361,7 +394,7 @@ export default function SolosStablefordTv({
         <p>
           Higher points lead <i /> Live standings roll through the complete field
         </p>
-        <strong>CGS Golf</strong>
+        <strong>{isTeeLounge ? "The Tee Lounge" : "CGS Golf"}</strong>
       </footer>
     </section>
   );
