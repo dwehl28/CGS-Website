@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import {
   startTransition,
@@ -15,6 +14,7 @@ import {
   getRankingDescription,
   getScoreNoun,
 } from "@/lib/scoreboards";
+import ScoreboardPlayerMark from "@/components/scoreboard/ScoreboardPlayerMark";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 type LiveCompetitionBoardProps = {
@@ -65,22 +65,6 @@ function getSyncLabel(syncState: LiveSyncState) {
 
 function getPrimaryScoreLabel(entry: CompetitionScoreEntry) {
   return entry.scoreLabel;
-}
-
-function MemberMark({ isMember }: { isMember: boolean }) {
-  if (!isMember) {
-    return null;
-  }
-
-  return (
-    <Image
-      src="/cgs-logo.png"
-      alt="CGS member"
-      width={28}
-      height={28}
-      className="h-7 w-7 rounded-full border border-white/12 bg-white/90 p-1"
-    />
-  );
 }
 
 export default function LiveCompetitionBoard({
@@ -263,7 +247,11 @@ export default function LiveCompetitionBoard({
           {leaderEntry ? (
             <>
               <div className="mt-5 flex items-center gap-3">
-                <MemberMark isMember={leaderEntry.isCgsMember} />
+                <ScoreboardPlayerMark
+                  entry={leaderEntry}
+                  className="h-10 w-10 rounded-full border border-white/12 bg-white/90 p-1"
+                  size={40}
+                />
                 <h2 className="text-3xl md:text-4xl">{leaderEntry.playerName}</h2>
               </div>
               <p className="mt-3 text-lg text-[var(--tan)]">
@@ -346,7 +334,11 @@ export default function LiveCompetitionBoard({
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-3">
-                          <MemberMark isMember={entry.isCgsMember} />
+                          <ScoreboardPlayerMark
+                            entry={entry}
+                            className="h-7 w-7 rounded-full border border-white/12 bg-white/90 p-1"
+                            size={28}
+                          />
                           <p className="font-semibold text-white">{entry.playerName}</p>
                         </div>
                       </td>
@@ -372,7 +364,11 @@ export default function LiveCompetitionBoard({
                         Position {entry.position}
                       </p>
                       <div className="mt-2 flex items-center gap-3">
-                        <MemberMark isMember={entry.isCgsMember} />
+                        <ScoreboardPlayerMark
+                          entry={entry}
+                          className="h-8 w-8 rounded-full border border-white/12 bg-white/90 p-1"
+                          size={32}
+                        />
                         <h3 className="text-2xl">{entry.playerName}</h3>
                       </div>
                     </div>

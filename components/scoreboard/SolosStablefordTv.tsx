@@ -11,13 +11,13 @@ import {
 } from "react";
 
 import SolosMotionBackground from "@/components/scoreboard/SolosMotionBackground";
+import ScoreChangeSpotlight from "@/components/scoreboard/ScoreChangeSpotlight";
+import ScoreboardPlayerMark from "@/components/scoreboard/ScoreboardPlayerMark";
 import TeeLoungeLogo from "@/components/scoreboard/TeeLoungeLogo";
 import { useAnimatedRankOrder } from "@/components/scoreboard/useAnimatedRankOrder";
+import { useScoreChangeSpotlight } from "@/components/scoreboard/useScoreChangeSpotlight";
 import type { ScoreboardDisplayTheme } from "@/lib/scoreboard-display-theme";
-import type {
-  CompetitionScoreboard,
-  CompetitionScoreEntry,
-} from "@/lib/scoreboards";
+import type { CompetitionScoreboard } from "@/lib/scoreboards";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 type SolosStablefordTvProps = {
@@ -65,23 +65,6 @@ function formatTvTime(value: string) {
   }).format(parsedDate);
 }
 
-function TvMemberMark({ entry }: { entry: CompetitionScoreEntry }) {
-  if (!entry.isCgsMember) {
-    return null;
-  }
-
-  return (
-    <Image
-      src="/cgs-logo.png"
-      alt=""
-      width={34}
-      height={34}
-      className="solos-tv-member-mark"
-      aria-hidden="true"
-    />
-  );
-}
-
 export default function SolosStablefordTv({
   initialCompetition,
   theme = "cgs",
@@ -119,6 +102,8 @@ export default function SolosStablefordTv({
     pageEntries.map((entry) => entry.id)
   );
   const isTeeLounge = theme === "tee-lounge";
+  const { spotlight, observeCompetition } =
+    useScoreChangeSpotlight(initialCompetition);
 
   async function refreshCompetition(slug: string) {
     try {
@@ -131,6 +116,17 @@ export default function SolosStablefordTv({
       }
 
       const nextCompetition = (await response.json()) as CompetitionScoreboard;
+      const scoreChange = observeCompetition(nextCompetition);
+
+      if (scoreChange) {
+        const changedEntryIndex = nextCompetition.entries.findIndex(
+          (entry) => entry.id === scoreChange.entryId
+        );
+
+        if (changedEntryIndex >= 0) {
+          setPageIndex(Math.floor(changedEntryIndex / TV_ROWS_PER_PAGE));
+        }
+      }
 
       startTransition(() => {
         setCompetition(nextCompetition);
@@ -145,7 +141,7 @@ export default function SolosStablefordTv({
   });
 
   useEffect(() => {
-    if (pageCount <= 1) {
+    if (pageCount <= 1 || spotlight) {
       return;
     }
 
@@ -154,7 +150,7 @@ export default function SolosStablefordTv({
     }, TV_PAGE_DURATION_MS);
 
     return () => window.clearInterval(pageTimer);
-  }, [pageCount]);
+  }, [pageCount, spotlight]);
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
@@ -319,7 +315,10 @@ export default function SolosStablefordTv({
                     {entry.position}
                   </span>
                   <span className="solos-tv-player">
-                    <TvMemberMark entry={entry} />
+                    <ScoreboardPlayerMark
+                      entry={entry}
+                      className="solos-tv-member-mark"
+                    />
                     <strong>{entry.playerName}</strong>
                   </span>
                   <span className="solos-tv-thru">
@@ -397,6 +396,15 @@ export default function SolosStablefordTv({
         </p>
         <strong>{isTeeLounge ? "The Tee Lounge" : "CGS Golf"}</strong>
       </footer>
+
+      {spotlight ? (
+        <ScoreChangeSpotlight
+          key={spotlight.key}
+          spotlight={spotlight}
+          theme={theme}
+          variant="tv"
+        />
+      ) : null}
     </section>
   );
 }

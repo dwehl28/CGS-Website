@@ -14,6 +14,7 @@ export type CompetitionScoreEntry = {
   grossLabel: string;
   thruLabel: string | null;
   isCgsMember: boolean;
+  photoUrl: string;
   updatedAt: string;
 };
 
@@ -68,6 +69,7 @@ type CompetitionScoreEntryInput = {
   grossScore: number | null;
   thruLabel: string;
   isCgsMember: boolean;
+  photoUrl: string;
 };
 
 const missingTableMessage =
@@ -202,6 +204,8 @@ function mapRowToEntry(
     thruLabel:
       typeof row.thru_label === "string" && row.thru_label.trim() ? row.thru_label : null,
     isCgsMember: Boolean(row.is_cgs_member),
+    photoUrl:
+      typeof row.photo_url === "string" && row.photo_url.trim() ? row.photo_url : "",
     updatedAt: String(row.updated_at ?? ""),
   };
 }
@@ -537,6 +541,7 @@ export async function createCompetitionScoreEntry(input: CompetitionScoreEntryIn
       gross_score: input.grossScore,
       handicap_strokes: 0,
       is_cgs_member: input.isCgsMember,
+      photo_url: input.photoUrl,
       position: 99,
       score_display: formatLeaderboardScore(input.grossScore, input.leaderboardMode),
       score_sort: input.grossScore ?? 0,
@@ -568,6 +573,7 @@ export async function updateCompetitionScoreEntry(
       gross_score: input.grossScore,
       handicap_strokes: 0,
       is_cgs_member: input.isCgsMember,
+      photo_url: input.photoUrl,
       score_display: formatLeaderboardScore(input.grossScore, input.leaderboardMode),
       score_sort: input.grossScore ?? 0,
       thru_label: input.thruLabel || null,

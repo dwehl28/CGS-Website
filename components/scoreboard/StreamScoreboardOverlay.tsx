@@ -5,13 +5,13 @@ import type { CSSProperties } from "react";
 import { startTransition, useEffect, useEffectEvent, useState } from "react";
 
 import SolosMotionBackground from "@/components/scoreboard/SolosMotionBackground";
+import ScoreChangeSpotlight from "@/components/scoreboard/ScoreChangeSpotlight";
+import ScoreboardPlayerMark from "@/components/scoreboard/ScoreboardPlayerMark";
 import TeeLoungeLogo from "@/components/scoreboard/TeeLoungeLogo";
 import { useAnimatedRankOrder } from "@/components/scoreboard/useAnimatedRankOrder";
+import { useScoreChangeSpotlight } from "@/components/scoreboard/useScoreChangeSpotlight";
 import type { ScoreboardDisplayTheme } from "@/lib/scoreboard-display-theme";
-import type {
-  CompetitionScoreboard,
-  CompetitionScoreEntry,
-} from "@/lib/scoreboards";
+import type { CompetitionScoreboard } from "@/lib/scoreboards";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 type StreamScoreboardOverlayProps = {
@@ -59,29 +59,6 @@ function formatOverlayTime(value: string) {
   }).format(parsedDate);
 }
 
-function MemberMark({
-  entry,
-  className = "stream-member-mark",
-}: {
-  entry: CompetitionScoreEntry;
-  className?: string;
-}) {
-  if (!entry.isCgsMember) {
-    return null;
-  }
-
-  return (
-    <Image
-      src="/cgs-logo.png"
-      alt=""
-      width={28}
-      height={28}
-      className={className}
-      aria-hidden="true"
-    />
-  );
-}
-
 export default function StreamScoreboardOverlay({
   initialCompetition,
   theme = "cgs",
@@ -112,6 +89,8 @@ export default function StreamScoreboardOverlay({
     visibleEntries.map((entry) => entry.id)
   );
   const isTeeLounge = theme === "tee-lounge";
+  const { spotlight, observeCompetition } =
+    useScoreChangeSpotlight(initialCompetition);
 
   async function refreshCompetition(slug: string) {
     try {
@@ -124,6 +103,17 @@ export default function StreamScoreboardOverlay({
       }
 
       const nextCompetition = (await response.json()) as CompetitionScoreboard;
+      const scoreChange = observeCompetition(nextCompetition);
+
+      if (scoreChange) {
+        const changedEntryIndex = nextCompetition.entries
+          .slice(0, PORTRAIT_PLAYER_LIMIT)
+          .findIndex((entry) => entry.id === scoreChange.entryId);
+
+        if (changedEntryIndex >= 0) {
+          setPageIndex(Math.floor(changedEntryIndex / PORTRAIT_ROWS_PER_PAGE));
+        }
+      }
 
       startTransition(() => {
         setCompetition(nextCompetition);
@@ -138,7 +128,7 @@ export default function StreamScoreboardOverlay({
   });
 
   useEffect(() => {
-    if (pageCount <= 1) {
+    if (pageCount <= 1 || spotlight) {
       return;
     }
 
@@ -147,7 +137,7 @@ export default function StreamScoreboardOverlay({
     }, PORTRAIT_PAGE_DURATION_MS);
 
     return () => window.clearInterval(pageTimer);
-  }, [pageCount]);
+  }, [pageCount, spotlight]);
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
@@ -214,18 +204,18 @@ export default function StreamScoreboardOverlay({
 
   return (
     <section
-        className={`stream-canvas solos-ladder-canvas ${
+      className={`stream-canvas solos-ladder-canvas ${
+        isTeeLounge ? "is-tee-lounge" : "is-cgs"
+      }`}
+      aria-label={`${competition.title} ${
+        isTeeLounge ? "Tee Lounge" : "CGS"
+      } portrait leaderboard`}
+    >
+      <div
+        className={`solos-ladder-board ${
           isTeeLounge ? "is-tee-lounge" : "is-cgs"
         }`}
-        aria-label={`${competition.title} ${
-          isTeeLounge ? "Tee Lounge" : "CGS"
-        } portrait leaderboard`}
       >
-        <div
-          className={`solos-ladder-board ${
-            isTeeLounge ? "is-tee-lounge" : "is-cgs"
-          }`}
-        >
           <SolosMotionBackground variant="portrait" />
 
           <header className="solos-ladder-header">
@@ -306,7 +296,11 @@ export default function StreamScoreboardOverlay({
                     {entry.position}
                   </span>
                   <span className="solos-ladder-player">
-                    <MemberMark entry={entry} className="solos-member-mark" />
+                    <ScoreboardPlayerMark
+                      entry={entry}
+                      className="solos-member-mark"
+                      size={28}
+                    />
                     <span>
                       <strong>{entry.playerName}</strong>
                       <small>{entry.thruLabel ?? "Awaiting first round"}</small>
@@ -337,7 +331,16 @@ export default function StreamScoreboardOverlay({
                 : formatOverlayTime(competition.updatedAt)}
             </span>
           </footer>
-        </div>
+
+          {spotlight ? (
+            <ScoreChangeSpotlight
+              key={spotlight.key}
+              spotlight={spotlight}
+              theme={theme}
+              variant="portrait"
+            />
+          ) : null}
+      </div>
     </section>
   );
 }

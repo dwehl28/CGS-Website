@@ -4,6 +4,7 @@ import Image from "next/image";
 import { startTransition, useEffect, useEffectEvent, useState } from "react";
 
 import SolosMotionBackground from "@/components/scoreboard/SolosMotionBackground";
+import ScoreboardPlayerMark from "@/components/scoreboard/ScoreboardPlayerMark";
 import TeeLoungeLogo from "@/components/scoreboard/TeeLoungeLogo";
 import type { ScoreboardDisplayTheme } from "@/lib/scoreboard-display-theme";
 import type {
@@ -55,29 +56,16 @@ function formatBannerTime(value: string) {
   }).format(parsedDate);
 }
 
-function MemberMark({ entry }: { entry: CompetitionScoreEntry }) {
-  if (!entry.isCgsMember) {
-    return null;
-  }
-
-  return (
-    <Image
-      src="/cgs-logo.png"
-      alt=""
-      width={28}
-      height={28}
-      className="survivor-ticker-member-mark"
-      aria-hidden="true"
-    />
-  );
-}
-
 function BannerTeamCard({ entry }: { entry: CompetitionScoreEntry }) {
   return (
     <article className="survivor-ticker-entry">
       <span className="survivor-ticker-position">{entry.position}</span>
       <span className="survivor-ticker-player">
-        <MemberMark entry={entry} />
+        <ScoreboardPlayerMark
+          entry={entry}
+          className="survivor-ticker-member-mark"
+          size={28}
+        />
         <span>{entry.playerName}</span>
       </span>
       <span className="survivor-ticker-thru">{entry.thruLabel ?? "Thru --"}</span>

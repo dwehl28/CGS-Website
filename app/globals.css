@@ -8363,6 +8363,335 @@ main.text-white {
   background: var(--tee-lounge-gold);
 }
 
+.is-player-photo {
+  object-fit: cover;
+  padding: 0 !important;
+}
+
+.score-change-spotlight,
+.score-change-spotlight * {
+  box-sizing: border-box;
+}
+
+.score-change-spotlight {
+  --spotlight-accent: #ff7a1a;
+  --spotlight-accent-bright: #ffb468;
+  --spotlight-ink: #fff8ef;
+  --spotlight-muted: rgba(255, 236, 218, 0.68);
+  --spotlight-panel: #160b06;
+  position: absolute;
+  z-index: 20;
+  display: grid;
+  border: 3px solid var(--spotlight-accent);
+  background:
+    radial-gradient(circle at 90% 0, rgba(255, 144, 60, 0.22), transparent 42%),
+    linear-gradient(135deg, rgba(49, 20, 7, 0.99), rgba(12, 8, 6, 0.99)),
+    var(--spotlight-panel);
+  box-shadow:
+    0 28px 80px rgba(0, 0, 0, 0.58),
+    inset 0 0 0 1px rgba(255, 238, 220, 0.12);
+  color: var(--spotlight-ink);
+  isolation: isolate;
+  overflow: hidden;
+  pointer-events: none;
+  transform-origin: right center;
+  animation: scoreChangeSpotlightExtend 6s cubic-bezier(0.2, 0.82, 0.2, 1) both;
+}
+
+.score-change-spotlight::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: repeating-linear-gradient(
+    118deg,
+    transparent 0 46px,
+    color-mix(in srgb, var(--spotlight-accent) 13%, transparent) 47px 49px,
+    transparent 50px 92px
+  );
+  content: "";
+}
+
+.score-change-spotlight.is-tee-lounge {
+  --spotlight-accent: #ddb458;
+  --spotlight-accent-bright: #f2cf73;
+  --spotlight-ink: #fffaf0;
+  --spotlight-muted: rgba(255, 250, 240, 0.68);
+  --spotlight-panel: #003323;
+  background:
+    radial-gradient(circle at 90% 0, rgba(242, 207, 115, 0.22), transparent 42%),
+    linear-gradient(135deg, rgba(9, 102, 71, 0.99), rgba(0, 44, 32, 0.99)),
+    var(--spotlight-panel);
+}
+
+.score-change-spotlight.is-tv {
+  top: 206px;
+  right: 42px;
+  grid-template-columns: 300px minmax(0, 1fr);
+  width: 780px;
+  height: 408px;
+  border-radius: 10px 0 0 10px;
+}
+
+.score-change-spotlight.is-portrait {
+  top: 306px;
+  right: 7px;
+  grid-template-columns: 145px minmax(0, 1fr);
+  width: 391px;
+  height: 326px;
+  border-width: 2px;
+  border-radius: 10px 0 0 10px;
+  box-shadow:
+    0 18px 46px rgba(0, 0, 0, 0.52),
+    inset 0 0 0 1px rgba(255, 238, 220, 0.12);
+}
+
+.score-change-photo {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  border-right: 2px solid var(--spotlight-accent);
+  background:
+    radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.16), transparent 46%),
+    color-mix(in srgb, var(--spotlight-accent) 22%, #080604);
+  overflow: hidden;
+}
+
+.score-change-photo > img {
+  width: 100%;
+  height: 100%;
+  filter: saturate(1.04) contrast(1.04);
+  animation: scoreChangePhotoFocus 6s ease-out both;
+}
+
+.score-change-photo > span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--spotlight-ink);
+  font-size: 82px;
+  font-weight: 1000;
+  letter-spacing: -0.08em;
+  text-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+}
+
+.score-change-spotlight.is-portrait .score-change-photo > span {
+  font-size: 46px;
+}
+
+.score-change-photo > i {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 48%, rgba(0, 0, 0, 0.66));
+}
+
+.score-change-copy {
+  display: grid;
+  align-content: center;
+  min-width: 0;
+  padding: 34px 38px;
+}
+
+.score-change-kicker,
+.score-change-player,
+.score-change-copy > small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.score-change-kicker {
+  color: var(--spotlight-accent-bright);
+  font-size: 14px;
+  font-weight: 1000;
+  letter-spacing: 0.14em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.score-change-player {
+  margin-top: 14px;
+  color: var(--spotlight-ink);
+  font-size: 50px;
+  font-weight: 1000;
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+}
+
+.score-change-copy > small {
+  margin-top: 14px;
+  color: var(--spotlight-muted);
+  font-size: 14px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.score-change-values {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 54px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.score-change-values > span {
+  display: grid;
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--spotlight-accent) 54%, transparent);
+  background: rgba(0, 0, 0, 0.26);
+  padding: 16px 18px;
+}
+
+.score-change-values > span.is-current {
+  border-color: var(--spotlight-accent-bright);
+  background: var(--spotlight-accent);
+  color: #130b05;
+}
+
+.score-change-spotlight.is-tee-lounge .score-change-values > span.is-current {
+  color: #002c20;
+}
+
+.score-change-values small,
+.score-change-values strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.score-change-values small {
+  color: var(--spotlight-muted);
+  font-size: 11px;
+  font-weight: 1000;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.score-change-values .is-current small {
+  color: currentColor;
+  opacity: 0.68;
+}
+
+.score-change-values strong {
+  margin-top: 8px;
+  color: var(--spotlight-ink);
+  font-size: 43px;
+  font-weight: 1000;
+  letter-spacing: -0.04em;
+  line-height: 0.92;
+}
+
+.score-change-values .is-current strong {
+  color: currentColor;
+}
+
+.score-change-values svg {
+  width: 48px;
+  color: var(--spotlight-accent-bright);
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+}
+
+.score-change-progress {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 7px;
+  background: var(--spotlight-accent-bright);
+  transform-origin: left;
+  animation: scoreChangeProgress 6s linear both;
+}
+
+.score-change-spotlight.is-portrait .score-change-copy {
+  padding: 22px 18px;
+}
+
+.score-change-spotlight.is-portrait .score-change-kicker {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+
+.score-change-spotlight.is-portrait .score-change-player {
+  margin-top: 10px;
+  font-size: 27px;
+  letter-spacing: -0.04em;
+}
+
+.score-change-spotlight.is-portrait .score-change-copy > small {
+  margin-top: 10px;
+  font-size: 9px;
+  line-height: 1.2;
+}
+
+.score-change-spotlight.is-portrait .score-change-values {
+  grid-template-columns: minmax(0, 1fr) 25px minmax(0, 1fr);
+  gap: 6px;
+  margin-top: 22px;
+}
+
+.score-change-spotlight.is-portrait .score-change-values > span {
+  padding: 11px 9px;
+}
+
+.score-change-spotlight.is-portrait .score-change-values small {
+  font-size: 8px;
+}
+
+.score-change-spotlight.is-portrait .score-change-values strong {
+  margin-top: 6px;
+  font-size: 25px;
+}
+
+.score-change-spotlight.is-portrait .score-change-values svg {
+  width: 25px;
+  stroke-width: 4;
+}
+
+@keyframes scoreChangeSpotlightExtend {
+  0% {
+    opacity: 0;
+    transform: translateX(calc(100% + 48px)) scaleX(0.84);
+  }
+
+  8%,
+  84% {
+    opacity: 1;
+    transform: translateX(0) scaleX(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(calc(100% + 48px)) scaleX(0.84);
+  }
+}
+
+@keyframes scoreChangePhotoFocus {
+  from {
+    transform: scale(1.08);
+  }
+
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes scoreChangeProgress {
+  from {
+    transform: scaleX(1);
+  }
+
+  to {
+    transform: scaleX(0);
+  }
+}
+
 @keyframes solosTvAtmosphere {
   0% {
     transform: translate3d(-10px, 0, 0) scale(1.02);
@@ -8400,6 +8729,9 @@ main.text-white {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .score-change-spotlight,
+  .score-change-photo > img,
+  .score-change-progress,
   .solos-tv-atmosphere,
   .solos-tv-status i,
   .solos-tv-standings-page,

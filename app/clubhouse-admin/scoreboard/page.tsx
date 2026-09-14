@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 
 import ClubhouseAdminLogin from "@/components/ClubhouseAdminLogin";
@@ -509,6 +510,11 @@ export default async function ScoreboardAdminPage() {
                                 name="leaderboard_mode"
                                 value={competition.leaderboardMode}
                               />
+                              <input
+                                type="hidden"
+                                name="current_photo_url"
+                                value={entry.photoUrl}
+                              />
 
                               <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-400">
                                 <span className="chip text-zinc-100">
@@ -543,6 +549,50 @@ export default async function ScoreboardAdminPage() {
                                   defaultValue={entry.thruLabel ?? ""}
                                   placeholder="Through"
                                 />
+                              </div>
+
+                              <div className="grid gap-4 rounded-[1rem] border border-white/8 bg-black/10 p-4 md:grid-cols-[72px_1fr] md:items-center">
+                                <Image
+                                  src={entry.photoUrl || "/cgs-logo.png"}
+                                  alt={
+                                    entry.photoUrl
+                                      ? `${entry.playerName} scoreboard photo`
+                                      : "No player photo uploaded"
+                                  }
+                                  width={72}
+                                  height={72}
+                                  className={`h-[72px] w-[72px] rounded-[1rem] border border-white/12 bg-white/90 ${
+                                    entry.photoUrl ? "object-cover p-0" : "object-contain p-2"
+                                  }`}
+                                  unoptimized={Boolean(entry.photoUrl)}
+                                />
+                                <div className="grid gap-3">
+                                  <div>
+                                    <label
+                                      className="field-label"
+                                      htmlFor={`scoreboard-photo-${entry.id}`}
+                                    >
+                                      {entry.photoUrl ? "Replace player photo" : "Add player photo"}
+                                    </label>
+                                    <input
+                                      id={`scoreboard-photo-${entry.id}`}
+                                      type="file"
+                                      name="photo_file"
+                                      accept="image/jpeg,image/png,image/webp"
+                                      className="field-control"
+                                    />
+                                  </div>
+                                  {entry.photoUrl ? (
+                                    <label className="flex items-center gap-3 text-sm text-zinc-400">
+                                      <input
+                                        type="checkbox"
+                                        name="remove_photo"
+                                        className="h-4 w-4 accent-[var(--gold)]"
+                                      />
+                                      Remove the current photo
+                                    </label>
+                                  ) : null}
+                                </div>
                               </div>
 
                               <div className="grid gap-4 md:grid-cols-2">

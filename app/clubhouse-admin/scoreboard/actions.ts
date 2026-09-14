@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { requireAdminAuthenticated } from "@/lib/admin-auth";
 import { normalizeString } from "@/lib/form-utils";
+import { uploadCgsPlayerPhotoAsset } from "@/lib/player-photo-storage";
 import {
   createCompetitionScoreEntry,
   createCompetitionScoreboard,
@@ -66,6 +67,18 @@ function revalidateScoreboardPaths(slug: string) {
 
 function getScoreboardAdminAnchor(competitionId: number) {
   return `/clubhouse-admin/scoreboard#scoreboard-${competitionId}`;
+}
+
+function getPlayerPhotoErrorMessage(error: unknown) {
+  if (
+    error instanceof Error &&
+    (error.message.startsWith("Player photos") ||
+      error.message === "A player photo destination is required.")
+  ) {
+    return error.message;
+  }
+
+  return "The score row could not be saved. Check that the latest scoreboard migration is live.";
 }
 
 const initialScoreboardAdminActionState: ScoreboardAdminActionState = {
@@ -236,6 +249,7 @@ export async function createCompetitionScoreEntryAction(
   const grossScore = parseNullableNumber(normalizeString(formData.get("score_value"), 20));
   const thruLabel = normalizeString(formData.get("thru_label"), 40);
   const isCgsMember = formData.get("is_cgs_member") === "on";
+  const photoFile = formData.get("photo_file");
 
   if (!Number.isFinite(competitionId) || !competitionSlug || !playerName || grossScore === null) {
     return {
@@ -244,6 +258,14 @@ export async function createCompetitionScoreEntryAction(
   }
 
   try {
+    const photoUrl =
+      photoFile instanceof File && photoFile.size > 0
+        ? await uploadCgsPlayerPhotoAsset(
+            `scoreboards/${competitionId}`,
+            photoFile
+          )
+        : "";
+
     await createCompetitionScoreEntry({
       competitionId,
       leaderboardMode,
@@ -251,12 +273,12 @@ export async function createCompetitionScoreEntryAction(
       grossScore,
       thruLabel,
       isCgsMember,
+      photoUrl,
     });
   } catch (error) {
     console.error("Create competition score entry action error:", error);
     return {
-      message:
-        "The score row could not be saved. Check that the latest scoreboard migration is live.",
+      message: getPlayerPhotoErrorMessage(error),
     };
   }
 
@@ -278,6 +300,9 @@ export async function updateCompetitionScoreEntryAction(formData: FormData) {
   const grossScore = parseNullableNumber(normalizeString(formData.get("score_value"), 20));
   const thruLabel = normalizeString(formData.get("thru_label"), 40);
   const isCgsMember = formData.get("is_cgs_member") === "on";
+  const photoFile = formData.get("photo_file");
+  const currentPhotoUrl = normalizeString(formData.get("current_photo_url"), 800);
+  const removePhoto = formData.get("remove_photo") === "on";
 
   if (
     !Number.isFinite(id) ||
@@ -294,6 +319,16 @@ export async function updateCompetitionScoreEntryAction(formData: FormData) {
   }
 
   try {
+    const photoUrl =
+      photoFile instanceof File && photoFile.size > 0
+        ? await uploadCgsPlayerPhotoAsset(
+            `scoreboards/${competitionId}`,
+            photoFile
+          )
+        : removePhoto
+          ? ""
+          : currentPhotoUrl;
+
     await updateCompetitionScoreEntry(id, {
       competitionId,
       leaderboardMode,
@@ -301,6 +336,7 @@ export async function updateCompetitionScoreEntryAction(formData: FormData) {
       grossScore,
       thruLabel,
       isCgsMember,
+      photoUrl,
     });
   } catch (error) {
     console.error("Update competition score entry action error:", error);

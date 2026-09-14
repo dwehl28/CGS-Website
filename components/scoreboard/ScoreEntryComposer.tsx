@@ -94,6 +94,21 @@ export default function ScoreEntryComposer({
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-[1rem] border border-white/8 bg-black/12 px-4 py-4">
+          <label className="mb-2 block text-xs uppercase tracking-[0.16em] text-zinc-500">
+            Player photo (optional)
+          </label>
+          <input
+            type="file"
+            name="photo_file"
+            accept="image/jpeg,image/png,image/webp"
+            className="field-control"
+          />
+          <p className="mt-2 text-xs leading-5 text-zinc-500">
+            JPG, PNG or WebP. Maximum file size 5MB.
+          </p>
+        </div>
+
         <label className="flex items-center gap-3 rounded-[1rem] border border-white/8 bg-black/18 px-4 py-4 text-sm text-zinc-300">
           <input
             type="checkbox"
@@ -103,9 +118,10 @@ export default function ScoreEntryComposer({
           Show the CGS logo next to this player.
         </label>
 
-        <div className="rounded-[1rem] border border-white/8 bg-black/12 px-4 py-4 text-sm leading-7 text-zinc-400">
+        <div className="rounded-[1rem] border border-white/8 bg-black/12 px-4 py-4 text-sm leading-7 text-zinc-400 md:col-span-2">
           Positions are automatic now. If you want to show a handicap, include it in
-          the player name you type here.
+          the player name you type here. Uploaded photos are used in the live board
+          and broadcast score-change spotlights.
         </div>
       </div>
 

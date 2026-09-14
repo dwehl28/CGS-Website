@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
 
 import { withTimeout } from "@/lib/async-timeout";
+import {
+  CGS_PLAYER_PHOTO_BUCKET,
+  uploadCgsPlayerPhotoAsset,
+} from "@/lib/player-photo-storage";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 export type CgsProfile = {
@@ -256,13 +260,6 @@ type AuthUserLike = {
 };
 
 const AMBROSE_QUERY_TIMEOUT_MS = 3500;
-const CGS_PLAYER_PHOTO_BUCKET = "cgs-player-photos";
-const CGS_PLAYER_PHOTO_SIZE_LIMIT = 5 * 1024 * 1024;
-const CGS_PLAYER_PHOTO_MIME_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-] as const;
 const ADMIN_APP_PROFILE: CgsProfile = {
   id: "00000000-0000-0000-0000-000000000000",
   email: "admin@crossodoggolf.com",
@@ -1374,84 +1371,8 @@ export async function updateCgsProfileForAdmin(
   return mapRowToProfile(data as Record<string, unknown>);
 }
 
-function getPhotoFileExtension(contentType: string) {
-  switch (contentType) {
-    case "image/jpeg":
-      return "jpg";
-    case "image/png":
-      return "png";
-    case "image/webp":
-      return "webp";
-    default:
-      return "";
-  }
-}
-
-async function ensureCgsPlayerPhotoBucket() {
-  const supabaseAdmin = getSupabaseAdmin();
-  const { data: buckets, error: listError } =
-    await supabaseAdmin.storage.listBuckets();
-
-  if (listError) {
-    throw listError;
-  }
-
-  if (buckets.some((bucket) => bucket.id === CGS_PLAYER_PHOTO_BUCKET)) {
-    return;
-  }
-
-  const { error: createError } = await supabaseAdmin.storage.createBucket(
-    CGS_PLAYER_PHOTO_BUCKET,
-    {
-      public: true,
-      fileSizeLimit: CGS_PLAYER_PHOTO_SIZE_LIMIT,
-      allowedMimeTypes: [...CGS_PLAYER_PHOTO_MIME_TYPES],
-    }
-  );
-
-  if (createError) {
-    throw createError;
-  }
-}
-
 export async function uploadCgsProfilePhoto(profileId: string, file: File) {
-  if (file.size <= 0) {
-    return "";
-  }
-
-  if (file.size > CGS_PLAYER_PHOTO_SIZE_LIMIT) {
-    throw new Error("Player photos must be 5MB or smaller.");
-  }
-
-  if (
-    !CGS_PLAYER_PHOTO_MIME_TYPES.includes(
-      file.type as (typeof CGS_PLAYER_PHOTO_MIME_TYPES)[number]
-    )
-  ) {
-    throw new Error("Player photos must be JPG, PNG, or WebP.");
-  }
-
-  await ensureCgsPlayerPhotoBucket();
-
-  const supabaseAdmin = getSupabaseAdmin();
-  const extension = getPhotoFileExtension(file.type);
-  const objectPath = `${profileId}/${Date.now().toString(36)}.${extension}`;
-  const { error } = await supabaseAdmin.storage
-    .from(CGS_PLAYER_PHOTO_BUCKET)
-    .upload(objectPath, await file.arrayBuffer(), {
-      contentType: file.type,
-      upsert: true,
-    });
-
-  if (error) {
-    throw error;
-  }
-
-  const { data } = supabaseAdmin.storage
-    .from(CGS_PLAYER_PHOTO_BUCKET)
-    .getPublicUrl(objectPath);
-
-  return data.publicUrl;
+  return uploadCgsPlayerPhotoAsset(profileId, file);
 }
 
 async function deleteCgsProfilePhotoObjects(profileId: string) {

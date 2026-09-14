@@ -98,6 +98,7 @@ create table if not exists public.competition_score_entries (
   gross_score numeric(10, 2),
   handicap_strokes numeric(10, 2) not null default 0,
   is_cgs_member boolean not null default false,
+  photo_url text not null default '',
   score_display text not null,
   score_sort numeric(10, 2) not null default 0,
   thru_label text,
