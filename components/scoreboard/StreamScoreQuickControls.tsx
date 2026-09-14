@@ -138,13 +138,25 @@ export default function StreamScoreQuickControls({
             href={`/scoreboard/${competition.slug}/stream`}
             className="btn-primary"
           >
-            Open portrait asset
+            Open CGS portrait
+          </Link>
+          <Link
+            href={`/scoreboard/${competition.slug}/stream?brand=tee-lounge`}
+            className="btn-secondary"
+          >
+            Open Tee Lounge portrait
           </Link>
           <Link
             href={`/scoreboard/${competition.slug}/banner`}
             className="btn-secondary"
           >
-            Open banner asset
+            Open CGS banner
+          </Link>
+          <Link
+            href={`/scoreboard/${competition.slug}/banner?brand=tee-lounge`}
+            className="btn-secondary"
+          >
+            Open Tee Lounge banner
           </Link>
           <Link
             href={`/scoreboard/${competition.slug}/tv`}
@@ -208,8 +220,9 @@ export default function StreamScoreQuickControls({
         <p>
           Keep the portrait OBS source at 407px wide x 1359px high, or use the
           banner source at 1920px wide x 180px high for a top or bottom ticker.
-          Both support up to 20 players. The CGS TV and Tee Lounge TV sources are
-          1920px x 1080px and roll through every player automatically.
+          Both are available in CGS and Tee Lounge styling and support up to 20
+          players. The TV sources are 1920px x 1080px and roll through every
+          player automatically.
           {remainingEntryCount > 0
             ? ` ${remainingEntryCount} extra row${
                 remainingEntryCount === 1 ? "" : "s"

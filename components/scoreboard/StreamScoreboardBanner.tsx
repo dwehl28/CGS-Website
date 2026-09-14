@@ -4,6 +4,8 @@ import Image from "next/image";
 import { startTransition, useEffect, useEffectEvent, useState } from "react";
 
 import SolosMotionBackground from "@/components/scoreboard/SolosMotionBackground";
+import TeeLoungeLogo from "@/components/scoreboard/TeeLoungeLogo";
+import type { ScoreboardDisplayTheme } from "@/lib/scoreboard-display-theme";
 import type {
   CompetitionScoreboard,
   CompetitionScoreEntry,
@@ -12,6 +14,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 type StreamScoreboardBannerProps = {
   initialCompetition: CompetitionScoreboard;
+  theme?: ScoreboardDisplayTheme;
 };
 
 type LiveSyncState =
@@ -85,6 +88,7 @@ function BannerTeamCard({ entry }: { entry: CompetitionScoreEntry }) {
 
 export default function StreamScoreboardBanner({
   initialCompetition,
+  theme = "cgs",
 }: StreamScoreboardBannerProps) {
   const [competition, setCompetition] = useState(initialCompetition);
   const [syncState, setSyncState] = useState<LiveSyncState>("idle");
@@ -92,6 +96,7 @@ export default function StreamScoreboardBanner({
   const leaderEntry = visibleEntries[0] ?? null;
   const secondaryTitle =
     competition.roundLabel ?? competition.formatLabel ?? competition.statusLabel;
+  const isTeeLounge = theme === "tee-lounge";
 
   async function refreshCompetition(slug: string) {
     try {
@@ -182,24 +187,36 @@ export default function StreamScoreboardBanner({
 
   return (
     <section
-      className="survivor-ticker-canvas"
-      aria-label={`${competition.title} stream scoreboard banner`}
+      className={`survivor-ticker-canvas ${
+        isTeeLounge ? "is-tee-lounge" : "is-cgs"
+      }`}
+      aria-label={`${competition.title} ${
+        isTeeLounge ? "Tee Lounge" : "CGS"
+      } stream scoreboard banner`}
     >
-      <div className="survivor-ticker-shell">
+      <div
+        className={`survivor-ticker-shell ${
+          isTeeLounge ? "is-tee-lounge" : "is-cgs"
+        }`}
+      >
         <div className="survivor-ticker-atmosphere" aria-hidden="true" />
         <SolosMotionBackground variant="banner" />
 
         <header className="survivor-ticker-brand">
-          <Image
-            src="/cgs-logo.png"
-            alt="Crossodog Golf Society"
-            width={88}
-            height={88}
-            priority
-          />
+          {isTeeLounge ? (
+            <TeeLoungeLogo className="is-banner" />
+          ) : (
+            <Image
+              src="/cgs-logo.png"
+              alt="Crossodog Golf Society"
+              width={88}
+              height={88}
+              priority
+            />
+          )}
           <div>
-            <p>The Tee Lounge presents</p>
-            <h1>Solos Stableford</h1>
+            <p>{isTeeLounge ? "Live competition" : "The Tee Lounge presents"}</p>
+            <h1>{isTeeLounge ? competition.title : "Solos Stableford"}</h1>
             <span>{secondaryTitle}</span>
           </div>
         </header>

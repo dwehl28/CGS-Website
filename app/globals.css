@@ -6829,6 +6829,225 @@ main.text-white {
   text-align: right;
 }
 
+.solos-ladder-canvas.is-tee-lounge {
+  --tee-lounge-green: #00492f;
+  --tee-lounge-green-deep: #002c20;
+  --tee-lounge-green-ink: #073f2e;
+  --tee-lounge-cream: #fffaf0;
+  --tee-lounge-gold: #ddb458;
+  --tee-lounge-gold-bright: #f2cf73;
+  color: var(--tee-lounge-cream);
+  font-family: var(--font-space-grotesk);
+}
+
+.solos-ladder-board.is-tee-lounge {
+  border-color: var(--tee-lounge-gold);
+  background:
+    linear-gradient(180deg, rgba(0, 54, 38, 0.28), rgba(0, 30, 22, 0.86)),
+    url("/scoreboard/solos-survivor-bg.png") 74% center / cover no-repeat,
+    var(--tee-lounge-green-deep);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 250, 240, 0.18),
+    0 18px 50px rgba(0, 29, 20, 0.38);
+}
+
+.solos-ladder-board.is-tee-lounge::before {
+  background:
+    repeating-linear-gradient(
+      118deg,
+      transparent 0 48px,
+      rgba(221, 180, 88, 0.075) 49px 51px,
+      transparent 52px 96px
+    ),
+    linear-gradient(90deg, rgba(221, 180, 88, 0.05), transparent 35% 68%, rgba(221, 180, 88, 0.08));
+}
+
+.solos-ladder-board.is-tee-lounge .solos-motion-dust-rear {
+  background:
+    radial-gradient(ellipse at 32% 54%, rgba(221, 180, 88, 0.3), transparent 51%),
+    radial-gradient(ellipse at 72% 38%, rgba(74, 151, 102, 0.28), transparent 47%);
+}
+
+.solos-ladder-board.is-tee-lounge .solos-motion-dust-front {
+  background:
+    radial-gradient(ellipse at 24% 48%, rgba(242, 207, 115, 0.23), transparent 42%),
+    radial-gradient(ellipse at 78% 62%, rgba(24, 110, 75, 0.3), transparent 48%);
+}
+
+.solos-ladder-board.is-tee-lounge .solos-motion-sun {
+  background: radial-gradient(
+    circle,
+    rgba(255, 252, 223, 0.98) 0 4%,
+    rgba(242, 207, 115, 0.72) 8%,
+    rgba(221, 180, 88, 0.22) 27%,
+    transparent 66%
+  );
+}
+
+.solos-ladder-board.is-tee-lounge .solos-ladder-header {
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 0 10px;
+  border-bottom-color: rgba(221, 180, 88, 0.72);
+  background: linear-gradient(105deg, rgba(0, 73, 47, 0.99), rgba(0, 44, 32, 0.95));
+  padding: 14px 12px 10px;
+}
+
+.solos-ladder-board.is-tee-lounge .tee-lounge-brand-logo {
+  grid-row: 1;
+  width: 150px;
+  height: 64px;
+}
+
+.solos-ladder-board.is-tee-lounge .tee-lounge-brand-logo > img {
+  top: -78px;
+  left: -33px;
+  width: 220px;
+  height: 220px;
+}
+
+.solos-ladder-board.is-tee-lounge .solos-ladder-title p {
+  color: var(--tee-lounge-gold-bright);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+}
+
+.solos-ladder-board.is-tee-lounge .solos-ladder-title strong {
+  margin-top: 6px;
+  color: var(--tee-lounge-cream);
+  font-family: var(--font-space-grotesk);
+  font-size: 18px;
+  font-weight: 850;
+  letter-spacing: -0.035em;
+  line-height: 0.98;
+  text-shadow: none;
+}
+
+.solos-ladder-board.is-tee-lounge .solos-ladder-title span {
+  color: rgba(255, 250, 240, 0.7);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+.solos-ladder-board.is-tee-lounge .solos-live-light {
+  border-color: rgba(221, 180, 88, 0.72);
+  background: rgba(0, 31, 22, 0.68);
+  color: rgba(255, 250, 240, 0.84);
+}
+
+.solos-ladder-board.is-tee-lounge .solos-live-light > span {
+  background: var(--tee-lounge-gold-bright);
+  box-shadow: 0 0 12px rgba(242, 207, 115, 0.82);
+}
+
+.solos-ladder-board.is-tee-lounge .solos-ladder-ribbon {
+  border-bottom-color: rgba(0, 73, 47, 0.24);
+  background: var(--tee-lounge-gold);
+  color: var(--tee-lounge-green-deep);
+}
+
+.solos-ladder-board.is-tee-lounge .solos-ladder-facts {
+  border-bottom-color: rgba(0, 73, 47, 0.22);
+  background: rgba(255, 250, 240, 0.96);
+}
+
+.solos-ladder-board.is-tee-lounge .solos-ladder-facts > div {
+  border-right-color: rgba(0, 73, 47, 0.16);
+}
+
+.solos-ladder-board.is-tee-lounge .solos-ladder-facts span {
+  color: rgba(7, 63, 46, 0.62);
+}
+
+.solos-ladder-board.is-tee-lounge .solos-ladder-facts strong {
+  color: var(--tee-lounge-green);
+}
+
+.solos-ladder-board.is-tee-lounge .solos-ladder-table-head {
+  background: var(--tee-lounge-green-deep);
+  color: rgba(255, 250, 240, 0.7);
+}
+
+.solos-ladder-board.is-tee-lounge .solos-ladder-rows,
+.solos-ladder-board.is-tee-lounge .solos-ladder-rows.is-continuation {
+  grid-template-rows: repeat(
+    var(--tee-lounge-portrait-rows, 10),
+    minmax(0, 1fr)
+  );
+  background: rgba(255, 250, 240, 0.76);
+}
+
+.solos-ladder-board.is-tee-lounge .solos-ladder-row {
+  border-color: rgba(0, 73, 47, 0.18);
+  border-left-color: var(--tee-lounge-gold);
+  background: linear-gradient(100deg, #fffef9, #f1ede2);
+  box-shadow: 0 5px 16px rgba(0, 50, 34, 0.12);
+  color: var(--tee-lounge-green-ink);
+}
+
+.solos-ladder-board.is-tee-lounge .solos-ladder-row.is-leading {
+  border-color: var(--tee-lounge-gold-bright);
+  border-left-color: var(--tee-lounge-gold-bright);
+  background: linear-gradient(100deg, #096344, #003b2a);
+  box-shadow:
+    0 0 0 1px rgba(242, 207, 115, 0.24),
+    0 10px 26px rgba(0, 41, 28, 0.24);
+}
+
+.solos-ladder-board.is-tee-lounge .solos-ladder-position {
+  border-color: rgba(0, 73, 47, 0.28);
+  background: rgba(221, 180, 88, 0.24);
+  color: var(--tee-lounge-green-ink);
+}
+
+.solos-ladder-board.is-tee-lounge .solos-ladder-row.is-leading .solos-ladder-position {
+  border-color: var(--tee-lounge-gold-bright);
+  background: var(--tee-lounge-gold-bright);
+  color: var(--tee-lounge-green-deep);
+}
+
+.solos-ladder-board.is-tee-lounge .solos-ladder-player strong {
+  color: var(--tee-lounge-green-ink);
+}
+
+.solos-ladder-board.is-tee-lounge .solos-ladder-player small {
+  color: rgba(7, 63, 46, 0.58);
+}
+
+.solos-ladder-board.is-tee-lounge .solos-ladder-score {
+  color: var(--tee-lounge-green);
+}
+
+.solos-ladder-board.is-tee-lounge .solos-ladder-row.is-leading .solos-ladder-player strong,
+.solos-ladder-board.is-tee-lounge .solos-ladder-row.is-leading .solos-ladder-player small,
+.solos-ladder-board.is-tee-lounge .solos-ladder-row.is-leading .solos-ladder-score {
+  color: var(--tee-lounge-cream);
+}
+
+.solos-ladder-board.is-tee-lounge .solos-member-mark {
+  border-color: rgba(0, 73, 47, 0.3);
+  background: #fffef9;
+}
+
+.solos-ladder-board.is-tee-lounge .solos-ladder-empty {
+  border-color: rgba(0, 73, 47, 0.34);
+  background: rgba(255, 250, 240, 0.92);
+  color: rgba(7, 63, 46, 0.68);
+}
+
+.solos-ladder-board.is-tee-lounge .solos-ladder-empty span {
+  color: var(--tee-lounge-green);
+}
+
+.solos-ladder-board.is-tee-lounge .solos-ladder-footer {
+  border-top-color: rgba(221, 180, 88, 0.72);
+  background: rgba(0, 44, 32, 0.98);
+  color: rgba(255, 250, 240, 0.62);
+}
+
+.solos-ladder-board.is-tee-lounge .solos-ladder-footer strong {
+  color: var(--tee-lounge-gold-bright);
+}
+
 @keyframes solosLivePulse {
   0%,
   100% {
@@ -7798,7 +8017,7 @@ main.text-white {
   text-align: right;
 }
 
-.tee-lounge-tv-logo {
+.tee-lounge-brand-logo {
   position: relative;
   width: 246px;
   height: 105px;
@@ -7807,7 +8026,7 @@ main.text-white {
   background: #00492f;
 }
 
-.tee-lounge-tv-logo > img {
+.tee-lounge-brand-logo > img {
   position: absolute;
   top: -128px;
   left: -54px;
@@ -7923,7 +8142,7 @@ main.text-white {
   gap: 35px;
 }
 
-.solos-tv-brand.is-tee-lounge-brand .tee-lounge-tv-logo {
+.solos-tv-brand.is-tee-lounge-brand .tee-lounge-brand-logo {
   flex: 0 0 auto;
   padding-right: 35px;
   border-right: 1px solid rgba(255, 250, 240, 0.2);
@@ -10828,6 +11047,211 @@ main.text-white {
   color: rgba(49, 13, 2, 0.72);
   font-size: 9px;
   font-weight: 900;
+}
+
+.survivor-ticker-canvas.is-tee-lounge {
+  --tee-lounge-green: #00492f;
+  --tee-lounge-green-deep: #002c20;
+  --tee-lounge-green-ink: #073f2e;
+  --tee-lounge-cream: #fffaf0;
+  --tee-lounge-gold: #ddb458;
+  --tee-lounge-gold-bright: #f2cf73;
+  color: var(--tee-lounge-cream);
+  font-family: var(--font-space-grotesk);
+}
+
+.survivor-ticker-shell.is-tee-lounge {
+  grid-template-columns: 520px minmax(0, 1fr) 315px;
+  border-color: var(--tee-lounge-gold);
+  background: var(--tee-lounge-green-deep);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 250, 240, 0.16),
+    0 0 34px rgba(0, 55, 38, 0.28);
+}
+
+.survivor-ticker-shell.is-tee-lounge::before {
+  background:
+    repeating-linear-gradient(
+      116deg,
+      transparent 0 46px,
+      rgba(221, 180, 88, 0.075) 47px 49px,
+      transparent 50px 94px
+    ),
+    linear-gradient(90deg, rgba(0, 34, 24, 0.16), transparent 45% 70%, rgba(0, 27, 19, 0.34));
+}
+
+.survivor-ticker-shell.is-tee-lounge::after {
+  background: linear-gradient(90deg, transparent, rgba(242, 207, 115, 0.16), transparent);
+}
+
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-atmosphere {
+  background:
+    linear-gradient(90deg, rgba(0, 48, 34, 0.56), rgba(0, 34, 24, 0.5)),
+    url("/scoreboard/solos-survivor-bg.png") center 61% / cover no-repeat;
+  filter: saturate(0.64) contrast(1.12) brightness(0.7) hue-rotate(48deg);
+}
+
+.survivor-ticker-shell.is-tee-lounge .solos-motion-dust-rear {
+  background:
+    radial-gradient(ellipse at 32% 54%, rgba(221, 180, 88, 0.3), transparent 51%),
+    radial-gradient(ellipse at 72% 38%, rgba(74, 151, 102, 0.28), transparent 47%);
+}
+
+.survivor-ticker-shell.is-tee-lounge .solos-motion-dust-front {
+  background:
+    radial-gradient(ellipse at 24% 48%, rgba(242, 207, 115, 0.22), transparent 42%),
+    radial-gradient(ellipse at 78% 62%, rgba(24, 110, 75, 0.3), transparent 48%);
+}
+
+.survivor-ticker-shell.is-tee-lounge .solos-motion-sun {
+  background: radial-gradient(
+    circle,
+    rgba(255, 252, 223, 0.98) 0 4%,
+    rgba(242, 207, 115, 0.72) 8%,
+    rgba(221, 180, 88, 0.22) 27%,
+    transparent 66%
+  );
+}
+
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-brand {
+  gap: 20px;
+  border-right-color: rgba(221, 180, 88, 0.72);
+  background: linear-gradient(105deg, rgba(0, 73, 47, 0.99), rgba(0, 44, 32, 0.94));
+  padding: 15px 18px;
+}
+
+.survivor-ticker-shell.is-tee-lounge .tee-lounge-brand-logo {
+  width: 210px;
+  height: 90px;
+}
+
+.survivor-ticker-shell.is-tee-lounge .tee-lounge-brand-logo > img {
+  top: -109px;
+  left: -46px;
+  width: 309px;
+  height: 309px;
+}
+
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-brand > div:last-child {
+  min-width: 0;
+}
+
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-brand p {
+  color: var(--tee-lounge-gold-bright);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-brand h1 {
+  margin-top: 8px;
+  color: var(--tee-lounge-cream);
+  font-family: var(--font-space-grotesk);
+  font-size: 23px;
+  font-weight: 850;
+  letter-spacing: -0.035em;
+  line-height: 0.98;
+  text-shadow: none;
+}
+
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-brand span {
+  color: rgba(255, 250, 240, 0.7);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-standings {
+  border-right-color: rgba(221, 180, 88, 0.52);
+  background: rgba(255, 250, 240, 0.94);
+}
+
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-rail-label {
+  border-right-color: rgba(221, 180, 88, 0.58);
+  background: var(--tee-lounge-green-deep);
+}
+
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-rail-label span {
+  color: var(--tee-lounge-gold-bright);
+}
+
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-rail-label strong {
+  color: var(--tee-lounge-cream);
+  font-family: var(--font-space-grotesk);
+}
+
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-rail-label small {
+  color: rgba(255, 250, 240, 0.6);
+}
+
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-window::before {
+  background: linear-gradient(90deg, rgba(255, 250, 240, 0.98), transparent);
+}
+
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-window::after {
+  background: linear-gradient(270deg, rgba(255, 250, 240, 0.98), transparent);
+}
+
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-entry {
+  border-color: rgba(0, 73, 47, 0.18);
+  border-right-color: rgba(221, 180, 88, 0.5);
+  background: linear-gradient(105deg, #fffef9, #f1ede2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.64);
+  color: var(--tee-lounge-green-ink);
+}
+
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-position {
+  background: linear-gradient(145deg, var(--tee-lounge-gold-bright), var(--tee-lounge-gold));
+  color: var(--tee-lounge-green-deep);
+}
+
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-player {
+  color: var(--tee-lounge-green-ink);
+}
+
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-member-mark {
+  border-color: rgba(0, 73, 47, 0.3);
+  background: #fffef9;
+}
+
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-thru {
+  color: rgba(7, 63, 46, 0.58);
+}
+
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-score {
+  color: var(--tee-lounge-green);
+}
+
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-empty {
+  border-color: rgba(0, 73, 47, 0.32);
+  background: rgba(255, 250, 240, 0.88);
+}
+
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-empty span,
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-empty strong {
+  color: var(--tee-lounge-green);
+  font-family: var(--font-space-grotesk);
+}
+
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-leader {
+  border-left: 2px solid var(--tee-lounge-gold-bright);
+  background:
+    radial-gradient(circle at 100% 0, rgba(242, 207, 115, 0.2), transparent 46%),
+    linear-gradient(108deg, #0a6949, #003323);
+  box-shadow: inset 10px 0 24px rgba(0, 31, 22, 0.24);
+}
+
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-leader > span,
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-leader small {
+  color: var(--tee-lounge-gold-bright);
+}
+
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-leader i {
+  background: var(--tee-lounge-gold-bright);
+  box-shadow: 0 0 14px rgba(242, 207, 115, 0.82);
+}
+
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-leader > strong,
+.survivor-ticker-shell.is-tee-lounge .survivor-ticker-leader p {
+  color: var(--tee-lounge-cream);
 }
 
 @keyframes survivorTickerScroll {

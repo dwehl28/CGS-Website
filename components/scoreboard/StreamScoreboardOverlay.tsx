@@ -1,10 +1,13 @@
 "use client";
 
 import Image from "next/image";
+import type { CSSProperties } from "react";
 import { startTransition, useEffect, useEffectEvent, useState } from "react";
 
 import SolosMotionBackground from "@/components/scoreboard/SolosMotionBackground";
+import TeeLoungeLogo from "@/components/scoreboard/TeeLoungeLogo";
 import { useAnimatedRankOrder } from "@/components/scoreboard/useAnimatedRankOrder";
+import type { ScoreboardDisplayTheme } from "@/lib/scoreboard-display-theme";
 import type {
   CompetitionScoreboard,
   CompetitionScoreEntry,
@@ -13,6 +16,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 type StreamScoreboardOverlayProps = {
   initialCompetition: CompetitionScoreboard;
+  theme?: ScoreboardDisplayTheme;
 };
 
 type LiveSyncState =
@@ -80,6 +84,7 @@ function MemberMark({
 
 export default function StreamScoreboardOverlay({
   initialCompetition,
+  theme = "cgs",
 }: StreamScoreboardOverlayProps) {
   const [competition, setCompetition] = useState(initialCompetition);
   const [syncState, setSyncState] = useState<LiveSyncState>("idle");
@@ -106,6 +111,7 @@ export default function StreamScoreboardOverlay({
   const registerRankRow = useAnimatedRankOrder(
     visibleEntries.map((entry) => entry.id)
   );
+  const isTeeLounge = theme === "tee-lounge";
 
   async function refreshCompetition(slug: string) {
     try {
@@ -207,24 +213,36 @@ export default function StreamScoreboardOverlay({
   }, [competition.id]);
 
   return (
-      <section
-        className="stream-canvas solos-ladder-canvas"
-        aria-label={`${competition.title} Solos Stableford ladder`}
+    <section
+        className={`stream-canvas solos-ladder-canvas ${
+          isTeeLounge ? "is-tee-lounge" : "is-cgs"
+        }`}
+        aria-label={`${competition.title} ${
+          isTeeLounge ? "Tee Lounge" : "CGS"
+        } portrait leaderboard`}
       >
-        <div className="solos-ladder-board">
+        <div
+          className={`solos-ladder-board ${
+            isTeeLounge ? "is-tee-lounge" : "is-cgs"
+          }`}
+        >
           <SolosMotionBackground variant="portrait" />
 
           <header className="solos-ladder-header">
-            <Image
-              src="/cgs-logo.png"
-              alt="Crossodog Golf Society"
-              width={76}
-              height={76}
-              priority
-            />
+            {isTeeLounge ? (
+              <TeeLoungeLogo className="is-portrait" />
+            ) : (
+              <Image
+                src="/cgs-logo.png"
+                alt="Crossodog Golf Society"
+                width={76}
+                height={76}
+                priority
+              />
+            )}
             <div className="solos-ladder-title">
-              <p>The Tee Lounge presents</p>
-              <strong>Solos Stableford</strong>
+              <p>{isTeeLounge ? "Live competition" : "The Tee Lounge presents"}</p>
+              <strong>{isTeeLounge ? competition.title : "Solos Stableford"}</strong>
               <span>{secondaryTitle}</span>
             </div>
             <div className={`solos-live-light is-${syncState}`} aria-label={getSyncLabel(syncState)}>
@@ -234,7 +252,7 @@ export default function StreamScoreboardOverlay({
           </header>
 
           <div className="solos-ladder-ribbon">
-            <span>Weekly ladder</span>
+            <span>{isTeeLounge ? "Tee Lounge live" : "Weekly ladder"}</span>
             <strong>{competition.location ?? "The Tee Lounge"}</strong>
           </div>
 
@@ -264,6 +282,16 @@ export default function StreamScoreboardOverlay({
               activePageIndex > 0 ? "is-continuation" : ""
             }`}
             key={activePageIndex}
+            style={
+              isTeeLounge
+                ? ({
+                    "--tee-lounge-portrait-rows": Math.max(
+                      6,
+                      visibleEntries.length
+                    ),
+                  } as CSSProperties)
+                : undefined
+            }
           >
             {visibleEntries.length > 0 ? (
               visibleEntries.map((entry) => (
@@ -310,6 +338,6 @@ export default function StreamScoreboardOverlay({
             </span>
           </footer>
         </div>
-      </section>
+    </section>
   );
 }

@@ -13,6 +13,7 @@ import {
 import SolosMotionBackground from "@/components/scoreboard/SolosMotionBackground";
 import TeeLoungeLogo from "@/components/scoreboard/TeeLoungeLogo";
 import { useAnimatedRankOrder } from "@/components/scoreboard/useAnimatedRankOrder";
+import type { ScoreboardDisplayTheme } from "@/lib/scoreboard-display-theme";
 import type {
   CompetitionScoreboard,
   CompetitionScoreEntry,
@@ -21,7 +22,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 type SolosStablefordTvProps = {
   initialCompetition: CompetitionScoreboard;
-  theme?: "cgs" | "tee-lounge";
+  theme?: ScoreboardDisplayTheme;
 };
 
 type LiveSyncState =

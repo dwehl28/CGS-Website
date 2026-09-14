@@ -55,10 +55,22 @@ export default async function ScoreboardDetailPage({
               Back to scoreboard
             </Link>
             <Link href={`/scoreboard/${competition.slug}/stream`} className="btn-primary">
-              Stream overlay
+              CGS portrait
+            </Link>
+            <Link
+              href={`/scoreboard/${competition.slug}/stream?brand=tee-lounge`}
+              className="btn-secondary"
+            >
+              Tee Lounge portrait
             </Link>
             <Link href={`/scoreboard/${competition.slug}/banner`} className="btn-secondary">
-              Banner ticker
+              CGS banner
+            </Link>
+            <Link
+              href={`/scoreboard/${competition.slug}/banner?brand=tee-lounge`}
+              className="btn-secondary"
+            >
+              Tee Lounge banner
             </Link>
             <Link href={`/scoreboard/${competition.slug}/tv`} className="btn-secondary">
               CGS TV

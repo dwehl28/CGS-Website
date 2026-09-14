@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import SolosStablefordTv from "@/components/scoreboard/SolosStablefordTv";
+import { resolveScoreboardDisplayTheme } from "@/lib/scoreboard-display-theme";
 import { getPublishedCompetitionScoreboardBySlug } from "@/lib/scoreboards";
 
 type SolosStablefordTvPageProps = {
@@ -21,7 +22,7 @@ export async function generateMetadata({
 }: SolosStablefordTvPageProps): Promise<Metadata> {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
   const competition = await getPublishedCompetitionScoreboardBySlug(slug);
-  const isTeeLounge = query.brand === "tee-lounge";
+  const isTeeLounge = resolveScoreboardDisplayTheme(query.brand) === "tee-lounge";
 
   return {
     title: competition
@@ -42,6 +43,7 @@ export default async function SolosStablefordTvPage({
 }: SolosStablefordTvPageProps) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
   const competition = await getPublishedCompetitionScoreboardBySlug(slug);
+  const theme = resolveScoreboardDisplayTheme(query.brand);
 
   if (!competition) {
     notFound();
@@ -51,7 +53,7 @@ export default async function SolosStablefordTvPage({
     <main className="solos-tv-page">
       <SolosStablefordTv
         initialCompetition={competition}
-        theme={query.brand === "tee-lounge" ? "tee-lounge" : "cgs"}
+        theme={theme}
       />
     </main>
   );

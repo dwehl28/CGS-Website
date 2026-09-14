@@ -65,9 +65,9 @@ export default async function ScoreboardPage() {
             <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--body-copy)]">
               Published scoreboards now include dedicated stream asset URLs. Use
               the 407px by 1359px portrait ladder, the rolling 1920px by 180px
-              banner, or a 1920px by 1080px full-field TV leaderboard in either
-              CGS or Tee Lounge styling. All receive live score updates without
-              the website header or footer.
+              banner, or a 1920px by 1080px full-field TV leaderboard. Every
+              format is available in CGS or Tee Lounge styling and receives live
+              score updates without the website header or footer.
             </p>
             <div className="mt-7 flex flex-wrap gap-4">
               {firstCompetition ? (
@@ -76,13 +76,25 @@ export default async function ScoreboardPage() {
                     href={`/scoreboard/${firstCompetition.slug}/stream`}
                     className="btn-primary"
                   >
-                    Preview portrait overlay
+                    Preview CGS portrait
+                  </Link>
+                  <Link
+                    href={`/scoreboard/${firstCompetition.slug}/stream?brand=tee-lounge`}
+                    className="btn-secondary"
+                  >
+                    Preview Tee Lounge portrait
                   </Link>
                   <Link
                     href={`/scoreboard/${firstCompetition.slug}/banner`}
                     className="btn-secondary"
                   >
-                    Preview banner ticker
+                    Preview CGS banner
+                  </Link>
+                  <Link
+                    href={`/scoreboard/${firstCompetition.slug}/banner?brand=tee-lounge`}
+                    className="btn-secondary"
+                  >
+                    Preview Tee Lounge banner
                   </Link>
                   <Link
                     href={`/scoreboard/${firstCompetition.slug}/tv`}
@@ -110,7 +122,7 @@ export default async function ScoreboardPage() {
             </p>
             <div className="home-score-row">
               <span>URL</span>
-              <span>/stream, /banner, /tv or /tv?brand=tee-lounge</span>
+              <span>/stream, /banner or /tv - add ?brand=tee-lounge</span>
               <span>OBS</span>
             </div>
             <div className="home-score-row">
@@ -212,13 +224,25 @@ export default async function ScoreboardPage() {
                     href={`/scoreboard/${competition.slug}/stream`}
                     className="btn-secondary"
                   >
-                    Stream overlay
+                    CGS portrait
+                  </Link>
+                  <Link
+                    href={`/scoreboard/${competition.slug}/stream?brand=tee-lounge`}
+                    className="btn-secondary"
+                  >
+                    Tee Lounge portrait
                   </Link>
                   <Link
                     href={`/scoreboard/${competition.slug}/banner`}
                     className="btn-secondary"
                   >
-                    Banner ticker
+                    CGS banner
+                  </Link>
+                  <Link
+                    href={`/scoreboard/${competition.slug}/banner?brand=tee-lounge`}
+                    className="btn-secondary"
+                  >
+                    Tee Lounge banner
                   </Link>
                   <Link
                     href={`/scoreboard/${competition.slug}/tv`}

@@ -7,7 +7,7 @@ type TeeLoungeLogoProps = {
 export default function TeeLoungeLogo({ className = "" }: TeeLoungeLogoProps) {
   return (
     <div
-      className={`tee-lounge-tv-logo ${className}`.trim()}
+      className={`tee-lounge-brand-logo ${className}`.trim()}
     >
       <Image
         src="/scoreboard/tee-lounge-logo.png"
