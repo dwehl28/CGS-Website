@@ -619,6 +619,28 @@ export async function updateCompetitionScoreEntryScore(
   await touchCompetitionScoreboard(competitionId);
 }
 
+export async function updateCompetitionScoreEntryThrough(
+  id: number,
+  competitionId: number,
+  thruLabel: string | null
+) {
+  const supabaseAdmin = getSupabaseAdmin();
+
+  const { error } = await supabaseAdmin
+    .from("competition_score_entries")
+    .update({
+      thru_label: thruLabel,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  if (error) {
+    throw error;
+  }
+
+  await touchCompetitionScoreboard(competitionId);
+}
+
 export async function deleteCompetitionScoreEntry(id: number, competitionId: number) {
   const supabaseAdmin = getSupabaseAdmin();
   const { error } = await supabaseAdmin

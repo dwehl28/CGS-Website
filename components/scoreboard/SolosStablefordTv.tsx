@@ -12,7 +12,6 @@ import {
 
 import SolosMotionBackground from "@/components/scoreboard/SolosMotionBackground";
 import ScoreChangeSpotlight from "@/components/scoreboard/ScoreChangeSpotlight";
-import ScoreboardPlayerMark from "@/components/scoreboard/ScoreboardPlayerMark";
 import TeeLoungeLogo from "@/components/scoreboard/TeeLoungeLogo";
 import { useAnimatedRankOrder } from "@/components/scoreboard/useAnimatedRankOrder";
 import { useScoreChangeSpotlight } from "@/components/scoreboard/useScoreChangeSpotlight";
@@ -116,11 +115,11 @@ export default function SolosStablefordTv({
       }
 
       const nextCompetition = (await response.json()) as CompetitionScoreboard;
-      const scoreChange = observeCompetition(nextCompetition);
+      const liveChange = observeCompetition(nextCompetition);
 
-      if (scoreChange) {
+      if (liveChange) {
         const changedEntryIndex = nextCompetition.entries.findIndex(
-          (entry) => entry.id === scoreChange.entryId
+          (entry) => entry.id === liveChange.entryId
         );
 
         if (changedEntryIndex >= 0) {
@@ -315,10 +314,6 @@ export default function SolosStablefordTv({
                     {entry.position}
                   </span>
                   <span className="solos-tv-player">
-                    <ScoreboardPlayerMark
-                      entry={entry}
-                      className="solos-tv-member-mark"
-                    />
                     <strong>{entry.playerName}</strong>
                   </span>
                   <span className="solos-tv-thru">

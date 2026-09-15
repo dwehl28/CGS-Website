@@ -13,6 +13,7 @@ import {
   normalizeLeaderboardMode,
   updateCompetitionScoreEntry,
   updateCompetitionScoreEntryScore,
+  updateCompetitionScoreEntryThrough,
   updateCompetitionScoreboard,
 } from "@/lib/scoreboards";
 
@@ -41,6 +42,22 @@ function parseNullableNumber(value: string) {
 
   const parsedValue = Number(value);
   return Number.isFinite(parsedValue) ? parsedValue : null;
+}
+
+function parseThroughHole(value: string) {
+  const normalizedValue = value.trim();
+
+  if (!normalizedValue) {
+    return null;
+  }
+
+  if (/^(f|finished|complete)$/i.test(normalizedValue)) {
+    return 18;
+  }
+
+  const holeMatch = normalizedValue.match(/\d+/);
+  const holeNumber = holeMatch ? Number(holeMatch[0]) : Number.NaN;
+  return Number.isFinite(holeNumber) ? holeNumber : null;
 }
 
 function normalizeSlug(value: string) {
@@ -379,6 +396,54 @@ export async function adjustCompetitionScoreEntryAction(formData: FormData) {
     );
   } catch (error) {
     console.error("Adjust competition score entry action error:", error);
+  }
+
+  revalidateScoreboardPaths(competitionSlug);
+  redirect(getScoreboardAdminAnchor(competitionId));
+}
+
+export async function updateCompetitionScoreEntryThroughAction(formData: FormData) {
+  await requireAdminAuthenticated();
+
+  const id = Number(formData.get("id"));
+  const competitionId = Number(formData.get("competition_id"));
+  const competitionSlug = normalizeString(formData.get("competition_slug"), 120);
+  const currentThrough =
+    parseThroughHole(normalizeString(formData.get("current_thru"), 40)) ?? 0;
+  const throughDelta = parseNullableNumber(
+    normalizeString(formData.get("thru_delta"), 10)
+  );
+  const requestedThrough = parseThroughHole(
+    normalizeString(formData.get("thru_value"), 10)
+  );
+
+  if (
+    !Number.isFinite(id) ||
+    !Number.isFinite(competitionId) ||
+    !competitionSlug ||
+    (throughDelta === null && requestedThrough === null)
+  ) {
+    redirect("/clubhouse-admin/scoreboard");
+  }
+
+  const nextThrough = Math.min(
+    99,
+    Math.max(
+      0,
+      Math.round(
+        requestedThrough ?? currentThrough + (throughDelta ?? 0)
+      )
+    )
+  );
+
+  try {
+    await updateCompetitionScoreEntryThrough(
+      id,
+      competitionId,
+      nextThrough > 0 ? `Thru ${nextThrough}` : null
+    );
+  } catch (error) {
+    console.error("Update competition score entry through action error:", error);
   }
 
   revalidateScoreboardPaths(competitionSlug);

@@ -6,7 +6,6 @@ import { startTransition, useEffect, useEffectEvent, useState } from "react";
 
 import SolosMotionBackground from "@/components/scoreboard/SolosMotionBackground";
 import ScoreChangeSpotlight from "@/components/scoreboard/ScoreChangeSpotlight";
-import ScoreboardPlayerMark from "@/components/scoreboard/ScoreboardPlayerMark";
 import TeeLoungeLogo from "@/components/scoreboard/TeeLoungeLogo";
 import { useAnimatedRankOrder } from "@/components/scoreboard/useAnimatedRankOrder";
 import { useScoreChangeSpotlight } from "@/components/scoreboard/useScoreChangeSpotlight";
@@ -103,12 +102,12 @@ export default function StreamScoreboardOverlay({
       }
 
       const nextCompetition = (await response.json()) as CompetitionScoreboard;
-      const scoreChange = observeCompetition(nextCompetition);
+      const liveChange = observeCompetition(nextCompetition);
 
-      if (scoreChange) {
+      if (liveChange) {
         const changedEntryIndex = nextCompetition.entries
           .slice(0, PORTRAIT_PLAYER_LIMIT)
-          .findIndex((entry) => entry.id === scoreChange.entryId);
+          .findIndex((entry) => entry.id === liveChange.entryId);
 
         if (changedEntryIndex >= 0) {
           setPageIndex(Math.floor(changedEntryIndex / PORTRAIT_ROWS_PER_PAGE));
@@ -296,11 +295,6 @@ export default function StreamScoreboardOverlay({
                     {entry.position}
                   </span>
                   <span className="solos-ladder-player">
-                    <ScoreboardPlayerMark
-                      entry={entry}
-                      className="solos-member-mark"
-                      size={28}
-                    />
                     <span>
                       <strong>{entry.playerName}</strong>
                       <small>{entry.thruLabel ?? "Awaiting first round"}</small>

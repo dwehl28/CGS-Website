@@ -3,6 +3,7 @@ import Link from "next/link";
 import {
   adjustCompetitionScoreEntryAction,
   updateCompetitionScoreEntryAction,
+  updateCompetitionScoreEntryThroughAction,
 } from "@/app/clubhouse-admin/scoreboard/actions";
 import type {
   CompetitionScoreEntry,
@@ -14,10 +15,20 @@ type StreamScoreQuickControlsProps = {
   competition: CompetitionScoreboard;
 };
 
-const STREAM_TEAM_LIMIT = 8;
-
 function getScoreInputValue(score: number | null) {
   return score === null ? "" : score.toString();
+}
+
+function getThroughInputValue(thruLabel: string | null) {
+  if (!thruLabel) {
+    return "";
+  }
+
+  if (/^(f|finished|complete)$/i.test(thruLabel.trim())) {
+    return "18";
+  }
+
+  return thruLabel.match(/\d+/)?.[0] ?? "";
 }
 
 function TeamIdentityFields({
@@ -106,14 +117,71 @@ function ScoreSetForm({
   );
 }
 
+function ThroughAdjustForm({
+  competition,
+  entry,
+  delta,
+  label,
+}: {
+  competition: CompetitionScoreboard;
+  entry: CompetitionScoreEntry;
+  delta: number;
+  label: string;
+}) {
+  return (
+    <form action={updateCompetitionScoreEntryThroughAction}>
+      <TeamIdentityFields competition={competition} entry={entry} />
+      <input type="hidden" name="current_thru" value={entry.thruLabel ?? ""} />
+      <input type="hidden" name="thru_delta" value={delta} />
+      <button type="submit" className="quick-score-button is-through">
+        {label}
+      </button>
+    </form>
+  );
+}
+
+function ThroughSetForm({
+  competition,
+  entry,
+}: {
+  competition: CompetitionScoreboard;
+  entry: CompetitionScoreEntry;
+}) {
+  const throughInputId = `quick-through-value-${entry.id}`;
+
+  return (
+    <form
+      action={updateCompetitionScoreEntryThroughAction}
+      className="quick-score-set-form"
+    >
+      <TeamIdentityFields competition={competition} entry={entry} />
+      <input type="hidden" name="current_thru" value={entry.thruLabel ?? ""} />
+      <label className="sr-only" htmlFor={throughInputId}>
+        Set hole through for {entry.playerName}
+      </label>
+      <input
+        id={throughInputId}
+        type="number"
+        min="0"
+        max="99"
+        step="1"
+        name="thru_value"
+        className="quick-score-input"
+        defaultValue={getThroughInputValue(entry.thruLabel)}
+        placeholder="Hole"
+        required
+      />
+      <button type="submit" className="quick-score-set-button">
+        Set
+      </button>
+    </form>
+  );
+}
+
 export default function StreamScoreQuickControls({
   competition,
 }: StreamScoreQuickControlsProps) {
-  const streamEntries = competition.entries.slice(0, STREAM_TEAM_LIMIT);
-  const remainingEntryCount = Math.max(
-    competition.entries.length - STREAM_TEAM_LIMIT,
-    0
-  );
+  const streamEntries = competition.entries;
 
   return (
     <section
@@ -126,9 +194,10 @@ export default function StreamScoreQuickControls({
           <p className="stream-control-kicker">Weekly stream control</p>
           <h3>Live scoreboard controls</h3>
           <p>
-            Update scores while the browser sources are live. The portrait ladder
-            rotates through up to 20 players, the banner rolls up to 20 names, and
-            the TV source rotates through the full field. All are sorted automatically by{" "}
+            Update scores and hole progress for every player while the browser
+            sources are live. The portrait ladder rotates through up to 20 players,
+            the banner rolls up to 20 names, and the TV source rotates through the
+            full field. All are sorted automatically by{" "}
             {getRankingDescription(competition.leaderboardMode)}.
           </p>
         </div>
@@ -189,29 +258,58 @@ export default function StreamScoreQuickControls({
                 <strong>{entry.scoreLabel}</strong>
               </div>
 
-              <div className="quick-score-actions" aria-label={`Adjust ${entry.playerName}`}>
-                <ScoreAdjustForm
-                  competition={competition}
-                  entry={entry}
-                  delta={-1}
-                  label="-1"
-                />
-                <ScoreAdjustForm
-                  competition={competition}
-                  entry={entry}
-                  delta={1}
-                  label="+1"
-                />
+              <div className="quick-score-control-block">
+                <p className="quick-score-control-label">Score</p>
+                <div
+                  className="quick-score-actions"
+                  aria-label={`Adjust score for ${entry.playerName}`}
+                >
+                  <ScoreAdjustForm
+                    competition={competition}
+                    entry={entry}
+                    delta={-1}
+                    label="-1"
+                  />
+                  <ScoreAdjustForm
+                    competition={competition}
+                    entry={entry}
+                    delta={1}
+                    label="+1"
+                  />
+                </div>
+
+                <ScoreSetForm competition={competition} entry={entry} />
               </div>
 
-              <ScoreSetForm competition={competition} entry={entry} />
+              <div className="quick-score-control-block">
+                <p className="quick-score-control-label">Hole through</p>
+                <div
+                  className="quick-score-actions"
+                  aria-label={`Adjust hole progress for ${entry.playerName}`}
+                >
+                  <ThroughAdjustForm
+                    competition={competition}
+                    entry={entry}
+                    delta={-1}
+                    label="-1 hole"
+                  />
+                  <ThroughAdjustForm
+                    competition={competition}
+                    entry={entry}
+                    delta={1}
+                    label="+1 hole"
+                  />
+                </div>
+
+                <ThroughSetForm competition={competition} entry={entry} />
+              </div>
             </article>
           ))}
         </div>
       ) : (
         <div className="quick-score-empty">
-          Add up to eight player rows below, then this area becomes your live stream
-          scoring desk.
+          Add player rows below, then this area becomes your live stream scoring
+          desk.
         </div>
       )}
 
@@ -222,12 +320,8 @@ export default function StreamScoreQuickControls({
           banner source at 1920px wide x 180px high for a top or bottom ticker.
           Both are available in CGS and Tee Lounge styling and support up to 20
           players. The TV sources are 1920px x 1080px and roll through every
-          player automatically.
-          {remainingEntryCount > 0
-            ? ` ${remainingEntryCount} extra row${
-                remainingEntryCount === 1 ? "" : "s"
-              } remain visible across the broadcast assets. Edit them in Current rows below because this quick desk shows the first eight.`
-            : ""}
+          player automatically. This control desk includes every player on the
+          scoreboard.
         </p>
       </div>
     </section>

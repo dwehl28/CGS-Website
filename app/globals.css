@@ -6044,6 +6044,20 @@ main.text-white {
   font-variant-numeric: tabular-nums;
 }
 
+.quick-score-control-block {
+  margin-top: 0.9rem;
+  border-top: 1px solid rgba(8, 21, 35, 0.16);
+  padding-top: 0.75rem;
+}
+
+.quick-score-control-label {
+  color: rgba(8, 21, 35, 0.64);
+  font-size: 0.7rem;
+  font-weight: 1000;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
 .quick-score-actions,
 .quick-score-set-form {
   display: grid;
@@ -6054,6 +6068,11 @@ main.text-white {
 
 .quick-score-set-form {
   grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.quick-score-control-block .quick-score-actions,
+.quick-score-control-block .quick-score-set-form {
+  margin-top: 0.55rem;
 }
 
 .quick-score-button,
@@ -6071,6 +6090,11 @@ main.text-white {
   box-shadow: 3px 3px 0 var(--ink);
   color: var(--ink);
   font-size: 1.2rem;
+}
+
+.quick-score-button.is-through {
+  background: #a5e7b8;
+  font-size: 0.92rem;
 }
 
 .quick-score-button:hover,
@@ -8588,6 +8612,10 @@ main.text-white {
   color: currentColor;
 }
 
+.score-change-spotlight.is-through .score-change-values strong {
+  font-size: 34px;
+}
+
 .score-change-values svg {
   width: 48px;
   color: var(--spotlight-accent-bright);
@@ -8647,6 +8675,11 @@ main.text-white {
 .score-change-spotlight.is-portrait .score-change-values strong {
   margin-top: 6px;
   font-size: 25px;
+}
+
+.score-change-spotlight.is-portrait.is-through .score-change-values strong {
+  font-size: 18px;
+  letter-spacing: -0.025em;
 }
 
 .score-change-spotlight.is-portrait .score-change-values svg {

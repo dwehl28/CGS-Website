@@ -4,7 +4,6 @@ import Image from "next/image";
 import { startTransition, useEffect, useEffectEvent, useState } from "react";
 
 import SolosMotionBackground from "@/components/scoreboard/SolosMotionBackground";
-import ScoreboardPlayerMark from "@/components/scoreboard/ScoreboardPlayerMark";
 import TeeLoungeLogo from "@/components/scoreboard/TeeLoungeLogo";
 import type { ScoreboardDisplayTheme } from "@/lib/scoreboard-display-theme";
 import type {
@@ -61,11 +60,6 @@ function BannerTeamCard({ entry }: { entry: CompetitionScoreEntry }) {
     <article className="survivor-ticker-entry">
       <span className="survivor-ticker-position">{entry.position}</span>
       <span className="survivor-ticker-player">
-        <ScoreboardPlayerMark
-          entry={entry}
-          className="survivor-ticker-member-mark"
-          size={28}
-        />
         <span>{entry.playerName}</span>
       </span>
       <span className="survivor-ticker-thru">{entry.thruLabel ?? "Thru --"}</span>

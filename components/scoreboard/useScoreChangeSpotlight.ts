@@ -9,18 +9,20 @@ import type {
 
 export type ScoreChangeSpotlightData = {
   key: string;
+  kind: "score" | "through";
   entryId: number;
   playerName: string;
   photoUrl: string;
-  previousScoreLabel: string;
-  nextScoreLabel: string;
+  previousValueLabel: string;
+  nextValueLabel: string;
   changeLabel: string;
-  thruLabel: string;
+  contextLabel: string;
 };
 
 type EntryScoreSnapshot = {
   scoreValue: number | null;
   scoreLabel: string;
+  thruLabel: string | null;
   updatedAt: string;
 };
 
@@ -45,6 +47,23 @@ function getChangeLabel(
   return improved ? "Score improved" : "Score updated";
 }
 
+function normalizeThroughLabel(value: string | null) {
+  return value?.trim() || null;
+}
+
+function getThroughChangeLabel(previousValue: string | null, nextValue: string | null) {
+  const previousHole = Number(previousValue?.match(/\d+/)?.[0]);
+  const nextHole = Number(nextValue?.match(/\d+/)?.[0]);
+
+  if (Number.isFinite(previousHole) && Number.isFinite(nextHole)) {
+    return nextHole > previousHole
+      ? "Round progress advanced"
+      : "Hole count corrected";
+  }
+
+  return "Round progress updated";
+}
+
 function createSnapshotMap(competition: CompetitionScoreboard) {
   return new Map<number, EntryScoreSnapshot>(
     competition.entries.map((entry) => [
@@ -52,6 +71,7 @@ function createSnapshotMap(competition: CompetitionScoreboard) {
       {
         scoreValue: entry.scoreValue,
         scoreLabel: entry.scoreLabel,
+        thruLabel: normalizeThroughLabel(entry.thruLabel),
         updatedAt: entry.updatedAt,
       },
     ])
@@ -85,6 +105,7 @@ export function useScoreChangeSpotlight(
           ? {
               scoreValue: entry.scoreValue,
               scoreLabel: entry.scoreLabel,
+              thruLabel: normalizeThroughLabel(entry.thruLabel),
               updatedAt: entry.updatedAt,
             }
           : previous
@@ -92,27 +113,52 @@ export function useScoreChangeSpotlight(
 
       if (
         !previous ||
-        !isCurrentSnapshot ||
-        previous.scoreValue === null ||
-        entry.scoreValue === null ||
-        previous.scoreValue === entry.scoreValue
+        !isCurrentSnapshot
       ) {
         return;
       }
 
+      if (
+        previous.scoreValue !== null &&
+        entry.scoreValue !== null &&
+        previous.scoreValue !== entry.scoreValue
+      ) {
+        candidates.push({
+          key: `${entry.id}-score-${entry.updatedAt}`,
+          kind: "score",
+          entryId: entry.id,
+          playerName: entry.playerName,
+          photoUrl: entry.photoUrl,
+          previousValueLabel: previous.scoreLabel,
+          nextValueLabel: entry.scoreLabel,
+          changeLabel: getChangeLabel(
+            previous.scoreValue,
+            entry.scoreValue,
+            nextCompetition.leaderboardMode
+          ),
+          contextLabel: entry.thruLabel ?? "Live round",
+          updatedTime: entryUpdatedTime,
+        });
+        return;
+      }
+
+      const previousThrough = normalizeThroughLabel(previous.thruLabel);
+      const nextThrough = normalizeThroughLabel(entry.thruLabel);
+
+      if (previousThrough === nextThrough) {
+        return;
+      }
+
       candidates.push({
-        key: `${entry.id}-${entry.updatedAt}`,
+        key: `${entry.id}-through-${entry.updatedAt}`,
+        kind: "through",
         entryId: entry.id,
         playerName: entry.playerName,
         photoUrl: entry.photoUrl,
-        previousScoreLabel: previous.scoreLabel,
-        nextScoreLabel: entry.scoreLabel,
-        changeLabel: getChangeLabel(
-          previous.scoreValue,
-          entry.scoreValue,
-          nextCompetition.leaderboardMode
-        ),
-        thruLabel: entry.thruLabel ?? "Live round",
+        previousValueLabel: previousThrough ?? "Start",
+        nextValueLabel: nextThrough ?? "Start",
+        changeLabel: getThroughChangeLabel(previousThrough, nextThrough),
+        contextLabel: `Current score ${entry.scoreLabel}`,
         updatedTime: entryUpdatedTime,
       });
     });
@@ -132,13 +178,14 @@ export function useScoreChangeSpotlight(
     )[0];
     const nextSpotlight: ScoreChangeSpotlightData = {
       key: selectedChange.key,
+      kind: selectedChange.kind,
       entryId: selectedChange.entryId,
       playerName: selectedChange.playerName,
       photoUrl: selectedChange.photoUrl,
-      previousScoreLabel: selectedChange.previousScoreLabel,
-      nextScoreLabel: selectedChange.nextScoreLabel,
+      previousValueLabel: selectedChange.previousValueLabel,
+      nextValueLabel: selectedChange.nextValueLabel,
       changeLabel: selectedChange.changeLabel,
-      thruLabel: selectedChange.thruLabel,
+      contextLabel: selectedChange.contextLabel,
     };
 
     activeRef.current = true;
