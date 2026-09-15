@@ -341,6 +341,7 @@ export async function getPublishedCompetitionScoreboards(
       supabaseAdmin
         .from("competition_scoreboards")
         .select("*")
+        .is("archived_at", null)
         .eq("is_published", true)
         .order("is_live", { ascending: false })
         .order("starts_at", { ascending: false, nullsFirst: false })
@@ -392,6 +393,7 @@ export async function getPublishedCompetitionScoreboardBySlug(slug: string) {
         .from("competition_scoreboards")
         .select("*")
         .eq("slug", slug)
+        .is("archived_at", null)
         .eq("is_published", true)
         .maybeSingle(),
       SCOREBOARD_QUERY_TIMEOUT_MS,
@@ -430,6 +432,7 @@ export async function getAdminCompetitionScoreboards(
       supabaseAdmin
         .from("competition_scoreboards")
         .select("*")
+        .is("archived_at", null)
         .order("is_live", { ascending: false })
         .order("updated_at", { ascending: false })
         .limit(limit),

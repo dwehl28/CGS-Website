@@ -7,6 +7,7 @@ import AdminMetricCard from "@/components/admin/AdminMetricCard";
 import AdminShell, {
   AdminAccessState,
 } from "@/components/admin/AdminShell";
+import OptimizedPhotoInput from "@/components/OptimizedPhotoInput";
 import ScoreEntryComposer from "@/components/scoreboard/ScoreEntryComposer";
 import ScoreboardCompetitionComposer from "@/components/scoreboard/ScoreboardCompetitionComposer";
 import StreamScoreQuickControls from "@/components/scoreboard/StreamScoreQuickControls";
@@ -567,21 +568,15 @@ export default async function ScoreboardAdminPage() {
                                   unoptimized={Boolean(entry.photoUrl)}
                                 />
                                 <div className="grid gap-3">
-                                  <div>
-                                    <label
-                                      className="field-label"
-                                      htmlFor={`scoreboard-photo-${entry.id}`}
-                                    >
-                                      {entry.photoUrl ? "Replace player photo" : "Add player photo"}
-                                    </label>
-                                    <input
-                                      id={`scoreboard-photo-${entry.id}`}
-                                      type="file"
-                                      name="photo_file"
-                                      accept="image/jpeg,image/png,image/webp"
-                                      className="field-control"
-                                    />
-                                  </div>
+                                  <OptimizedPhotoInput
+                                    id={`scoreboard-photo-${entry.id}`}
+                                    name="photo_file"
+                                    label={
+                                      entry.photoUrl
+                                        ? "Replace player photo"
+                                        : "Add player photo"
+                                    }
+                                  />
                                   {entry.photoUrl ? (
                                     <label className="flex items-center gap-3 text-sm text-zinc-400">
                                       <input

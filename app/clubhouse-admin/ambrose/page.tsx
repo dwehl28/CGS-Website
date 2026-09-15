@@ -15,6 +15,7 @@ import { logoutAdminAction } from "@/app/clubhouse-admin/actions";
 import AdminMetricCard from "@/components/admin/AdminMetricCard";
 import AdminShell, { AdminAccessState } from "@/components/admin/AdminShell";
 import ClubhouseAdminLogin from "@/components/ClubhouseAdminLogin";
+import OptimizedPhotoInput from "@/components/OptimizedPhotoInput";
 import {
   hasAdminSecretConfigured,
   isAdminAuthenticated,
@@ -483,21 +484,11 @@ export default async function AmbroseAdminPage() {
                           defaultValue={formatNullableNumberInput(profile.handicap)}
                         />
                       </div>
-                      <div>
-                        <label
-                          className="field-label"
-                          htmlFor={`profile-photo-${profile.id}`}
-                        >
-                          Upload photo
-                        </label>
-                        <input
-                          id={`profile-photo-${profile.id}`}
-                          name="avatar_file"
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp"
-                          className="field-control"
-                        />
-                      </div>
+                      <OptimizedPhotoInput
+                        id={`profile-photo-${profile.id}`}
+                        name="avatar_file"
+                        label="Upload photo"
+                      />
                       <div>
                         <label
                           className="field-label"

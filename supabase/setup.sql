@@ -72,6 +72,7 @@ create table if not exists public.competition_scoreboards (
   id bigint generated always as identity primary key,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now()),
+  archived_at timestamptz,
   slug text not null unique,
   title text not null,
   summary text not null default '',
@@ -121,6 +122,9 @@ create index if not exists competition_score_entries_live_ranking_idx
 
 alter table public.competition_scoreboards
   add column if not exists leaderboard_mode text not null default 'gross';
+
+alter table public.competition_scoreboards
+  add column if not exists archived_at timestamptz;
 
 alter table public.membership_interest
   add column if not exists status text not null default 'new';

@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 
 import type { ScoreboardAdminActionState } from "@/app/clubhouse-admin/scoreboard/actions";
 import { createCompetitionScoreEntryAction } from "@/app/clubhouse-admin/scoreboard/actions";
+import OptimizedPhotoInput from "@/components/OptimizedPhotoInput";
 import { getScoreNoun, type LeaderboardMode } from "@/lib/scoreboards";
 
 type ScoreEntryComposerProps = {
@@ -95,18 +96,12 @@ export default function ScoreEntryComposer({
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="rounded-[1rem] border border-white/8 bg-black/12 px-4 py-4">
-          <label className="mb-2 block text-xs uppercase tracking-[0.16em] text-zinc-500">
-            Player photo (optional)
-          </label>
-          <input
-            type="file"
+          <OptimizedPhotoInput
+            id={`scoreboard-photo-new-${competitionId}`}
             name="photo_file"
-            accept="image/jpeg,image/png,image/webp"
-            className="field-control"
+            label="Player photo (optional)"
+            labelClassName="mb-2 block text-xs uppercase tracking-[0.16em] text-zinc-500"
           />
-          <p className="mt-2 text-xs leading-5 text-zinc-500">
-            JPG, PNG or WebP. Maximum file size 5MB.
-          </p>
         </div>
 
         <label className="flex items-center gap-3 rounded-[1rem] border border-white/8 bg-black/18 px-4 py-4 text-sm text-zinc-300">

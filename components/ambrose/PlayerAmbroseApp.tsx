@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useEffectEvent, useMemo, useState } from "react";
 
+import OptimizedPhotoInput from "@/components/OptimizedPhotoInput";
 import PwaInstallPrompt from "@/components/PwaInstallPrompt";
 import type {
   AmbroseEntry,
@@ -1041,18 +1042,11 @@ export default function PlayerAmbroseApp() {
                   defaultValue={profile.handicap ?? ""}
                 />
               </div>
-              <div>
-                <label className="field-label" htmlFor="profile-avatar-file">
-                  Upload photo
-                </label>
-                <input
-                  id="profile-avatar-file"
-                  name="avatar_file"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="field-control"
-                />
-              </div>
+              <OptimizedPhotoInput
+                id="profile-avatar-file"
+                name="avatar_file"
+                label="Upload photo"
+              />
             </div>
 
             <div>
