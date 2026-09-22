@@ -230,9 +230,11 @@ export default function StreamScoreboardOverlay({
               />
             )}
             <div className="solos-ladder-title">
-              <p>{isTeeLounge ? "Live competition" : "The Tee Lounge presents"}</p>
-              <strong>{isTeeLounge ? competition.title : "Solos Stableford"}</strong>
-              <span>{secondaryTitle}</span>
+              <p>{isTeeLounge ? "Live competition" : "CGS Top Dog League"}</p>
+              <strong>{competition.title}</strong>
+              <span>
+                {isTeeLounge ? secondaryTitle : `Season 4 | ${secondaryTitle}`}
+              </span>
             </div>
             <div className={`solos-live-light is-${syncState}`} aria-label={getSyncLabel(syncState)}>
               <span />
@@ -241,7 +243,7 @@ export default function StreamScoreboardOverlay({
           </header>
 
           <div className="solos-ladder-ribbon">
-            <span>{isTeeLounge ? "Tee Lounge live" : "Weekly ladder"}</span>
+            <span>{isTeeLounge ? "Tee Lounge live" : "Season 4 live"}</span>
             <strong>{competition.location ?? "The Tee Lounge"}</strong>
           </div>
 

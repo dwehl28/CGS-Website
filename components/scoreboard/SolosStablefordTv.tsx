@@ -237,7 +237,7 @@ export default function SolosStablefordTv({
             </div>
           </div>
         ) : (
-          <div className="solos-tv-brand">
+          <div className="solos-tv-brand is-top-dog-brand">
             <Image
               src="/cgs-logo.png"
               alt="Crossodog Golf Society"
@@ -246,9 +246,11 @@ export default function SolosStablefordTv({
               priority
             />
             <div>
-              <p>The Tee Lounge presents</p>
-              <h1>Solos Stableford</h1>
-              <span>{competition.roundLabel ?? competition.title}</span>
+              <p>CGS Top Dog League</p>
+              <h1>{competition.title}</h1>
+              <span>
+                Season 4 | {competition.roundLabel ?? "Same fairways. Bigger rivals."}
+              </span>
             </div>
           </div>
         )}
@@ -387,9 +389,12 @@ export default function SolosStablefordTv({
       <footer className="solos-tv-footer">
         <span>{getSyncLabel(syncState)}</span>
         <p>
-          Higher points lead <i /> Live standings roll through the complete field
+          {isTeeLounge ? "Higher points lead" : "Top Dog League"} <i />{" "}
+          {isTeeLounge
+            ? "Live standings roll through the complete field"
+            : "Same fairways. Bigger rivals."}
         </p>
-        <strong>{isTeeLounge ? "The Tee Lounge" : "CGS Golf"}</strong>
+        <strong>{isTeeLounge ? "The Tee Lounge" : "Season 4"}</strong>
       </footer>
 
       {spotlight ? (

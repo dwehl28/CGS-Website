@@ -13978,3 +13978,459 @@ main.text-white {
     padding: 24px;
   }
 }
+
+/* CGS Top Dog League, Season 4 broadcast system. */
+.solos-ladder-canvas.is-cgs,
+.solos-tv-canvas.is-cgs,
+.survivor-ticker-canvas.is-cgs {
+  --top-dog-navy: #031827;
+  --top-dog-navy-soft: #072b42;
+  --top-dog-cyan: #58dcff;
+  --top-dog-cyan-deep: #08b9e8;
+  --top-dog-sand: #dfa16b;
+  --top-dog-yellow: #ffc400;
+  --top-dog-cream: #fffaf0;
+  color: var(--top-dog-cream);
+  font-family: var(--font-space-grotesk);
+}
+
+.solos-ladder-board.is-cgs,
+.solos-tv-canvas.is-cgs,
+.survivor-ticker-shell.is-cgs {
+  isolation: isolate;
+}
+
+.solos-ladder-board.is-cgs > .solos-motion,
+.solos-tv-canvas.is-cgs > .solos-motion,
+.survivor-ticker-shell.is-cgs > .solos-motion {
+  display: none;
+}
+
+.solos-ladder-board.is-cgs {
+  border: 3px solid var(--top-dog-cyan);
+  background:
+    linear-gradient(180deg, rgba(2, 17, 29, 0.2), rgba(2, 15, 25, 0.78)),
+    url("/scoreboard/top-dog-season-4-portrait.webp") center / cover no-repeat,
+    var(--top-dog-navy);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 196, 0, 0.36),
+    0 18px 54px rgba(0, 10, 19, 0.5);
+}
+
+.solos-ladder-board.is-cgs::before {
+  background:
+    radial-gradient(circle at 92% 5%, rgba(255, 196, 0, 0.2), transparent 18%),
+    repeating-linear-gradient(
+      118deg,
+      transparent 0 54px,
+      rgba(88, 220, 255, 0.08) 55px 57px,
+      transparent 58px 108px
+    ),
+    linear-gradient(180deg, transparent 58%, rgba(2, 16, 27, 0.45));
+}
+
+.solos-ladder-board.is-cgs .solos-ladder-header {
+  border-bottom-color: rgba(88, 220, 255, 0.58);
+  background: linear-gradient(105deg, rgba(3, 24, 39, 0.98), rgba(6, 44, 67, 0.9));
+}
+
+.solos-ladder-board.is-cgs .solos-ladder-header > img {
+  width: 68px;
+  height: 68px;
+  filter:
+    drop-shadow(0 0 1px #fff)
+    drop-shadow(0 7px 12px rgba(0, 0, 0, 0.55));
+}
+
+.solos-ladder-board.is-cgs .solos-ladder-title p {
+  color: var(--top-dog-cyan);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.solos-ladder-board.is-cgs .solos-ladder-title strong {
+  color: var(--top-dog-cream);
+  font-size: 24px;
+  text-shadow: 2px 2px 0 #020a10;
+}
+
+.solos-ladder-board.is-cgs .solos-ladder-title span {
+  color: var(--top-dog-sand);
+}
+
+.solos-ladder-board.is-cgs .solos-live-light {
+  border-color: rgba(255, 196, 0, 0.7);
+  background: rgba(1, 13, 22, 0.74);
+  color: var(--top-dog-cream);
+}
+
+.solos-ladder-board.is-cgs .solos-live-light > span {
+  background: var(--top-dog-yellow);
+  box-shadow: 0 0 12px rgba(255, 196, 0, 0.9);
+}
+
+.solos-ladder-board.is-cgs .solos-ladder-ribbon {
+  border-bottom-color: rgba(255, 196, 0, 0.58);
+  background: linear-gradient(96deg, var(--top-dog-yellow), #ffdf38);
+  color: #041724;
+}
+
+.solos-ladder-board.is-cgs .solos-ladder-facts,
+.solos-ladder-board.is-cgs .solos-ladder-table-head {
+  border-color: rgba(88, 220, 255, 0.28);
+  background: rgba(3, 24, 39, 0.9);
+}
+
+.solos-ladder-board.is-cgs .solos-ladder-facts > div {
+  border-right-color: rgba(88, 220, 255, 0.22);
+}
+
+.solos-ladder-board.is-cgs .solos-ladder-facts span,
+.solos-ladder-board.is-cgs .solos-ladder-table-head {
+  color: rgba(255, 250, 240, 0.62);
+}
+
+.solos-ladder-board.is-cgs .solos-ladder-facts strong,
+.solos-ladder-board.is-cgs .solos-ladder-score,
+.solos-ladder-board.is-cgs .solos-ladder-footer strong {
+  color: var(--top-dog-cyan);
+}
+
+.solos-ladder-board.is-cgs .solos-ladder-row {
+  border-color: rgba(88, 220, 255, 0.32);
+  border-left-color: var(--top-dog-sand);
+  background: linear-gradient(102deg, rgba(3, 29, 47, 0.96), rgba(4, 20, 33, 0.9));
+}
+
+.solos-ladder-board.is-cgs .solos-ladder-row.is-leading {
+  border-color: var(--top-dog-cyan);
+  border-left-color: var(--top-dog-yellow);
+  background: linear-gradient(102deg, rgba(7, 131, 171, 0.98), rgba(3, 49, 75, 0.96));
+}
+
+.solos-ladder-board.is-cgs .solos-ladder-position {
+  border-color: rgba(88, 220, 255, 0.58);
+  background: rgba(1, 13, 22, 0.66);
+  color: var(--top-dog-cyan);
+}
+
+.solos-ladder-board.is-cgs .solos-ladder-row.is-leading .solos-ladder-position {
+  border-color: var(--top-dog-yellow);
+  background: var(--top-dog-yellow);
+  color: var(--top-dog-navy);
+}
+
+.solos-ladder-board.is-cgs .solos-ladder-player strong,
+.solos-ladder-board.is-cgs .solos-ladder-row.is-leading .solos-ladder-score {
+  color: var(--top-dog-cream);
+}
+
+.solos-ladder-board.is-cgs .solos-ladder-player small {
+  color: rgba(255, 250, 240, 0.6);
+}
+
+.solos-ladder-board.is-cgs .solos-ladder-footer {
+  border-top-color: rgba(88, 220, 255, 0.46);
+  background: rgba(2, 16, 27, 0.96);
+  color: rgba(255, 250, 240, 0.62);
+}
+
+.solos-tv-canvas.is-cgs {
+  background: var(--top-dog-navy);
+  color: var(--top-dog-cream);
+}
+
+.solos-tv-canvas.is-cgs::before {
+  background:
+    radial-gradient(circle at 90% 8%, rgba(255, 196, 0, 0.18), transparent 21%),
+    repeating-linear-gradient(
+      116deg,
+      transparent 0 92px,
+      rgba(88, 220, 255, 0.06) 94px 97px,
+      transparent 99px 184px
+    );
+}
+
+.solos-tv-canvas.is-cgs .solos-tv-atmosphere {
+  background:
+    linear-gradient(90deg, rgba(2, 18, 30, 0.56), rgba(2, 17, 29, 0.7)),
+    url("/scoreboard/top-dog-season-4-wide.webp") center / cover no-repeat;
+  filter: saturate(1.08) contrast(1.04);
+}
+
+.solos-tv-canvas.is-cgs .solos-tv-header {
+  border-bottom: 3px solid var(--top-dog-cyan);
+  background: linear-gradient(96deg, rgba(2, 19, 32, 0.98), rgba(5, 43, 66, 0.9));
+}
+
+.solos-tv-canvas.is-cgs .solos-tv-brand > img {
+  width: 104px;
+  height: 104px;
+  filter:
+    drop-shadow(0 0 1px #fff)
+    drop-shadow(0 9px 18px rgba(0, 0, 0, 0.58));
+}
+
+.solos-tv-canvas.is-cgs .solos-tv-brand p {
+  color: var(--top-dog-cyan);
+  letter-spacing: 0.13em;
+}
+
+.solos-tv-canvas.is-cgs .solos-tv-brand h1 {
+  color: var(--top-dog-sand);
+  text-shadow:
+    3px 3px 0 #020a10,
+    -1px -1px 0 #020a10;
+}
+
+.solos-tv-canvas.is-cgs .solos-tv-brand span {
+  color: var(--top-dog-cream);
+}
+
+.solos-tv-canvas.is-cgs .solos-tv-status > span {
+  border-color: rgba(88, 220, 255, 0.7);
+  background: rgba(2, 18, 30, 0.78);
+}
+
+.solos-tv-canvas.is-cgs .solos-tv-status i {
+  background: var(--top-dog-yellow);
+  box-shadow: 0 0 18px rgba(255, 196, 0, 0.92);
+}
+
+.solos-tv-canvas.is-cgs .solos-tv-status > strong {
+  color: rgba(255, 250, 240, 0.72);
+}
+
+.solos-tv-canvas.is-cgs .solos-tv-board,
+.solos-tv-canvas.is-cgs .solos-tv-leader-card,
+.solos-tv-canvas.is-cgs .solos-tv-fact-grid > div,
+.solos-tv-canvas.is-cgs .solos-tv-venue-card {
+  border-color: rgba(88, 220, 255, 0.46);
+  background: rgba(3, 24, 39, 0.92);
+}
+
+.solos-tv-canvas.is-cgs .solos-tv-board {
+  border-top-color: var(--top-dog-cyan-deep);
+}
+
+.solos-tv-canvas.is-cgs .solos-tv-board-heading {
+  border-bottom-color: rgba(88, 220, 255, 0.28);
+  background: linear-gradient(90deg, rgba(8, 185, 232, 0.22), transparent);
+}
+
+.solos-tv-canvas.is-cgs .solos-tv-board-heading span,
+.solos-tv-canvas.is-cgs .solos-tv-fact-grid span,
+.solos-tv-canvas.is-cgs .solos-tv-venue-card span {
+  color: var(--top-dog-cyan);
+}
+
+.solos-tv-canvas.is-cgs .solos-tv-table-head {
+  border-bottom-color: rgba(88, 220, 255, 0.24);
+  background: rgba(1, 13, 22, 0.62);
+  color: rgba(255, 250, 240, 0.6);
+}
+
+.solos-tv-canvas.is-cgs .solos-tv-row {
+  border-color: rgba(88, 220, 255, 0.24);
+  border-left-color: var(--top-dog-sand);
+  background: linear-gradient(90deg, rgba(5, 39, 59, 0.96), rgba(2, 19, 31, 0.92));
+}
+
+.solos-tv-canvas.is-cgs .solos-tv-row.is-leading {
+  border-color: var(--top-dog-cyan);
+  border-left-color: var(--top-dog-yellow);
+  background: linear-gradient(90deg, rgba(8, 151, 193, 0.98), rgba(4, 54, 80, 0.96));
+}
+
+.solos-tv-canvas.is-cgs .solos-tv-position {
+  border-color: rgba(88, 220, 255, 0.52);
+  background: rgba(1, 13, 22, 0.62);
+  color: var(--top-dog-cyan);
+}
+
+.solos-tv-canvas.is-cgs .solos-tv-row.is-leading .solos-tv-position {
+  border-color: var(--top-dog-yellow);
+  background: var(--top-dog-yellow);
+  color: var(--top-dog-navy);
+}
+
+.solos-tv-canvas.is-cgs .solos-tv-score {
+  color: var(--top-dog-cyan);
+}
+
+.solos-tv-canvas.is-cgs .solos-tv-page-dots span.is-active,
+.solos-tv-canvas.is-cgs .solos-tv-page-progress {
+  background: var(--top-dog-cyan);
+}
+
+.solos-tv-canvas.is-cgs .solos-tv-leader-card {
+  border-top-color: var(--top-dog-yellow);
+  background:
+    linear-gradient(135deg, rgba(9, 151, 192, 0.98), rgba(3, 45, 69, 0.98)),
+    var(--top-dog-navy-soft);
+}
+
+.solos-tv-canvas.is-cgs .solos-tv-leader-card b {
+  color: var(--top-dog-yellow);
+}
+
+.solos-tv-canvas.is-cgs .solos-tv-fact-grid > div,
+.solos-tv-canvas.is-cgs .solos-tv-venue-card {
+  border-left-color: var(--top-dog-sand);
+}
+
+.solos-tv-canvas.is-cgs .solos-tv-footer {
+  border-top: 3px solid var(--top-dog-yellow);
+  background: rgba(2, 17, 29, 0.98);
+  color: rgba(255, 250, 240, 0.7);
+}
+
+.solos-tv-canvas.is-cgs .solos-tv-footer > span,
+.solos-tv-canvas.is-cgs .solos-tv-footer strong {
+  color: var(--top-dog-cyan);
+}
+
+.solos-tv-canvas.is-cgs .solos-tv-footer p i {
+  background: var(--top-dog-yellow);
+}
+
+.survivor-ticker-shell.is-cgs {
+  grid-template-columns: 470px minmax(0, 1fr) 315px;
+  border-color: var(--top-dog-cyan);
+  background: var(--top-dog-navy);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 196, 0, 0.28),
+    0 0 34px rgba(8, 185, 232, 0.28);
+}
+
+.survivor-ticker-shell.is-cgs::before {
+  background:
+    repeating-linear-gradient(
+      116deg,
+      transparent 0 48px,
+      rgba(88, 220, 255, 0.08) 49px 51px,
+      transparent 52px 96px
+    ),
+    linear-gradient(90deg, rgba(2, 18, 30, 0.18), transparent 48% 72%, rgba(1, 12, 20, 0.5));
+}
+
+.survivor-ticker-shell.is-cgs::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 196, 0, 0.18), transparent);
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-atmosphere {
+  background:
+    linear-gradient(90deg, rgba(2, 18, 30, 0.7), rgba(2, 19, 31, 0.58)),
+    url("/scoreboard/top-dog-season-4-wide.webp") center 58% / cover no-repeat;
+  filter: saturate(1.08) contrast(1.06);
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-brand {
+  border-right-color: rgba(88, 220, 255, 0.72);
+  background: linear-gradient(105deg, rgba(2, 18, 30, 0.99), rgba(5, 43, 66, 0.93));
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-brand > img {
+  width: 92px;
+  height: 92px;
+  filter:
+    drop-shadow(0 0 1px #fff)
+    drop-shadow(0 8px 14px rgba(0, 0, 0, 0.58));
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-brand p {
+  color: var(--top-dog-cyan);
+  letter-spacing: 0.08em;
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-brand h1 {
+  color: var(--top-dog-sand);
+  font-size: 31px;
+  text-shadow: 3px 3px 0 #020a10;
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-brand span {
+  color: var(--top-dog-cream);
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-standings {
+  border-right-color: rgba(88, 220, 255, 0.72);
+  background: rgba(2, 18, 30, 0.7);
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-rail-label {
+  border-right-color: rgba(88, 220, 255, 0.46);
+  background: rgba(2, 17, 29, 0.94);
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-rail-label span {
+  color: var(--top-dog-cyan);
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-rail-label strong {
+  color: var(--top-dog-cream);
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-rail-label small {
+  color: var(--top-dog-sand);
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-window::before {
+  background: linear-gradient(90deg, rgba(2, 17, 29, 0.99), transparent);
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-window::after {
+  background: linear-gradient(270deg, rgba(2, 17, 29, 0.99), transparent);
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-entry {
+  border-color: rgba(88, 220, 255, 0.4);
+  background: linear-gradient(105deg, rgba(5, 39, 59, 0.96), rgba(2, 18, 30, 0.9));
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-position {
+  background: linear-gradient(145deg, var(--top-dog-cyan), var(--top-dog-cyan-deep));
+  color: var(--top-dog-navy);
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-score {
+  color: var(--top-dog-yellow);
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-thru {
+  color: rgba(255, 250, 240, 0.64);
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-leader {
+  background: linear-gradient(108deg, #d8965f, #9f603c);
+  color: #061927;
+  box-shadow: inset 10px 0 24px rgba(3, 24, 39, 0.28);
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-leader > span,
+.survivor-ticker-shell.is-cgs .survivor-ticker-leader > strong,
+.survivor-ticker-shell.is-cgs .survivor-ticker-leader p,
+.survivor-ticker-shell.is-cgs .survivor-ticker-leader small {
+  color: #041724;
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-leader i {
+  background: var(--top-dog-yellow);
+  box-shadow: 0 0 14px rgba(255, 196, 0, 0.88);
+}
+
+.score-change-spotlight.is-cgs {
+  --spotlight-accent: #58dcff;
+  --spotlight-accent-bright: #ffc400;
+  --spotlight-ink: #fffaf0;
+  --spotlight-muted: rgba(255, 250, 240, 0.72);
+  --spotlight-panel: #031827;
+  background:
+    linear-gradient(110deg, rgba(3, 24, 39, 0.96), rgba(5, 45, 68, 0.94)),
+    url("/scoreboard/top-dog-season-4-wide.webp") center / cover no-repeat,
+    var(--spotlight-panel);
+}
+
+.score-change-spotlight.is-cgs .score-change-values > span.is-current {
+  color: #031827;
+}

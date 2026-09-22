@@ -197,17 +197,19 @@ export default function StreamScoreboardBanner({
             />
           )}
           <div>
-            <p>{isTeeLounge ? "Live competition" : "The Tee Lounge presents"}</p>
-            <h1>{isTeeLounge ? competition.title : "Solos Stableford"}</h1>
-            <span>{secondaryTitle}</span>
+            <p>{isTeeLounge ? "Live competition" : "CGS Top Dog League | Season 4"}</p>
+            <h1>{competition.title}</h1>
+            <span>
+              {isTeeLounge ? secondaryTitle : "Same fairways. Bigger rivals."}
+            </span>
           </div>
         </header>
 
         <div className="survivor-ticker-standings">
           <div className="survivor-ticker-rail-label">
             <span>{competition.isLive ? "Live" : "Standings"}</span>
-            <strong>Top 20</strong>
-            <small>Higher points lead</small>
+            <strong>{isTeeLounge ? "Top 20" : "Top Dog"}</strong>
+            <small>{isTeeLounge ? "Higher points lead" : "Season 4 ladder"}</small>
           </div>
 
           <div className="survivor-ticker-window">
