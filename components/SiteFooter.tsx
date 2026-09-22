@@ -9,13 +9,13 @@ export default function SiteFooter() {
         <div className="par3-footer-brand">
           <Image
             src="/par3/par3-logo.png"
-            alt="CGS Par 3 Championship"
+            alt="CGS Par 3 Championship II"
             width={92}
             height={92}
           />
           <div>
-            <strong>CGS Par 3 Championship</strong>
-            <p>Saturday 12 September 2026</p>
+            <strong>CGS Par 3 Championship II</strong>
+            <p>Saturday 7 November 2026</p>
           </div>
         </div>
         <div className="par3-footer-venue">

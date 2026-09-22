@@ -4,12 +4,13 @@ import Link from "next/link";
 import {
   ArrowRight,
   CalendarDays,
+  CheckCircle2,
   CircleDollarSign,
   Clock3,
   ExternalLink,
   Flag,
   MapPin,
-  Play,
+  Medal,
   Radio,
   Target,
   Trophy,
@@ -18,22 +19,26 @@ import {
 
 import Par3Countdown from "@/components/par3/Par3Countdown";
 import Par3LiveTournament from "@/components/par3/Par3LiveTournament";
-import Par3MotionStripes from "@/components/par3/Par3MotionStripes";
+import Par3RegistrationForm from "@/components/par3/Par3RegistrationForm";
 import { getPublicPar3Snapshot } from "@/lib/par3-showdown";
-import { PAR3_FINALS_STAGES, PAR3_POOL_STAGES } from "@/lib/par3-showdown-types";
+import {
+  getPar3RemainingSpots,
+  PAR3_FINALS_STAGES,
+  PAR3_POOL_STAGES,
+} from "@/lib/par3-showdown-types";
 import { absoluteUrl } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "CGS Par 3 Championship | 12 September 2026",
+  title: "CGS Par 3 Championship II | 7 November 2026",
   description:
-    "Follow the 2026 CGS Par 3 Championship live: 20 golfers, five pools, a closest-to-pin playoff, and a single-elimination Round of 16 at The Tee Lounge.",
+    "Enter the CGS Par 3 Championship II at The Tee Lounge: 24 players, six pools, two CTP contests, and a live-streamed Round of 16.",
   alternates: { canonical: absoluteUrl("/") },
   openGraph: {
-    title: "CGS Par 3 Championship",
+    title: "CGS Par 3 Championship II",
     description:
-      "Saturday 12 September at The Tee Lounge. Follow every pool, result, qualifier, and finals match live.",
+      "Saturday 7 November, 5:00pm at The Tee Lounge. Register, follow the draw, and watch every live result.",
     url: absoluteUrl("/"),
     type: "website",
     images: [
@@ -41,14 +46,15 @@ export const metadata: Metadata = {
         url: absoluteUrl("/opengraph-image"),
         width: 1200,
         height: 630,
-        alt: "CGS Par 3 Championship event poster",
+        alt: "CGS Par 3 Championship II",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "CGS Par 3 Championship",
-    description: "20 golfers. Five pools. One CTP survivor. One champion. Follow it live on 12 September.",
+    title: "CGS Par 3 Championship II",
+    description:
+      "24 players. Six pools. One winner. Saturday 7 November at The Tee Lounge.",
     images: [absoluteUrl("/opengraph-image")],
   },
 };
@@ -64,332 +70,273 @@ function getYouTubeEmbedUrl(url: string) {
 export default async function Home() {
   const snapshot = await getPublicPar3Snapshot();
   const { event } = snapshot;
-  const embedUrl = event.isLive ? getYouTubeEmbedUrl(event.youtubeUrl) : null;
   const confirmedPlayers = snapshot.players.filter(
     (player) => !player.isWithdrawn
   ).length;
+  const remainingSpots = getPar3RemainingSpots(snapshot);
+  const embedUrl = event.isLive ? getYouTubeEmbedUrl(event.youtubeUrl) : null;
+  const feeLabel = new Intl.NumberFormat("en-AU", {
+    style: "currency",
+    currency: "AUD",
+    maximumFractionDigits: 0,
+  }).format(event.entryFeeCents / 100);
+  const courseStages = [...PAR3_POOL_STAGES, ...PAR3_FINALS_STAGES];
 
   return (
-    <main className="par3-home">
-      <section className="par3-hero">
-        <div className="par3-hero-shade" />
-        <Par3MotionStripes tone="mixed" words={["PAR 3", "CHAMPIONSHIP"]} />
-        <div className="par3-hero-inner">
-          <div className="par3-hero-copy">
-            <div className="par3-status-line">
-              <span className={event.isLive ? "is-live" : ""} />
-              {event.statusLabel}
+    <main className="par3-home par3-v2-home">
+      <section className="par3-v2-hero">
+        <div className="par3-v2-hero-noise" aria-hidden="true" />
+        <div className="par3-v2-hero-inner">
+          <div className="par3-v2-hero-copy">
+            <div className="par3-v2-eyebrow">
+              <span className={event.registrationsOpen ? "is-open" : ""} />
+              {remainingSpots === 0 ? "Sold out" : event.statusLabel}
             </div>
-            <Image
-              src="/par3/par3-logo.png"
-              alt="CGS Par 3"
-              width={300}
-              height={300}
-              className="par3-hero-logo"
-              priority
-            />
-            <h1>
-              <span>CGS Par 3</span>
-              <strong>Championship</strong>
-            </h1>
-            <p className="par3-hero-offer">
-              {event.maxPlayers} golfers. {event.poolCount} pools. Three-hole match
-              play. One winner.
-            </p>
-            <div className="par3-hero-meta">
-              <span><CalendarDays /> Saturday 12 September 2026</span>
-              <span><Clock3 /> Warm-up 5:30pm / Tee-off 6:00pm</span>
-              <span><MapPin /> The Tee Lounge, Underwood</span>
+            <div className="par3-v2-title-lockup">
+              <div className="par3-v2-logo-mark">
+                <i aria-hidden="true">II</i>
+                <Image
+                  src="/par3/par3-logo.png"
+                  alt="CGS Par 3"
+                  width={280}
+                  height={280}
+                  priority
+                />
+              </div>
+              <div>
+                <span>CGS Par 3</span>
+                <h1>Championship <b>II</b></h1>
+                <p>Small course. Bigger competition.</p>
+              </div>
             </div>
-            <div className="par3-hero-actions">
-              {event.registrationsOpen ? (
-                <a
-                  href={event.registrationUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="par3-button par3-button-primary"
-                >
-                  Buy entry <ExternalLink />
-                </a>
-              ) : null}
-              <a href="#live" className="par3-button par3-button-secondary">
-                Follow tournament <ArrowRight />
+
+            <div className="par3-v2-event-grid" aria-label="Event details">
+              <div><CalendarDays /><span>Saturday<strong>7 November</strong></span></div>
+              <div><Clock3 /><span>First tee<strong>5:00pm start</strong></span></div>
+              <div><MapPin /><span>Venue<strong>The Tee Lounge</strong></span></div>
+              <div><CircleDollarSign /><span>Entry<strong>{feeLabel}</strong></span></div>
+              <div><Users /><span>Maximum<strong>24 players</strong></span></div>
+              <div className="is-availability">
+                <Radio />
+                <span>Available now<strong>{remainingSpots === 0 ? "Sold out" : `${remainingSpots} spots`}</strong></span>
+              </div>
+            </div>
+
+            <div className="par3-v2-hero-actions">
+              <a href="#register" className="par3-v2-button is-primary">
+                {remainingSpots === 0 ? "Join the waitlist" : "Claim your place"}
+                <ArrowRight />
               </a>
-              <a
-                href={event.youtubeUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="par3-button par3-button-secondary"
-              >
-                Watch CGS <Play />
+              <a href="#live" className="par3-v2-button is-secondary">
+                Open live centre <Radio />
               </a>
             </div>
             <Par3Countdown startsAt={event.startsAt} />
           </div>
-        </div>
-      </section>
 
-      <div className="par3-hype-ticker" aria-label="Par 3 Championship highlights">
-        <div>
-          <span>{event.maxPlayers} golfers</span>
+          <div className="par3-v2-poster-wrap">
+            <span>Official event poster</span>
+            <Image
+              src="/par3/championship-ii-poster.webp"
+              alt="CGS Par 3 Championship II event poster"
+              width={567}
+              height={701}
+              priority
+            />
+          </div>
+        </div>
+        <div className="par3-v2-scroll-cue">
+          <span>Registration open</span>
           <i />
-          <span>{event.poolCount} pools</span>
+          <span>Six pools of four</span>
           <i />
-          <span>Cash prizes</span>
+          <span>Live streamed</span>
           <i />
-          <span>Live commentary</span>
-          <i />
-          <span>3-hole match play</span>
+          <span>Two CTP contests</span>
           <i />
           <span>One champion</span>
-          <i />
-          <span aria-hidden="true">{event.maxPlayers} golfers</span>
-          <i aria-hidden="true" />
-          <span aria-hidden="true">{event.poolCount} pools</span>
-          <i aria-hidden="true" />
-          <span aria-hidden="true">Cash prizes</span>
-          <i aria-hidden="true" />
-          <span aria-hidden="true">Live commentary</span>
-          <i aria-hidden="true" />
-          <span aria-hidden="true">3-hole match play</span>
-          <i aria-hidden="true" />
-          <span aria-hidden="true">One champion</span>
-          <i aria-hidden="true" />
-        </div>
-      </div>
-
-      <section className="par3-fact-strip" aria-label="Event summary">
-        <div>
-          <Users />
-          <strong>{confirmedPlayers || event.maxPlayers}</strong>
-          <span>{confirmedPlayers ? "Confirmed players" : "Player capacity"}</span>
-        </div>
-        <div>
-          <Flag />
-          <strong>{event.poolCount} pools</strong>
-          <span>Four golfers in each</span>
-        </div>
-        <div>
-          <Target />
-          <strong>3 holes</strong>
-          <span>Every match</span>
-        </div>
-        <div>
-          <Trophy />
-          <strong>1 winner</strong>
-          <span>Single-elimination finish</span>
         </div>
       </section>
 
-      <section id="live" className="par3-section par3-live-section">
-        <Par3MotionStripes tone="cyan" words={["LIVE", "RESULTS"]} />
-        <div className="par3-section-marker" aria-hidden="true">
-          <span>01</span>
-          <strong>Live centre</strong>
-        </div>
-        <div className="par3-section-heading">
+      <section id="register" className="par3-v2-register-section">
+        <div className="par3-v2-section-head">
           <div>
-            <p className="par3-kicker"><Radio /> Tournament updates</p>
-            <h2>Everything happening live</h2>
+            <span>01 / Secure a place</span>
+            <h2>The field is filling live.</h2>
           </div>
           <p>
-            Pool tables, current fixtures, and the finals bracket update here
-            throughout the night.
+            Register here and the availability count updates automatically. CGS
+            will contact you with payment and event-night details.
+          </p>
+        </div>
+        <div className="par3-v2-register-layout">
+          <Par3RegistrationForm
+            maxPlayers={event.maxPlayers}
+            initialConfirmedPlayers={confirmedPlayers}
+            registrationsOpen={event.registrationsOpen}
+            entryFeeCents={event.entryFeeCents}
+          />
+          <div className="par3-v2-field-card">
+            <div>
+              <span>Championship field</span>
+              <strong>{confirmedPlayers}<small> / {event.maxPlayers}</small></strong>
+              <p>{remainingSpots === 0 ? "The field is complete." : `${remainingSpots} places remain.`}</p>
+            </div>
+            <div className="par3-v2-player-dots" aria-hidden="true">
+              {Array.from({ length: event.maxPlayers }, (_, index) => (
+                <i key={index} className={index < confirmedPlayers ? "is-filled" : ""} />
+              ))}
+            </div>
+            <ul>
+              <li><CheckCircle2 /> Three pool matches guaranteed</li>
+              <li><CheckCircle2 /> Live fixtures and simulator calls</li>
+              <li><CheckCircle2 /> Finals and CTP qualification paths</li>
+              <li><CheckCircle2 /> Full CGS livestream coverage</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="format" className="par3-v2-format-section">
+        <div className="par3-v2-section-head is-light">
+          <div>
+            <span>02 / The format</span>
+            <h2>Six pools. Two routes through.</h2>
+          </div>
+          <p>
+            Every player gets three head-to-head matches before the best sixteen
+            move into a single-elimination finals bracket.
+          </p>
+        </div>
+
+        <div className="par3-v2-format-road">
+          <article>
+            <span>Stage 01</span>
+            <Users />
+            <h3>Pool play</h3>
+            <strong>6 pools of 4</strong>
+            <p>Every player faces each opponent in their pool once.</p>
+          </article>
+          <article>
+            <span>Stage 02</span>
+            <Trophy />
+            <h3>Automatic spots</h3>
+            <strong>Top 2 advance</strong>
+            <p>Twelve players lock in their Round of 16 places.</p>
+          </article>
+          <article>
+            <span>Stage 03</span>
+            <Target />
+            <h3>CTP playoff</h3>
+            <strong>Top 4 advance</strong>
+            <p>All third-place players shoot for the final four bracket spots.</p>
+          </article>
+          <article>
+            <span>Side contest</span>
+            <Medal />
+            <h3>CTP prize</h3>
+            <strong>Fourth places</strong>
+            <p>A separate closest-to-pin contest keeps every pool alive.</p>
+          </article>
+          <article className="is-final">
+            <span>Stage 04</span>
+            <Flag />
+            <h3>Finals</h3>
+            <strong>16 to 1</strong>
+            <p>Win and advance through the Round of 16 to the title.</p>
+          </article>
+        </div>
+
+        <div className="par3-v2-rules">
+          <span>No handicaps</span>
+          <span>Three-hole match play</span>
+          <span>One point per pool win</span>
+          <span>CTP decides tied knockout matches</span>
+        </div>
+      </section>
+
+      <section id="live" className="par3-v2-live-section">
+        <div className="par3-v2-section-head">
+          <div>
+            <span>03 / Event-night command centre</span>
+            <h2>Know where to play next.</h2>
+          </div>
+          <p>
+            Live tables, results, bracket progress, and a clear UP NEXT call for
+            every simulator all update in one place.
           </p>
         </div>
         <Par3LiveTournament initialSnapshot={snapshot} />
       </section>
 
-      <section id="watch" className="par3-watch-band">
-        <Par3MotionStripes tone="gold" words={["ON AIR", "CGS"]} />
-        <div className="par3-section-marker" aria-hidden="true">
-          <span>02</span>
-          <strong>Broadcast</strong>
+      <section className="par3-v2-course-section">
+        <div className="par3-v2-course-copy">
+          <span>04 / Eight stages</span>
+          <h2>A different test every round.</h2>
+          <p>
+            The course changes as the pressure rises. Pool allocations, simulator
+            calls, and the complete schedule will be published in the live centre.
+          </p>
         </div>
-        <div className="par3-watch-inner">
-          <div>
-            <p className="par3-kicker"><Play /> Live coverage</p>
-            <h2>Watch the Championship</h2>
-            <p>
-              Follow the full event with live commentary on the Crossodog Golf
-              Society YouTube channel.
-            </p>
-            <a
-              href={event.youtubeUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="par3-button par3-button-primary"
-            >
-              Open YouTube <ExternalLink />
-            </a>
-          </div>
-          <div className="par3-video-frame">
-            {embedUrl ? (
-              <iframe
-                src={embedUrl}
-                title="CGS Par 3 Championship live stream"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-              />
-            ) : (
-              <div className="par3-video-placeholder">
-                <Image
-                  src="/par3/par3-logo.png"
-                  alt="CGS Par 3"
-                  width={240}
-                  height={240}
-                />
-                <span>Live stream appears here on event night</span>
+        <div className="par3-v2-course-grid">
+          {courseStages.map((stage, index) => (
+            <article key={stage.key}>
+              <b>{String(index + 1).padStart(2, "0")}</b>
+              <span>{stage.label}</span>
+              <strong>{stage.course}</strong>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section id="watch" className="par3-v2-watch-section">
+        <div className="par3-v2-watch-copy">
+          <span><Radio /> Live from The Tee Lounge</span>
+          <h2>Every match. Every move. One champion.</h2>
+          <p>
+            Watch Championship II with live CGS coverage, on-screen fixtures,
+            simulator calls, current standings, and the full finals run.
+          </p>
+          <a
+            href={event.youtubeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="par3-v2-button is-primary"
+          >
+            Open CGS YouTube <ExternalLink />
+          </a>
+        </div>
+        <div className="par3-v2-video-frame">
+          {embedUrl ? (
+            <iframe
+              src={embedUrl}
+              title="CGS Par 3 Championship II live stream"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />
+          ) : (
+            <div>
+              <div className="par3-v2-logo-mark is-small">
+                <i aria-hidden="true">II</i>
+                <Image src="/par3/par3-logo.png" alt="CGS Par 3" width={220} height={220} />
               </div>
-            )}
-          </div>
+              <strong>Livestream appears here on event night</strong>
+              <span>Saturday 7 November / 5:00pm</span>
+            </div>
+          )}
         </div>
       </section>
 
-      <section id="format" className="par3-section par3-format-section">
-        <Par3MotionStripes tone="mixed" words={["MATCH", "PLAY"]} />
-        <div className="par3-section-marker" aria-hidden="true">
-          <span>03</span>
-          <strong>Format</strong>
+      <section className="par3-v2-closing">
+        <Image src="/cgs-logo.png" alt="Crossodog Golf Society" width={130} height={130} />
+        <div>
+          <span>Ready for Championship II?</span>
+          <h2>{remainingSpots === 0 ? "The field is locked." : `${remainingSpots} chances left to enter.`}</h2>
         </div>
-        <div className="par3-road-card" aria-label="Road to the finals bracket">
-          <div>
-            <span>Stage 1</span>
-            <strong>Pool stage</strong>
-            <p>Top three from Pools A-E qualify automatically.</p>
-            <b>15 qualifiers</b>
-          </div>
-          <i aria-hidden="true">+</i>
-          <div>
-            <span>Stage 2</span>
-            <strong>CTP playoff</strong>
-            <p>All five fourth-place players contest Pebble Beach&apos;s 7th.</p>
-            <b>1 survivor</b>
-          </div>
-          <i aria-hidden="true">=</i>
-          <div>
-            <span>Stage 3</span>
-            <strong>Finals bracket</strong>
-            <p>Sixteen players enter a single-elimination knockout.</p>
-            <b>1 champion</b>
-          </div>
-        </div>
-        <div className="par3-format-copy">
-          <p className="par3-kicker"><Flag /> Competition format</p>
-          <h2>Simple format. Big competition.</h2>
-          <div className="par3-format-steps">
-            <div>
-              <span>01</span>
-              <h3>Pool play</h3>
-              <p>
-                Five pools of four. Everyone plays everyone in their pool. A win
-                is one point and a loss is zero.
-              </p>
-            </div>
-            <div>
-              <span>02</span>
-              <h3>Qualification</h3>
-              <p>
-                The top three from every pool advance. All fourth-place players move
-                to the closest-to-pin playoff.
-              </p>
-            </div>
-            <div>
-              <span>03</span>
-              <h3>Round of 16</h3>
-              <p>
-                Pool A&apos;s winner opens against the CTP survivor. The remaining draw
-                balances first, second, and third-place qualifiers.
-              </p>
-            </div>
-            <div>
-              <span>04</span>
-              <h3>Finals</h3>
-              <p>
-                Every round is single elimination. If a match is tied, hole three
-                becomes a closest-to-pin tiebreak.
-              </p>
-            </div>
-          </div>
-          <div className="par3-rule-line">
-            <strong>No handicaps</strong>
-            <span>Championship, ladies red, and junior front tees</span>
-          </div>
-        </div>
-      </section>
-
-      <section id="enter" className="par3-entry-band">
-        <Par3MotionStripes tone="cyan" words={["12 SEP", "DRAW LOCKED"]} />
-        <div className="par3-section-marker" aria-hidden="true">
-          <span>04</span>
-          <strong>Enter</strong>
-        </div>
-        <div className="par3-entry-inner">
-          <div className="par3-entry-copy">
-            <p className="par3-kicker"><CircleDollarSign /> Championship field</p>
-            <h2>Twenty players. Draw set.</h2>
-            <p>
-              Five pools are locked in for Saturday night. Every player has three
-              pool fixtures before the top fifteen and one CTP survivor enter the
-              finals bracket.
-            </p>
-            <div className="par3-entry-details">
-              <span><CalendarDays /> Saturday 12 September</span>
-              <span><MapPin /> {event.venueAddress}</span>
-              <span><Clock3 /> Warm-up 5:30pm / Tee-off 6:00pm</span>
-            </div>
-            <a href="#live" className="par3-button par3-button-primary">
-              Open the live draw <ArrowRight />
-            </a>
-          </div>
-          <div className="par3-course-road" aria-label="Championship course draw">
-            <p className="par3-kicker">Course draw</p>
-            <h3>Eight stages. A new test every round.</h3>
-            <div>
-              {[...PAR3_POOL_STAGES, ...PAR3_FINALS_STAGES].map((stage, index) => (
-                <span key={stage.key}>
-                  <b>{String(index + 1).padStart(2, "0")}</b>
-                  <span>
-                    <strong>{stage.label}</strong>
-                    <small>{stage.course}</small>
-                  </span>
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="cgs" className="par3-history-band">
-        <div className="par3-history-inner">
-          <Image
-            src="/cgs-logo.png"
-            alt="Crossodog Golf Society"
-            width={150}
-            height={150}
-          />
-          <div>
-            <p className="par3-kicker">Crossodog Golf Society</p>
-            <h2>Built for everyday golfers</h2>
-            <p>
-              CGS combines social golf, genuine competition, and creator-led live
-              coverage. From the Season 1 team final through Season 2 Stableford and
-              the return to Ambrose in Season 3, every event adds to a growing public
-              record of the players and moments that shaped the society.
-            </p>
-            <div className="par3-history-links">
-              <Link href="/about">Our story <ArrowRight /></Link>
-              <Link href="/events/season-2">Past results <ArrowRight /></Link>
-              <a
-                href="https://www.youtube.com/@CrossodogGolfSociety"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                CGS on YouTube <ExternalLink />
-              </a>
-            </div>
-          </div>
-        </div>
+        <a href="#register" className="par3-v2-button is-primary">
+          {remainingSpots === 0 ? "View the live draw" : "Register now"} <ArrowRight />
+        </a>
+        <Link href="/about">About CGS</Link>
       </section>
     </main>
   );

@@ -44,6 +44,7 @@ type EventRow = {
   is_published: boolean;
   is_live: boolean;
   registrations_open: boolean;
+  entry_fee_cents?: number;
   knockout_data: Database | null;
   knockout_generated_at: string | null;
   updated_at: string;
@@ -59,6 +60,7 @@ type PlayerRow = {
   pool_number: number | null;
   pool_rank_override: number | null;
   ctp_rank: number | null;
+  ctp_distance_cm?: number | null;
   is_withdrawn: boolean;
   updated_at: string;
   created_at: string;
@@ -105,62 +107,43 @@ export type Par3PlayerInput = {
   isWithdrawn: boolean;
 };
 
+export type Par3RegistrationInput = {
+  name: string;
+  phone: string;
+  teeCategory: Par3TeeCategory;
+  consent: boolean;
+};
+
 const fallbackEvent: Par3Event = {
   id: 0,
   slug: PAR3_EVENT_SLUG,
-  title: "CGS Par 3 Championship",
+  title: "CGS Par 3 Championship II",
   summary:
-    "A 20-player match-play championship with five pools, a closest-to-pin playoff, and a single-elimination Round of 16.",
-  startsAt: "2026-09-12T08:00:00.000Z",
-  warmupAt: "2026-09-12T07:30:00.000Z",
+    "A 24-player match-play championship with six pools, two CTP contests, and a single-elimination Round of 16.",
+  startsAt: "2026-11-07T07:00:00.000Z",
+  warmupAt: "2026-11-07T06:30:00.000Z",
   venueName: "The Tee Lounge",
   venueAddress: "2892-2896 Logan Rd, Underwood QLD 4119",
-  registrationUrl: "https://crossodoggolfs-shop.bigcartel.com",
+  registrationUrl: "https://crossodoggolf.com/#register",
   youtubeUrl: "https://www.youtube.com/@CrossodogGolfSociety",
-  statusLabel: "Pool draw locked",
+  statusLabel: "Registrations open",
   publicMessage:
-    "The draw is locked. Follow fixtures, tables, results, the CTP playoff, and every finals matchup live.",
-  currentPhase: "pools",
-  maxPlayers: 20,
-  poolCount: 5,
+    "Secure one of 24 places, then follow every fixture, simulator call, table, and finals matchup live.",
+  currentPhase: "registrations",
+  maxPlayers: 24,
+  poolCount: 6,
   poolSize: 4,
   isPublished: true,
   isLive: false,
-  registrationsOpen: false,
+  registrationsOpen: true,
+  entryFeeCents: 3000,
   knockoutData: null,
   knockoutGeneratedAt: null,
   updatedAt: "",
   createdAt: "",
 };
 
-const fallbackPoolNames = [
-  ["Wade", "Dan", "Blake", "Ryobi"],
-  ["Jayden", "Crossdog", "Wombat", "Ben D"],
-  ["Jarrad", "Ricky", "Butters", "Penguin"],
-  ["Macka", "Harry", "Caity", "Chipper"],
-  ["Hitman", "Dylan", "Ben W", "Mystery Player"],
-];
-
-const fallbackPlayers: Par3Player[] = fallbackPoolNames.flatMap(
-  (names, poolIndex) =>
-    names.map((name, playerIndex) => {
-      const id = poolIndex * 4 + playerIndex + 1;
-
-      return {
-        id,
-        eventId: 0,
-        displayOrder: id,
-        name,
-        teeCategory: "championship",
-        poolNumber: poolIndex + 1,
-        poolRankOverride: null,
-        ctpRank: null,
-        isWithdrawn: false,
-        updatedAt: "",
-        createdAt: "",
-      };
-    })
-);
+const fallbackPlayers: Par3Player[] = [];
 
 const fixtureSeedPairs = [
   [0, 3],
@@ -171,33 +154,7 @@ const fixtureSeedPairs = [
   [2, 3],
 ] as const;
 
-const fallbackPoolMatches: Par3PoolMatch[] = fallbackPoolNames.flatMap(
-  (_, poolIndex) => {
-    const poolPlayers = fallbackPlayers.filter(
-      (player) => player.poolNumber === poolIndex + 1
-    );
-
-    return fixtureSeedPairs.map(([firstIndex, secondIndex], matchIndex) => {
-      const ids = [poolPlayers[firstIndex].id, poolPlayers[secondIndex].id].sort(
-        (left, right) => left - right
-      );
-
-      return {
-        id: poolIndex * 6 + matchIndex + 1,
-        eventId: 0,
-        poolNumber: poolIndex + 1,
-        matchNumber: matchIndex + 1,
-        player1Id: ids[0],
-        player2Id: ids[1],
-        winnerId: null,
-        status: "scheduled",
-        bayNumber: null,
-        updatedAt: "",
-        createdAt: "",
-      };
-    });
-  }
-);
+const fallbackPoolMatches: Par3PoolMatch[] = [];
 
 function mapEvent(row: EventRow): Par3Event {
   return {
@@ -220,6 +177,7 @@ function mapEvent(row: EventRow): Par3Event {
     isPublished: Boolean(row.is_published),
     isLive: Boolean(row.is_live),
     registrationsOpen: Boolean(row.registrations_open),
+    entryFeeCents: Number(row.entry_fee_cents ?? 3000),
     knockoutData: row.knockout_data,
     knockoutGeneratedAt: row.knockout_generated_at,
     updatedAt: row.updated_at,
@@ -238,6 +196,10 @@ function mapPlayer(row: PlayerRow): Par3Player {
     poolRankOverride:
       row.pool_rank_override === null ? null : Number(row.pool_rank_override),
     ctpRank: row.ctp_rank === null ? null : Number(row.ctp_rank),
+    ctpDistanceCm:
+      row.ctp_distance_cm === null || row.ctp_distance_cm === undefined
+        ? null
+        : Number(row.ctp_distance_cm),
     isWithdrawn: Boolean(row.is_withdrawn),
     updatedAt: row.updated_at,
     createdAt: row.created_at,
@@ -512,6 +474,14 @@ export async function createPar3Player(input: Par3PlayerInput) {
 
   assertPar3PoolAssignment(snapshot, input.poolNumber);
 
+  const activePlayerCount = snapshot.players.filter(
+    (player) => !player.isWithdrawn
+  ).length;
+
+  if (!input.isWithdrawn && activePlayerCount >= snapshot.event.maxPlayers) {
+    throw new Error("The Championship II field is sold out.");
+  }
+
   if (
     input.poolNumber !== null &&
     !input.isWithdrawn &&
@@ -567,7 +537,64 @@ export async function createPar3Player(input: Par3PlayerInput) {
     throw privateError;
   }
 
+  if (!input.isWithdrawn && activePlayerCount + 1 >= snapshot.event.maxPlayers) {
+    await supabase
+      .from("cgs_par3_events")
+      .update({
+        registrations_open: false,
+        status_label: "Sold out",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", input.eventId);
+  }
+
   return playerId;
+}
+
+export async function registerPar3Player(input: Par3RegistrationInput) {
+  const snapshot = await getAdminPar3Snapshot();
+  const activePlayers = snapshot.players.filter((player) => !player.isWithdrawn);
+
+  if (!snapshot.event.registrationsOpen) {
+    throw new Error("Registrations are currently closed.");
+  }
+
+  if (activePlayers.length >= snapshot.event.maxPlayers) {
+    throw new Error("The Championship II field is sold out.");
+  }
+
+  const normalizedName = input.name.trim().toLocaleLowerCase();
+  const normalizedPhone = input.phone.replace(/\D/g, "");
+  const duplicate = snapshot.players.some(
+    (player) =>
+      !player.isWithdrawn &&
+      (player.name.trim().toLocaleLowerCase() === normalizedName ||
+        (normalizedPhone.length >= 8 &&
+          player.phone.replace(/\D/g, "") === normalizedPhone))
+  );
+
+  if (duplicate) {
+    throw new Error("That registration is already in the Championship II field.");
+  }
+
+  await createPar3Player({
+    eventId: snapshot.event.id,
+    name: input.name.trim(),
+    phone: input.phone.trim(),
+    teeCategory: input.teeCategory,
+    poolNumber: null,
+    poolRankOverride: null,
+    displayOrder: activePlayers.length + 1,
+    consent: input.consent,
+    isWithdrawn: false,
+  });
+
+  return {
+    remainingSpots: Math.max(
+      0,
+      snapshot.event.maxPlayers - activePlayers.length - 1
+    ),
+  };
 }
 
 export async function updatePar3Player(
@@ -582,6 +609,18 @@ export async function updatePar3Player(
   }
 
   assertPar3PoolAssignment(snapshot, input.poolNumber);
+
+  const activePlayerCount = snapshot.players.filter(
+    (player) => !player.isWithdrawn
+  ).length;
+
+  if (
+    existingPlayer.isWithdrawn &&
+    !input.isWithdrawn &&
+    activePlayerCount >= snapshot.event.maxPlayers
+  ) {
+    throw new Error("The Championship II field is sold out.");
+  }
 
   const allocationChanged =
     existingPlayer.poolNumber !== input.poolNumber ||
@@ -650,6 +689,28 @@ export async function updatePar3Player(
 
   if (privateError) {
     throw privateError;
+  }
+
+  if (existingPlayer.isWithdrawn !== input.isWithdrawn) {
+    const nextActivePlayerCount =
+      activePlayerCount + (input.isWithdrawn ? -1 : 1);
+    const capacityUpdate =
+      nextActivePlayerCount >= snapshot.event.maxPlayers
+        ? { registrations_open: false, status_label: "Sold out" }
+        : snapshot.event.statusLabel === "Sold out"
+          ? { registrations_open: true, status_label: "Registrations open" }
+          : null;
+
+    if (capacityUpdate) {
+      const { error: capacityError } = await supabase
+        .from("cgs_par3_events")
+        .update({ ...capacityUpdate, updated_at: now })
+        .eq("id", input.eventId);
+
+      if (capacityError) {
+        throw capacityError;
+      }
+    }
   }
 }
 
@@ -835,7 +896,8 @@ export async function updatePar3CtpQualifiers(
 export async function updatePar3PoolMatch(
   matchId: number,
   winnerId: number | null,
-  bayNumber: number | null
+  bayNumber: number | null,
+  requestedStatus: "scheduled" | "live" | null = null
 ) {
   const { data: match, error: matchError } = await getSupabaseAdmin()
     .from("cgs_par3_pool_matches")
@@ -855,15 +917,67 @@ export async function updatePar3PoolMatch(
     throw new Error("Winner must be one of the players in the match.");
   }
 
+  if (requestedStatus === "live" && bayNumber === null) {
+    throw new Error("Choose a simulator before starting a match.");
+  }
+
+  const status = winnerId !== null
+    ? "complete"
+    : requestedStatus ?? (bayNumber === null ? "scheduled" : "live");
+
+  if (status === "live" && bayNumber !== null) {
+    const snapshot = await getAdminPar3Snapshot();
+    const simulatorBusy = snapshot.poolMatches.some(
+      (match) =>
+        match.id !== matchId &&
+        match.bayNumber === bayNumber &&
+        match.status === "live"
+    );
+
+    if (simulatorBusy) {
+      throw new Error(`Simulator ${bayNumber} already has a live match.`);
+    }
+  }
+
   const { error } = await getSupabaseAdmin()
     .from("cgs_par3_pool_matches")
     .update({
       winner_id: winnerId,
       bay_number: bayNumber,
-      status: winnerId === null ? (bayNumber === null ? "scheduled" : "live") : "complete",
+      status,
       updated_at: new Date().toISOString(),
     })
     .eq("id", matchId);
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function updatePar3CtpDistance(
+  eventId: number,
+  playerId: number,
+  distanceCm: number | null
+) {
+  const snapshot = await getAdminPar3Snapshot();
+  const player = snapshot.players.find((candidate) => candidate.id === playerId);
+
+  if (!player || snapshot.event.id !== eventId) {
+    throw new Error("CTP player not found.");
+  }
+
+  if (distanceCm !== null && (distanceCm < 0 || distanceCm > 100000)) {
+    throw new Error("Enter the CTP distance in centimetres.");
+  }
+
+  const { error } = await getSupabaseAdmin()
+    .from("cgs_par3_players")
+    .update({
+      ctp_distance_cm: distanceCm,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("event_id", eventId)
+    .eq("id", playerId);
 
   if (error) {
     throw error;

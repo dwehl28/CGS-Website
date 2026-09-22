@@ -11,8 +11,8 @@ export default function Loading() {
         priority
       />
       <div>
-        <span>12 September 2026</span>
-        <h1>CGS Par 3 Championship</h1>
+        <span>7 November 2026</span>
+        <h1>CGS Par 3 Championship II</h1>
         <p>Loading tournament centre</p>
       </div>
     </main>

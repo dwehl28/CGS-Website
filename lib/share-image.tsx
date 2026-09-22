@@ -14,7 +14,9 @@ export const shareImageSize = {
 export const shareImageContentType = "image/png";
 
 async function loadLogoSource() {
-  const logo = await readFile(join(process.cwd(), "public", "cgs-logo.png"));
+  const logo = await readFile(
+    join(process.cwd(), "public", "par3", "par3-logo.png")
+  );
   return Uint8Array.from(logo).buffer;
 }
 
@@ -29,7 +31,7 @@ export async function createShareImage() {
           height: "100%",
           display: "flex",
           background:
-            "linear-gradient(135deg, #17384b 0%, #102737 55%, #0d1f2b 100%)",
+            "linear-gradient(135deg, #02080e 0%, #082438 58%, #02080e 100%)",
           color: "#f7f3eb",
           padding: "48px",
           position: "relative",
@@ -83,7 +85,7 @@ export async function createShareImage() {
               textTransform: "uppercase",
             }}
           >
-            Crossodog Golf Society
+            Saturday 7 November / The Tee Lounge
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
@@ -95,7 +97,7 @@ export async function createShareImage() {
                 maxWidth: "720px",
               }}
             >
-              Golf that feels social, competitive, and easy to join.
+              CGS Par 3 Championship II
             </div>
             <div
               style={{
@@ -105,8 +107,7 @@ export async function createShareImage() {
                 maxWidth: "720px",
               }}
             >
-              Events, content, clubhouse energy, and a golf community built for
-              everyday players.
+              24 players. Six pools. One champion. Live from 5:00pm.
             </div>
           </div>
 
@@ -127,7 +128,7 @@ export async function createShareImage() {
                 background: "#f4b41b",
               }}
             />
-            crossodoggolf.com
+            Registration now open / crossodoggolf.com
           </div>
         </div>
 
@@ -147,14 +148,14 @@ export async function createShareImage() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              borderRadius: "42px",
-              background: "rgba(255, 255, 255, 0.92)",
+              borderRadius: "0",
+              background: "rgba(2, 8, 14, 0.7)",
               border: "1px solid rgba(255, 255, 255, 0.4)",
               boxShadow: "0 20px 50px rgba(0, 0, 0, 0.18)",
             }}
           >
             {/* @ts-expect-error Satori accepts ArrayBuffer for image src */}
-            <img src={logoSrc} width={190} height={190} alt={siteConfig.name} />
+            <img src={logoSrc} width={230} height={230} alt={siteConfig.name} />
           </div>
         </div>
       </div>

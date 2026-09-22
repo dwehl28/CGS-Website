@@ -4,7 +4,9 @@ import {
   Check,
   ChevronRight,
   ExternalLink,
+  ClipboardList,
   MonitorPlay,
+  Printer,
   Radio,
   Trophy,
   Users,
@@ -18,6 +20,7 @@ import {
   resetPar3KnockoutMatchAction,
   startPar3KnockoutMatchAction,
   updatePar3EventAction,
+  updatePar3CtpDistanceAction,
   updatePar3CtpWinnerAction,
   updatePar3PoolCountAction,
   updatePar3PlayerAction,
@@ -44,6 +47,8 @@ import {
   getPar3Champion,
   getPar3KnockoutRounds,
   getPar3RoundOf16Template,
+  getPar3SimulatorQueues,
+  getPar3RemainingSpots,
   getPoolStage,
   getTeeCategoryLabel,
   resolvePar3BracketSlot,
@@ -84,9 +89,11 @@ const noticeMessages: Record<string, string> = {
   "ctp-saved": "CTP qualifying places confirmed for the Round of 16.",
   "ctp-reset": "CTP qualifying places cleared.",
   "ctp-failed": "CTP winner could not be updated. Confirm the pool tables first.",
+  "ctp-distance-saved": "CTP distance saved.",
+  "ctp-distance-failed": "CTP distance could not be saved.",
   "knockout-created": "Round of 16 created from the confirmed qualifiers.",
   "knockout-failed":
-    "Finals could not be created. Complete all five pools and confirm the CTP winner.",
+    "Finals could not be created. Complete every pool and confirm all required CTP qualifiers.",
   "final-result-saved": "Finals result updated.",
   "final-result-failed": "Finals result could not be saved.",
   "final-live": "Finals match is now featured on the live centre.",
@@ -280,7 +287,9 @@ function PoolMatchControl({
     <div id={`match-${match.id}`} className="border-t border-white/10 py-4 first:border-t-0">
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500">
         <span>{stage?.label ?? `Match ${match.matchNumber}`} / Match {match.matchNumber}</span>
-        <span>{match.bayNumber ? `Bay ${match.bayNumber}` : "Bay not set"}</span>
+        <span className={`par3-admin-match-status is-${match.status}`}>
+          {match.bayNumber ? `Simulator ${match.bayNumber}` : "Simulator not set"} / {match.status}
+        </span>
       </div>
 
       {winner ? (
@@ -291,6 +300,8 @@ function PoolMatchControl({
           </p>
           <form action={updatePar3PoolMatchAction}>
             <input type="hidden" name="match_id" value={match.id} />
+            <input type="hidden" name="bay_number" value={match.bayNumber ?? ""} />
+            <input type="hidden" name="match_status" value="scheduled" />
             <button type="submit" className="btn-secondary">
               Undo
             </button>
@@ -299,7 +310,7 @@ function PoolMatchControl({
       ) : (
         <form action={updatePar3PoolMatchAction} className="mt-3">
           <label className="sr-only" htmlFor={`bay-${match.id}`}>
-            Bay
+            Simulator
           </label>
           <select
             id={`bay-${match.id}`}
@@ -307,10 +318,10 @@ function PoolMatchControl({
             className="field-control mb-2"
             defaultValue={match.bayNumber ?? ""}
           >
-            <option value="">Bay not set</option>
-            <option value="1">Bay 1</option>
-            <option value="2">Bay 2</option>
-            <option value="3">Bay 3</option>
+            <option value="">Simulator not set</option>
+            <option value="1">Simulator 1</option>
+            <option value="2">Simulator 2</option>
+            <option value="3">Simulator 3</option>
           </select>
           <input type="hidden" name="match_id" value={match.id} />
           <div className="grid gap-2 sm:grid-cols-2">
@@ -331,13 +342,57 @@ function PoolMatchControl({
               {second.name}
             </button>
           </div>
-          <button
-            type="submit"
-            className="mt-2 w-full px-3 py-2 text-xs font-semibold uppercase text-cyan-200 hover:bg-white/5"
-          >
-            Set selected bay / mark live
-          </button>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <button
+              type="submit"
+              name="match_status"
+              value="scheduled"
+              className="btn-secondary"
+            >
+              Add to queue
+            </button>
+            <button
+              type="submit"
+              name="match_status"
+              value="live"
+              className="btn-primary"
+            >
+              Start on simulator
+            </button>
+          </div>
         </form>
+      )}
+    </div>
+  );
+}
+
+function AdminSimulatorCall({
+  label,
+  match,
+  playersById,
+}: {
+  label: string;
+  match: Par3PoolMatch | null;
+  playersById: Map<number, AdminPar3Player>;
+}) {
+  const stage = match ? getPoolStage(match.matchNumber) : null;
+
+  return (
+    <div className="par3-admin-simulator-call">
+      <span>{label}</span>
+      {match ? (
+        <>
+          <strong>
+            {playersById.get(match.player1Id)?.name ?? "TBD"}
+            <i>vs</i>
+            {playersById.get(match.player2Id)?.name ?? "TBD"}
+          </strong>
+          <p>
+            Pool {String.fromCharCode(64 + match.poolNumber)} / {stage?.shortCourse}
+          </p>
+        </>
+      ) : (
+        <strong className="is-empty">Awaiting allocation</strong>
       )}
     </div>
   );
@@ -395,10 +450,16 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
   const pools = buildPar3Pools(snapshot);
   const playersById = new Map(players.map((player) => [player.id, player]));
   const activePlayers = players.filter((player) => !player.isWithdrawn);
+  const remainingSpots = getPar3RemainingSpots(snapshot);
+  const simulatorQueues = getPar3SimulatorQueues(snapshot);
   const completedPoolMatches = poolMatches.filter(
     (match) => match.winnerId !== null
   ).length;
   const ctpContestants = getPar3CtpContestants(snapshot);
+  const ctpPrizeContestants = pools.flatMap((pool) => {
+    const standing = pool.standings.find((candidate) => candidate.position === 4);
+    return standing ? [standing] : [];
+  });
   const ctpQualifiers = getPar3CtpQualifiers(snapshot);
   const ctpWinner = getPar3CtpWinner(snapshot);
   const ctpPoolPosition = getPar3CtpPoolPosition(event.poolCount);
@@ -421,8 +482,8 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
   return (
     <AdminShell
       eyebrow="Event control"
-      title="Par 3 Championship"
-      description="Work from left to right: entrants, pool play, then finals. Public results update as soon as you save them."
+      title="Par 3 Championship II"
+      description="Run registrations, simulator calls, pool results, CTP records, print sheets, and the finals from one event-night desk."
       actions={
         <>
           <Link href="/" target="_blank" className="btn-secondary">
@@ -442,6 +503,13 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
           >
             TV rotation <ExternalLink className="ml-2 inline size-4" />
           </Link>
+          <Link
+            href="/clubhouse-admin/par3/print?sheet=pack"
+            target="_blank"
+            className="btn-secondary"
+          >
+            Print pack <Printer className="ml-2 inline size-4" />
+          </Link>
           <form action={logoutAdminAction}>
             <button type="submit" className="btn-secondary">
               Sign out
@@ -456,8 +524,9 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
         </div>
       ) : null}
 
-      <nav className="mb-8 grid gap-2 sm:grid-cols-4">
+      <nav className="mb-8 grid gap-2 sm:grid-cols-5">
         {[
+          ["simulator-desk", "Live desk"],
           ["entrants", "1. Entrants"],
           ["pool-play", "2. Pool play"],
           ["ctp-playoff", "3. CTP playoff"],
@@ -474,9 +543,10 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
         ))}
       </nav>
 
-      <section className="grid gap-4 md:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-3 xl:grid-cols-5">
         {[
           ["Entrants", `${activePlayers.length} / ${event.maxPlayers}`, Users],
+          ["Spots left", remainingSpots ? String(remainingSpots) : "Sold out", Users],
           ["Pool results", `${completedPoolMatches} / ${poolMatches.length}`, Check],
           ["Phase", event.currentPhase, Radio],
           ["Champion", champion ?? "TBD", Trophy],
@@ -493,6 +563,91 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
         ))}
       </section>
 
+      <section id="simulator-desk" className="scroll-mt-24 pt-8">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="eyebrow">Event-night desk</p>
+            <h2 className="mt-3 text-3xl">Now playing and up next</h2>
+          </div>
+          <Link
+            href="/stream/par3-showdown?view=up-next"
+            target="_blank"
+            className="btn-secondary"
+          >
+            Open public display <ExternalLink className="ml-2 inline size-4" />
+          </Link>
+        </div>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-zinc-400">
+          Queue fixtures from Pool Play below. Starting a fixture promotes it to
+          NOW on the public site and stream while the next queued fixture stays
+          clearly visible for players.
+        </p>
+        <div className="par3-admin-simulator-grid mt-6">
+          {simulatorQueues.map((queue) => (
+            <article key={queue.simulatorNumber}>
+              <header>
+                <span>Simulator</span>
+                <strong>{queue.simulatorNumber}</strong>
+              </header>
+              <AdminSimulatorCall
+                label="Now playing"
+                match={queue.current}
+                playersById={playersById}
+              />
+              <AdminSimulatorCall
+                label="Up next"
+                match={queue.upNext}
+                playersById={playersById}
+              />
+              <footer>{queue.queued.length} queued fixture{queue.queued.length === 1 ? "" : "s"}</footer>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="panel mt-8 p-6">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="eyebrow">Print centre</p>
+            <h2 className="mt-3 text-2xl">Event operations pack</h2>
+          </div>
+          <Link
+            href="/clubhouse-admin/par3/print?sheet=pack"
+            target="_blank"
+            className="btn-primary"
+          >
+            Print everything <Printer className="ml-2 inline size-4" />
+          </Link>
+        </div>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-zinc-400">
+          Open any live sheet on its own or print the complete organiser pack.
+          Pages use the latest draw, simulator allocations, standings, and finals data.
+        </p>
+        <div className="par3-admin-print-grid mt-5">
+          {[
+            ["pools", "Pool sheets"],
+            ["standings", "Live standings"],
+            ["schedule", "Match schedule"],
+            ["simulators", "Simulator allocation"],
+            ["courses", "Course allocation"],
+            ["ctp", "CTP records"],
+            ["round-of-16", "Round of 16"],
+            ["finals", "Finals bracket"],
+            ["reporting", "Reporting process"],
+          ].map(([sheet, label]) => (
+            <Link
+              key={sheet}
+              href={`/clubhouse-admin/par3/print?sheet=${sheet}`}
+              target="_blank"
+            >
+              <ClipboardList />
+              <strong>{label}</strong>
+              <Printer />
+            </Link>
+          ))}
+        </div>
+      </section>
+
       <section className="panel mt-8 p-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -505,13 +660,19 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
+            ["thumbnail", "Livestream thumbnail", "1280 x 720"],
+            ["starting", "Starting soon", "1920 x 1080"],
             ["banner", "Lower-third banner", "1920 x 180"],
             ["portrait", "Sidebar rotation", "407 x 1359"],
+            ["pools", "Pool graphics", "1920 x 1080"],
+            ["up-next", "Simulator up next", "1920 x 1080"],
             ["fixtures", "Fixture draw", "1920 x 1080"],
             ["results", "Latest results", "1920 x 1080"],
             ["standings", "Pool tables", "1920 x 1080"],
             ["bracket", "Finals bracket", "1920 x 1080"],
             ["finals", "Finals live centre", "1920 x 1080"],
+            ["sponsors", "Sponsor slide", "1920 x 1080"],
+            ["winner", "Winner screen", "1920 x 1080"],
             ["road", "Eight stages", "1920 x 1080"],
             ["tv", "Automatic TV rotation", "1920 x 1080"],
           ].map(([view, label, size]) => (
@@ -558,6 +719,7 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
             >
               <option value="registrations">Registrations</option>
               <option value="pools">Pool play</option>
+              <option value="ctp">CTP playoff</option>
               <option value="knockout">Finals</option>
               <option value="complete">Complete</option>
             </select>
@@ -845,6 +1007,63 @@ export default async function Par3AdminPage({ searchParams }: PageProps) {
             ? "The third-place player from every pool enters the CTP contest. Rank the top four finishers to complete the Round of 16."
             : "The fourth-place player from each pool enters the CTP contest. Select the winner to unlock the final Round-of-16 place."}
         </p>
+
+        <div className="mt-6 grid gap-5 xl:grid-cols-2">
+          {[
+            {
+              title: "Bracket CTP",
+              detail: "Third-place players / top four qualify",
+              contestants: ctpContestants,
+            },
+            {
+              title: "Prize CTP",
+              detail: "Fourth-place players / closest shot wins",
+              contestants: ctpPrizeContestants,
+            },
+          ].map((contest) => (
+            <div key={contest.title} className="panel p-6">
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <p className="eyebrow">Distance records</p>
+                  <h3 className="mt-2 text-xl">{contest.title}</h3>
+                </div>
+                <span className="text-xs text-zinc-500">{contest.detail}</span>
+              </div>
+              <div className="mt-4">
+                {contest.contestants.length ? contest.contestants.map((standing) => (
+                  <form
+                    key={standing.player.id}
+                    action={updatePar3CtpDistanceAction}
+                    className="par3-admin-ctp-distance"
+                  >
+                    <input type="hidden" name="event_id" value={event.id} />
+                    <input type="hidden" name="player_id" value={standing.player.id} />
+                    <span>Pool {String.fromCharCode(64 + (standing.player.poolNumber ?? 1))}</span>
+                    <strong>{standing.player.name}</strong>
+                    <label>
+                      <span className="sr-only">Distance in centimetres</span>
+                      <input
+                        name="distance_cm"
+                        type="number"
+                        min="0"
+                        max="100000"
+                        step="1"
+                        className="field-control"
+                        defaultValue={standing.player.ctpDistanceCm ?? ""}
+                        placeholder="cm"
+                      />
+                    </label>
+                    <button type="submit" className="btn-secondary">Save</button>
+                  </form>
+                )) : (
+                  <p className="border border-dashed border-white/15 p-4 text-sm text-zinc-500">
+                    Contestants appear after pool standings are confirmed.
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
 
         <div className="panel mt-6 p-6">
           {poolStandingsLocked && ctpContestants.length === event.poolCount ? (

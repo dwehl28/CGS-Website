@@ -29,6 +29,7 @@ export type Par3Event = {
   isPublished: boolean;
   isLive: boolean;
   registrationsOpen: boolean;
+  entryFeeCents: number;
   knockoutData: Database | null;
   knockoutGeneratedAt: string | null;
   updatedAt: string;
@@ -44,6 +45,7 @@ export type Par3Player = {
   poolNumber: number | null;
   poolRankOverride: number | null;
   ctpRank: number | null;
+  ctpDistanceCm: number | null;
   isWithdrawn: boolean;
   updatedAt: string;
   createdAt: string;
@@ -108,11 +110,17 @@ export type Par3KnockoutRound = {
 export type Par3StreamView =
   | "banner"
   | "portrait"
+  | "thumbnail"
+  | "starting"
+  | "pools"
   | "fixtures"
   | "results"
   | "standings"
+  | "up-next"
   | "bracket"
   | "finals"
+  | "sponsors"
+  | "winner"
   | "road"
   | "tv";
 
@@ -139,7 +147,7 @@ export type Par3BracketPairing = {
   second: Par3BracketSlot;
 };
 
-export const PAR3_EVENT_SLUG = "par-3-showdown-2026";
+export const PAR3_EVENT_SLUG = "par-3-championship-ii-2026";
 export const PAR3_MATCH_READY = 2;
 export const PAR3_MATCH_RUNNING = 3;
 export const PAR3_MATCH_COMPLETED = 4;
@@ -225,6 +233,67 @@ export function getPoolMatchRound(matchNumber: number) {
 
 export function getPoolStage(matchNumber: number) {
   return PAR3_POOL_STAGES[getPoolMatchRound(matchNumber) - 1] ?? null;
+}
+
+export function getPar3ActivePlayers(
+  snapshot: Par3Snapshot | AdminPar3Snapshot
+) {
+  return snapshot.players.filter((player) => !player.isWithdrawn);
+}
+
+export function getPar3RemainingSpots(
+  snapshot: Par3Snapshot | AdminPar3Snapshot
+) {
+  return Math.max(
+    0,
+    snapshot.event.maxPlayers - getPar3ActivePlayers(snapshot).length
+  );
+}
+
+export function sortPar3PoolMatches(matches: Par3PoolMatch[]) {
+  return matches.slice().sort((first, second) => {
+    const roundDifference =
+      getPoolMatchRound(first.matchNumber) - getPoolMatchRound(second.matchNumber);
+
+    if (roundDifference !== 0) {
+      return roundDifference;
+    }
+
+    if (first.poolNumber !== second.poolNumber) {
+      return first.poolNumber - second.poolNumber;
+    }
+
+    return first.matchNumber - second.matchNumber;
+  });
+}
+
+export type Par3SimulatorQueue = {
+  simulatorNumber: number;
+  current: Par3PoolMatch | null;
+  upNext: Par3PoolMatch | null;
+  queued: Par3PoolMatch[];
+};
+
+export function getPar3SimulatorQueues(
+  snapshot: Par3Snapshot | AdminPar3Snapshot,
+  simulatorCount = 3
+) {
+  return Array.from({ length: simulatorCount }, (_, index) => {
+    const simulatorNumber = index + 1;
+    const matches = sortPar3PoolMatches(
+      snapshot.poolMatches.filter(
+        (match) => match.bayNumber === simulatorNumber
+      )
+    );
+    const queued = matches.filter((match) => match.status === "scheduled");
+
+    return {
+      simulatorNumber,
+      current: matches.find((match) => match.status === "live") ?? null,
+      upNext: queued[0] ?? null,
+      queued,
+    } satisfies Par3SimulatorQueue;
+  });
 }
 
 export function getTeeCategoryLabel(category: Par3TeeCategory) {

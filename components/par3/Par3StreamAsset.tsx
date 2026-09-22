@@ -2,7 +2,17 @@
 
 import Image from "next/image";
 import { startTransition, useEffect, useEffectEvent, useState } from "react";
-import { ArrowRight, Check, Target, Trophy } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarDays,
+  Check,
+  Clock3,
+  MapPin,
+  MonitorPlay,
+  Radio,
+  Target,
+  Trophy,
+} from "lucide-react";
 
 import {
   PAR3_FINALS_STAGES,
@@ -10,13 +20,17 @@ import {
   PAR3_MATCH_READY,
   PAR3_MATCH_RUNNING,
   PAR3_POOL_STAGES,
-  PAR3_ROUND_OF_16_TEMPLATE,
   buildPar3Pools,
+  getPar3AutomaticQualifyingPlaces,
   getKnockoutParticipantName,
   getPar3Champion,
   getPar3CtpContestants,
+  getPar3CtpPoolPosition,
+  getPar3CtpQualifierCount,
   getPar3CtpWinner,
   getPar3KnockoutRounds,
+  getPar3RoundOf16Template,
+  getPar3SimulatorQueues,
   getPoolMatchRound,
   resolvePar3BracketSlot,
   type Par3PoolMatch,
@@ -30,7 +44,16 @@ import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 type AssetProps = { initialSnapshot: Par3Snapshot; view: Par3StreamView };
 type PlayerMap = Map<number, Par3Snapshot["players"][number]>;
 
-const TV_SLIDES = ["live", "standings", "fixtures", "results", "bracket", "road"] as const;
+const TV_SLIDES = [
+  "live",
+  "up-next",
+  "standings",
+  "fixtures",
+  "results",
+  "bracket",
+  "road",
+  "sponsors",
+] as const;
 
 function sortPoolMatchesByPlayOrder(matches: Par3PoolMatch[]) {
   return matches.slice().sort((first, second) => {
@@ -53,7 +76,10 @@ function BroadcastHeader({ eyebrow, title, detail }: { eyebrow: string; title: s
   return (
     <header className="par3-broadcast-header">
       <div className="par3-broadcast-event-mark">
-        <Image src="/par3/par3-logo.png" alt="CGS Par 3" width={118} height={118} priority />
+        <div className="par3-broadcast-logo-v2">
+          <i aria-hidden="true">II</i>
+          <Image src="/par3/par3-logo.png" alt="CGS Par 3" width={118} height={118} priority />
+        </div>
         <div><span>{eyebrow}</span><h1>{title}</h1><p>{detail}</p></div>
       </div>
       <TeeLoungeMark />
@@ -77,7 +103,16 @@ function MatchCard({ match, playersById, compact = false }: { match: Par3PoolMat
   );
 }
 
-function StandingsBoard({ pools }: { pools: Par3PoolView[] }) {
+function StandingsBoard({
+  pools,
+  poolCount,
+}: {
+  pools: Par3PoolView[];
+  poolCount: number;
+}) {
+  const automaticPlaces = getPar3AutomaticQualifyingPlaces(poolCount);
+  const ctpPosition = getPar3CtpPoolPosition(poolCount);
+
   return (
     <section className="par3-broadcast-standings">
       {pools.map((pool) => (
@@ -85,11 +120,11 @@ function StandingsBoard({ pools }: { pools: Par3PoolView[] }) {
           <div className="par3-broadcast-pool-title"><span>Pool</span><strong>{String.fromCharCode(64 + pool.number)}</strong></div>
           <div className="par3-broadcast-standing-head"><span>Pos</span><span>Player</span><span>P</span><span>W</span></div>
           {pool.standings.map((standing) => (
-            <div key={standing.player.id} className={`par3-broadcast-standing-row ${standing.position <= 3 ? "is-qualified" : "is-ctp"}`}>
+            <div key={standing.player.id} className={`par3-broadcast-standing-row ${standing.position <= automaticPlaces ? "is-qualified" : standing.position === ctpPosition ? "is-ctp" : ""}`}>
               <span>{standing.position}</span><strong>{standing.player.name}</strong><span>{standing.played}</span><b>{standing.wins}</b>
             </div>
           ))}
-          <footer><span>Top 3 qualify</span><span>4th to CTP</span></footer>
+          <footer><span>Top {automaticPlaces} qualify</span><span>{ordinal(ctpPosition)} to CTP</span></footer>
         </article>
       ))}
     </section>
@@ -103,7 +138,7 @@ function FixturesBoard({ snapshot, playersById }: { snapshot: Par3Snapshot; play
         const matches = snapshot.poolMatches.filter((match) => getPoolMatchRound(match.matchNumber) === index + 1);
         return (
           <article key={stage.key}>
-            <div className="par3-broadcast-round-title"><span>{stage.label}</span><strong>{stage.course}</strong><small>{matches.filter((match) => match.status === "complete").length}/10 complete</small></div>
+            <div className="par3-broadcast-round-title"><span>{stage.label}</span><strong>{stage.course}</strong><small>{matches.filter((match) => match.status === "complete").length}/{matches.length || snapshot.event.poolCount * 2} complete</small></div>
             <div>{matches.map((match) => <MatchCard key={match.id} match={match} playersById={playersById} compact />)}</div>
           </article>
         );
@@ -118,17 +153,20 @@ function ResultsBoard({ snapshot, playersById }: { snapshot: Par3Snapshot; playe
     .slice()
     .sort((first, second) => Date.parse(second.updatedAt) - Date.parse(first.updatedAt));
   const upcoming = sortPoolMatchesByPlayOrder(snapshot.poolMatches.filter((match) => match.status !== "complete")).slice(0, 6);
+  const automaticPlaces = getPar3AutomaticQualifyingPlaces(snapshot.event.poolCount);
+  const ctpPosition = getPar3CtpPoolPosition(snapshot.event.poolCount);
+  const ctpPlaces = getPar3CtpQualifierCount(snapshot.event.poolCount);
   return (
     <section className="par3-broadcast-results">
       <div><span className="par3-broadcast-section-kicker">{completed.length ? "Latest results" : "Results open at tee-off"}</span><div className="par3-broadcast-result-grid">{(completed.length ? completed.slice(0, 12) : upcoming).map((match) => <MatchCard key={match.id} match={match} playersById={playersById} />)}</div></div>
-      <aside><Target /><span>Qualification path</span><strong>15 + 1</strong><p>Top three in every pool qualify. Five fourth-place players fight for the final spot on Pebble Beach&apos;s 7th.</p></aside>
+      <aside><Target /><span>Qualification path</span><strong>{automaticPlaces * snapshot.event.poolCount} + {ctpPlaces}</strong><p>Top {automaticPlaces} in every pool qualify. All {ordinal(ctpPosition)}-place players fight for {ctpPlaces} final bracket spots.</p></aside>
     </section>
   );
 }
 
 function BracketBoard({ snapshot, pools }: { snapshot: Par3Snapshot; pools: Par3PoolView[] }) {
   const rounds = getPar3KnockoutRounds(snapshot.event.knockoutData);
-  const ctpWinner = getPar3CtpWinner(snapshot);
+  const bracketTemplate = getPar3RoundOf16Template(snapshot.event.poolCount);
   const poolsLocked = pools.every((pool) => pool.matches.filter((match) => match.winnerId !== null).length === 6 || pool.standings.every((standing) => standing.player.poolRankOverride !== null));
 
   if (rounds.length && snapshot.event.knockoutData) {
@@ -145,10 +183,10 @@ function BracketBoard({ snapshot, pools }: { snapshot: Par3Snapshot; pools: Par3
 
   return (
     <section className="par3-broadcast-bracket is-preview">
-      <article><h2>Round of 16</h2><div>{PAR3_ROUND_OF_16_TEMPLATE.map((pairing) => {
+      <article><h2>Round of 16</h2><div>{bracketTemplate.map((pairing) => {
         const first = resolvePar3BracketSlot(snapshot, pairing.first);
         const second = resolvePar3BracketSlot(snapshot, pairing.second);
-        return <div key={pairing.matchNumber} className="par3-broadcast-bracket-match"><span>M{pairing.matchNumber}</span><p>{poolsLocked && first ? first.name : pairing.first.label}</p><p>{pairing.second.isCtp && ctpWinner ? ctpWinner.name : poolsLocked && second ? second.name : pairing.second.label}</p></div>;
+        return <div key={pairing.matchNumber} className="par3-broadcast-bracket-match"><span>M{pairing.matchNumber}</span><p>{poolsLocked && first ? first.name : pairing.first.label}</p><p>{poolsLocked && second ? second.name : pairing.second.label}</p></div>;
       })}</div></article>
       {["Quarter Finals", "Semi Finals", "Grand Final"].map((label, index) => <article key={label}><h2>{label}</h2><div>{Array.from({ length: 4 / 2 ** index }, (_, matchIndex) => <div key={matchIndex} className="par3-broadcast-bracket-match is-tbd"><p>Winner TBD</p><p>Winner TBD</p></div>)}</div></article>)}
     </section>
@@ -220,7 +258,7 @@ function getFinalsDisplayMatches(snapshot: Par3Snapshot, pools: Par3PoolView[]) 
       pool.standings.every((standing) => standing.player.poolRankOverride !== null)
   );
 
-  return PAR3_ROUND_OF_16_TEMPLATE.map((pairing) => {
+  return getPar3RoundOf16Template(snapshot.event.poolCount).map((pairing) => {
     const first = resolvePar3BracketSlot(snapshot, pairing.first);
     const second = resolvePar3BracketSlot(snapshot, pairing.second);
     const participantsReady = poolsLocked && first && second;
@@ -386,16 +424,184 @@ function LiveBoard({ snapshot, pools, playersById }: { snapshot: Par3Snapshot; p
   const featured = (live.length ? live : scheduled).slice(0, 6);
   const ctpContestants = getPar3CtpContestants(snapshot);
   const ctpWinner = getPar3CtpWinner(snapshot);
+  const ctpPosition = getPar3CtpPoolPosition(snapshot.event.poolCount);
+  const ctpPlaces = getPar3CtpQualifierCount(snapshot.event.poolCount);
   return (
     <section className="par3-broadcast-live-board">
       <div><span className="par3-broadcast-section-kicker">{live.length ? "On course now" : "Next fixtures"}</span><div className="par3-broadcast-live-grid">{featured.map((match) => <MatchCard key={match.id} match={match} playersById={playersById} />)}</div></div>
-      <aside><Target /><span>CTP field</span><strong>{ctpWinner?.name ?? `${ctpContestants.length || pools.length} players`}</strong><p>{ctpWinner ? "Final bracket spot secured" : "Pool fourth-place finishers play Pebble Beach 7"}</p></aside>
+      <aside><Target /><span>CTP field</span><strong>{ctpWinner?.name ?? `${ctpContestants.length || pools.length} players`}</strong><p>{ctpWinner ? "Top CTP qualifier" : `${ordinal(ctpPosition)}-place players compete for ${ctpPlaces} bracket spots`}</p></aside>
+    </section>
+  );
+}
+
+function SimulatorBoard({
+  snapshot,
+  playersById,
+}: {
+  snapshot: Par3Snapshot;
+  playersById: PlayerMap;
+}) {
+  const queues = getPar3SimulatorQueues(snapshot);
+
+  return (
+    <section className="par3-broadcast-simulators">
+      {queues.map((queue) => (
+        <article key={queue.simulatorNumber}>
+          <header>
+            <span>Simulator</span>
+            <strong>{queue.simulatorNumber}</strong>
+          </header>
+          <BroadcastSimulatorCall
+            label="Now playing"
+            match={queue.current}
+            playersById={playersById}
+            current
+          />
+          <BroadcastSimulatorCall
+            label="Up next"
+            match={queue.upNext}
+            playersById={playersById}
+          />
+          <footer>
+            <MonitorPlay />
+            {queue.queued.length > 1
+              ? `${queue.queued.length - 1} further fixtures queued`
+              : "No further fixtures queued"}
+          </footer>
+        </article>
+      ))}
+    </section>
+  );
+}
+
+function BroadcastSimulatorCall({
+  label,
+  match,
+  playersById,
+  current = false,
+}: {
+  label: string;
+  match: Par3PoolMatch | null;
+  playersById: PlayerMap;
+  current?: boolean;
+}) {
+  const stage = match
+    ? PAR3_POOL_STAGES[getPoolMatchRound(match.matchNumber) - 1]
+    : null;
+
+  return (
+    <div className={`par3-broadcast-simulator-call${current ? " is-current" : ""}`}>
+      <span>{label}</span>
+      {match ? (
+        <>
+          <p>{playersById.get(match.player1Id)?.name ?? "TBD"}</p>
+          <i>vs</i>
+          <p>{playersById.get(match.player2Id)?.name ?? "TBD"}</p>
+          <small>
+            Pool {String.fromCharCode(64 + match.poolNumber)} / {stage?.shortCourse}
+          </small>
+        </>
+      ) : (
+        <strong>Awaiting allocation</strong>
+      )}
+    </div>
+  );
+}
+
+function ChampionshipStage({
+  snapshot,
+  mode,
+}: {
+  snapshot: Par3Snapshot;
+  mode: "thumbnail" | "starting";
+}) {
+  const activePlayers = snapshot.players.filter(
+    (player) => !player.isWithdrawn
+  ).length;
+  const remaining = Math.max(0, snapshot.event.maxPlayers - activePlayers);
+
+  return (
+    <section className={`par3-championship-stage is-${mode}`}>
+      <div className="par3-stage-shine" aria-hidden="true" />
+      <div className="par3-stage-brand">
+        <div className="par3-stage-logo">
+          <b aria-hidden="true">II</b>
+          <Image
+            src="/par3/par3-logo.png"
+            alt="CGS Par 3"
+            width={330}
+            height={330}
+            priority
+          />
+        </div>
+        <span>CGS Par 3</span>
+        <h1>Championship <i>II</i></h1>
+        <p>{mode === "starting" ? "Starting soon" : "Live championship coverage"}</p>
+      </div>
+      <div className="par3-stage-details">
+        <span><CalendarDays /> Saturday 7 November</span>
+        <span><Clock3 /> 5:00pm start</span>
+        <span><MapPin /> The Tee Lounge</span>
+      </div>
+      <div className="par3-stage-format">
+        <strong>24 players</strong><i />
+        <strong>6 pools</strong><i />
+        <strong>1 champion</strong>
+      </div>
+      {mode === "starting" ? (
+        <div className="par3-stage-live-cue"><Radio /> The stream will begin shortly</div>
+      ) : (
+        <div className="par3-stage-live-cue">
+          <Radio /> {remaining === 0 ? "Field locked" : `${remaining} places remaining`}
+        </div>
+      )}
+      <TeeLoungeMark />
+    </section>
+  );
+}
+
+function SponsorBoard() {
+  return (
+    <section className="par3-broadcast-sponsors">
+      <div>
+        <span>Championship II is proudly hosted by</span>
+        <Image
+          src="/scoreboard/tee-lounge-logo.png"
+          alt="The Tee Lounge"
+          width={520}
+          height={260}
+        />
+        <p>Premium golf simulators / Underwood</p>
+      </div>
+      <i aria-hidden="true">+</i>
+      <div>
+        <span>Presented live by</span>
+        <Image
+          src="/cgs-logo.png"
+          alt="Crossodog Golf Society"
+          width={360}
+          height={360}
+        />
+        <p>Good players. Great company.</p>
+      </div>
+    </section>
+  );
+}
+
+function WinnerBoard({ champion }: { champion: string | null }) {
+  return (
+    <section className="par3-broadcast-winner">
+      <Trophy />
+      <span>CGS Par 3 Championship II</span>
+      <h2>{champion ?? "Champion to be crowned"}</h2>
+      <p>{champion ? "2026 champion" : "The road to the title starts Saturday 7 November"}</p>
+      <div><strong>One field.</strong><strong>One final.</strong><strong>One champion.</strong></div>
     </section>
   );
 }
 
 function BroadcastFooter({ snapshot, slide, total }: { snapshot: Par3Snapshot; slide?: number; total?: number }) {
-  return <footer className="par3-broadcast-footer"><span><i className={snapshot.event.isLive ? "is-live" : ""} /> {snapshot.event.statusLabel}</span><strong>Small course. Big banter.</strong>{typeof slide === "number" && total ? <div>{Array.from({ length: total }, (_, index) => <i key={index} className={index === slide ? "is-active" : ""} />)}</div> : <span>crossodoggolf.com</span>}</footer>;
+  return <footer className="par3-broadcast-footer"><span><i className={snapshot.event.isLive ? "is-live" : ""} /> {snapshot.event.statusLabel}</span><strong>Small course. Bigger competition.</strong>{typeof slide === "number" && total ? <div>{Array.from({ length: total }, (_, index) => <i key={index} className={index === slide ? "is-active" : ""} />)}</div> : <span>crossodoggolf.com</span>}</footer>;
 }
 
 export default function Par3StreamAsset({ initialSnapshot, view }: AssetProps) {
@@ -432,31 +638,39 @@ export default function Par3StreamAsset({ initialSnapshot, view }: AssetProps) {
     return () => window.clearInterval(interval);
   }, [view]);
 
+  if (view === "thumbnail" || view === "starting") {
+    return <ChampionshipStage snapshot={snapshot} mode={view} />;
+  }
+
   if (view === "banner") {
     const live = sortPoolMatchesByPlayOrder(snapshot.poolMatches.filter((match) => match.status === "live"));
     const scheduled = sortPoolMatchesByPlayOrder(snapshot.poolMatches.filter((match) => match.status === "scheduled"));
-    return <section className="par3-broadcast-banner"><div className="par3-broadcast-banner-brand"><Image src="/par3/par3-logo.png" alt="CGS Par 3" width={112} height={112} priority /><div><span>CGS Championship</span><strong>Par 3 Live</strong></div></div><div className="par3-broadcast-banner-fixtures">{(live.length ? live : scheduled).slice(0, 3).map((match) => <MatchCard key={match.id} match={match} playersById={playersById} compact />)}</div><div className="par3-broadcast-banner-end"><TeeLoungeMark /><span><i className={snapshot.event.isLive ? "is-live" : ""} /> {snapshot.event.statusLabel}</span></div></section>;
+    return <section className="par3-broadcast-banner"><div className="par3-broadcast-banner-brand"><div className="par3-broadcast-logo-v2"><i aria-hidden="true">II</i><Image src="/par3/par3-logo.png" alt="CGS Par 3" width={112} height={112} priority /></div><div><span>CGS Championship II</span><strong>Par 3 Live</strong></div></div><div className="par3-broadcast-banner-fixtures">{(live.length ? live : scheduled).slice(0, 3).map((match) => <MatchCard key={match.id} match={match} playersById={playersById} compact />)}</div><div className="par3-broadcast-banner-end"><TeeLoungeMark /><span><i className={snapshot.event.isLive ? "is-live" : ""} /> {snapshot.event.statusLabel}</span></div></section>;
   }
 
   if (view === "portrait") {
-    const slides = ["live", ...pools.map((pool) => `pool-${pool.number}`), "ctp", "bracket"];
+    const slides = ["up-next", "live", ...pools.map((pool) => `pool-${pool.number}`), "ctp", "bracket", "sponsors"];
     const normalized = slideIndex % slides.length;
     const active = slides[normalized];
     const activePool = active.startsWith("pool-") ? pools.find((pool) => `pool-${pool.number}` === active) : null;
     const ctpContestants = getPar3CtpContestants(snapshot);
-    return <section className="par3-broadcast-portrait"><BroadcastHeader eyebrow="CGS live" title="Par 3 Championship" detail={snapshot.event.statusLabel} /><div className="par3-broadcast-portrait-body" key={active}>{active === "live" ? <LiveBoard snapshot={snapshot} pools={pools} playersById={playersById} /> : null}{activePool ? <StandingsBoard pools={[activePool]} /> : null}{active === "ctp" ? <section className="par3-broadcast-portrait-ctp"><Target /><span>Closest to pin</span><h2>Pebble Beach 7</h2>{ctpContestants.map((standing) => <p key={standing.player.id}><strong>{standing.player.name}</strong><small>Pool {String.fromCharCode(64 + (standing.player.poolNumber ?? 1))}</small></p>)}</section> : null}{active === "bracket" ? <section className="par3-broadcast-portrait-final"><Trophy /><span>Road to the title</span><h2>{champion ?? "16 enter. One remains."}</h2><p>Round of 16 · Quarter Finals · Semi Finals · Grand Final</p></section> : null}</div><BroadcastFooter snapshot={snapshot} slide={normalized} total={slides.length} /></section>;
+    return <section className="par3-broadcast-portrait"><BroadcastHeader eyebrow="CGS live" title="Par 3 Championship II" detail={snapshot.event.statusLabel} /><div className="par3-broadcast-portrait-body" key={active}>{active === "up-next" ? <SimulatorBoard snapshot={snapshot} playersById={playersById} /> : null}{active === "live" ? <LiveBoard snapshot={snapshot} pools={pools} playersById={playersById} /> : null}{activePool ? <StandingsBoard pools={[activePool]} poolCount={snapshot.event.poolCount} /> : null}{active === "ctp" ? <section className="par3-broadcast-portrait-ctp"><Target /><span>Closest to pin</span><h2>Pebble Beach 7</h2>{ctpContestants.map((standing) => <p key={standing.player.id}><strong>{standing.player.name}</strong><small>Pool {String.fromCharCode(64 + (standing.player.poolNumber ?? 1))}{standing.player.ctpDistanceCm !== null ? ` / ${formatDistance(standing.player.ctpDistanceCm)}` : ""}</small></p>)}</section> : null}{active === "bracket" ? <section className="par3-broadcast-portrait-final"><Trophy /><span>Road to the title</span><h2>{champion ?? "16 enter. One remains."}</h2><p>Round of 16 · Quarter Finals · Semi Finals · Grand Final</p></section> : null}{active === "sponsors" ? <SponsorBoard /> : null}</div><BroadcastFooter snapshot={snapshot} slide={normalized} total={slides.length} /></section>;
   }
 
   const activeTvSlide = TV_SLIDES[slideIndex % TV_SLIDES.length];
   const resolvedView = view === "tv" ? activeTvSlide : view;
   const titles: Record<string, [string, string, string]> = {
     live: ["Tournament centre", "Live fixtures", "Current matches and the road to qualification"],
-    standings: ["Pool stage", "Table positions", "Top three qualify · fourth heads to the CTP playoff"],
-    fixtures: ["Pool draw", "Every fixture", "Three rounds · five pools · thirty matches"],
+    "up-next": ["Simulator desk", "Up next", "Now playing and the next call for every simulator"],
+    standings: ["Pool stage", "Table positions", "Top two qualify · third heads to the CTP playoff"],
+    pools: ["Pool stage", "Current standings", "Six pools · four players · two automatic qualifiers"],
+    fixtures: ["Pool draw", "Every fixture", "Three rounds · six pools · thirty-six matches"],
     results: ["Match centre", "Latest results", "Winners, completed fixtures, and what comes next"],
     bracket: ["Road to the title", "Finals bracket", "Sixteen players · single elimination · one champion"],
     finals: ["Knockout stage", "Finals live centre", "Playing now · previous results · upcoming fixtures"],
     road: ["Course draw", "Eight stages", "A new virtual course test in every round"],
+    sponsors: ["Championship partners", "Proudly presented by", "The Tee Lounge and Crossodog Golf Society"],
+    winner: ["Championship II", "Winner", "One field · one final · one champion"],
   };
   const [eyebrow, title, detail] = titles[resolvedView] ?? titles.live;
 
@@ -466,14 +680,32 @@ export default function Par3StreamAsset({ initialSnapshot, view }: AssetProps) {
       <BroadcastHeader eyebrow={eyebrow} title={title} detail={detail} />
       <main className="par3-broadcast-body" key={resolvedView}>
         {resolvedView === "live" ? <LiveBoard snapshot={snapshot} pools={pools} playersById={playersById} /> : null}
-        {resolvedView === "standings" ? <StandingsBoard pools={pools} /> : null}
+        {resolvedView === "up-next" ? <SimulatorBoard snapshot={snapshot} playersById={playersById} /> : null}
+        {resolvedView === "standings" || resolvedView === "pools" ? <StandingsBoard pools={pools} poolCount={snapshot.event.poolCount} /> : null}
         {resolvedView === "fixtures" ? <FixturesBoard snapshot={snapshot} playersById={playersById} /> : null}
         {resolvedView === "results" ? <ResultsBoard snapshot={snapshot} playersById={playersById} /> : null}
         {resolvedView === "bracket" ? <BracketBoard snapshot={snapshot} pools={pools} /> : null}
         {resolvedView === "finals" ? <FinalsCentreBoard snapshot={snapshot} pools={pools} /> : null}
         {resolvedView === "road" ? <CourseRoadBoard /> : null}
+        {resolvedView === "sponsors" ? <SponsorBoard /> : null}
+        {resolvedView === "winner" ? <WinnerBoard champion={champion} /> : null}
       </main>
       <BroadcastFooter snapshot={snapshot} slide={view === "tv" ? slideIndex % TV_SLIDES.length : undefined} total={view === "tv" ? TV_SLIDES.length : undefined} />
     </section>
   );
+}
+
+function ordinal(position: number) {
+  if (position === 1) return "1st";
+  if (position === 2) return "2nd";
+  if (position === 3) return "3rd";
+  return `${position}th`;
+}
+
+function formatDistance(distanceCm: number) {
+  if (distanceCm < 100) {
+    return `${distanceCm}cm`;
+  }
+
+  return `${(distanceCm / 100).toFixed(2)}m`;
 }

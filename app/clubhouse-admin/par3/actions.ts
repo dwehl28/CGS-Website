@@ -14,6 +14,7 @@ import {
   startPar3KnockoutMatch,
   updatePar3PoolCount,
   updatePar3EventSettings,
+  updatePar3CtpDistance,
   updatePar3CtpQualifiers,
   updatePar3Player,
   updatePar3PoolMatch,
@@ -27,6 +28,7 @@ import type {
 const phases: Par3Phase[] = [
   "registrations",
   "pools",
+  "ctp",
   "knockout",
   "complete",
 ];
@@ -68,6 +70,7 @@ function revalidatePar3() {
   revalidatePath("/");
   revalidatePath("/clubhouse-admin");
   revalidatePath("/clubhouse-admin/par3");
+  revalidatePath("/clubhouse-admin/par3/print");
   revalidatePath("/api/par3-showdown");
   revalidatePath("/stream/par3-showdown");
 }
@@ -216,13 +219,18 @@ export async function updatePar3PoolMatchAction(formData: FormData) {
   const matchId = parseNumber(formData.get("match_id"));
   const winnerId = parseOptionalNumber(formData.get("winner_id"));
   const bayNumber = parseOptionalNumber(formData.get("bay_number"));
+  const requestedStatus = normalizeString(formData.get("match_status"), 20);
+  const matchStatus =
+    requestedStatus === "scheduled" || requestedStatus === "live"
+      ? requestedStatus
+      : null;
 
   if (!matchId) {
     redirect(noticeUrl("result-failed", "pool-play"));
   }
 
   try {
-    await updatePar3PoolMatch(matchId, winnerId, bayNumber);
+    await updatePar3PoolMatch(matchId, winnerId, bayNumber, matchStatus);
   } catch (error) {
     console.error("Update Par 3 pool match error:", error);
     redirect(noticeUrl("result-failed", "pool-play"));
@@ -230,6 +238,27 @@ export async function updatePar3PoolMatchAction(formData: FormData) {
 
   revalidatePar3();
   redirect(noticeUrl("result-saved", `match-${matchId}`));
+}
+
+export async function updatePar3CtpDistanceAction(formData: FormData) {
+  await requireAdminAuthenticated();
+  const eventId = parseNumber(formData.get("event_id"));
+  const playerId = parseNumber(formData.get("player_id"));
+  const distanceCm = parseOptionalNumber(formData.get("distance_cm"));
+
+  if (!eventId || !playerId) {
+    redirect(noticeUrl("ctp-distance-failed", "ctp-playoff"));
+  }
+
+  try {
+    await updatePar3CtpDistance(eventId, playerId, distanceCm);
+  } catch (error) {
+    console.error("Update Par 3 CTP distance error:", error);
+    redirect(noticeUrl("ctp-distance-failed", "ctp-playoff"));
+  }
+
+  revalidatePar3();
+  redirect(noticeUrl("ctp-distance-saved", "ctp-playoff"));
 }
 
 export async function generatePar3KnockoutAction(formData: FormData) {

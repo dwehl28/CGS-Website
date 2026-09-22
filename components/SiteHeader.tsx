@@ -2,17 +2,15 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ExternalLink, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useState } from "react";
 
 const eventLinks = [
+  { href: "/#register", label: "Register" },
   { href: "/#live", label: "Live" },
   { href: "/#watch", label: "Watch" },
   { href: "/#format", label: "Format" },
-  { href: "/#cgs", label: "About CGS" },
 ];
-
-const shopUrl = "https://crossodoggolfs-shop.bigcartel.com";
 
 export default function SiteHeader() {
   const [isOpen, setIsOpen] = useState(false);
@@ -20,9 +18,9 @@ export default function SiteHeader() {
   return (
     <header className="par3-site-header">
       <div className="par3-header-alert">
-        <span>CGS event of the year</span>
-        <strong>Saturday 12 September</strong>
-        <span>Live at The Tee Lounge</span>
+        <span>CGS Par 3 Championship II</span>
+        <strong>Saturday 7 November</strong>
+        <span>24 places / The Tee Lounge</span>
       </div>
       <div className="par3-header-inner">
         <Link href="/" className="par3-header-brand" onClick={() => setIsOpen(false)}>
@@ -34,8 +32,8 @@ export default function SiteHeader() {
             priority
           />
           <span>
-            <strong>CGS Par 3 Championship</strong>
-            <small>12 September 2026</small>
+            <strong>CGS Par 3 Championship II</strong>
+            <small>7 November 2026</small>
           </span>
         </Link>
 
@@ -47,14 +45,9 @@ export default function SiteHeader() {
           ))}
         </nav>
 
-        <a
-          href={shopUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="par3-header-entry"
-        >
-          CGS shop <ExternalLink />
-        </a>
+        <Link href="/#register" className="par3-header-entry">
+          Enter now
+        </Link>
 
         <button
           type="button"
@@ -74,14 +67,9 @@ export default function SiteHeader() {
               {link.label}
             </Link>
           ))}
-          <a
-            href={shopUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => setIsOpen(false)}
-          >
-            CGS shop <ExternalLink />
-          </a>
+          <Link href="/about" onClick={() => setIsOpen(false)}>
+            About CGS
+          </Link>
         </nav>
       ) : null}
     </header>

@@ -20,11 +20,17 @@ export default async function Par3StreamPage({ searchParams }: PageProps) {
   const supportedViews: Par3StreamView[] = [
     "banner",
     "portrait",
+    "thumbnail",
+    "starting",
+    "pools",
     "fixtures",
     "results",
     "standings",
+    "up-next",
     "bracket",
     "finals",
+    "sponsors",
+    "winner",
     "road",
     "tv",
   ];
