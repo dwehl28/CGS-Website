@@ -133,7 +133,7 @@ export default async function ClubhouseAdminPage() {
         <div className="panel rounded-[2rem] p-8">
           <h2 className="text-3xl">Quick access</h2>
           <p className="mt-3 text-sm leading-7 text-zinc-400">
-            The three key admin lanes are inbox, noticeboard, and live scoring.
+            Jump straight into event operations, social graphics, inbox, and live scoring.
           </p>
 
           <div className="mt-6 grid gap-4">
@@ -151,6 +151,11 @@ export default async function ClubhouseAdminPage() {
               href="/clubhouse-admin/scoreboard"
               label="Open scoreboard admin"
               detail="Create boards, add player rows, and run live competition scoring."
+            />
+            <AdminQuickLink
+              href="/clubhouse-admin/scorecards"
+              label="Create an Instagram scorecard"
+              detail="Enter an 18-hole team result and download a finished CGS graphic."
             />
             <AdminQuickLink
               href="/clubhouse-admin/round-stats"

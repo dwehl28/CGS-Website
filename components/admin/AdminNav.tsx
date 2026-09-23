@@ -8,6 +8,7 @@ const adminLinks = [
   { href: "/clubhouse-admin/par3", label: "Par 3" },
   { href: "/clubhouse-admin/inbox", label: "Inbox" },
   { href: "/clubhouse-admin/scoreboard", label: "Scoreboards" },
+  { href: "/clubhouse-admin/scorecards", label: "Scorecards" },
   { href: "/clubhouse-admin/round-stats", label: "Round Stats" },
   { href: "/clubhouse-admin/ambrose", label: "Ambrose App" },
   { href: "/clubhouse-admin/brackets", label: "Double Elim" },
