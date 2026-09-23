@@ -3,6 +3,25 @@
 import { useEffect, useRef, useState } from "react";
 
 type DistanceUnit = "m" | "yd";
+type ScorecardPattern =
+  | "slashes"
+  | "rings"
+  | "waves"
+  | "burst"
+  | "grid"
+  | "chevrons";
+
+type ScorecardDesign = {
+  name: string;
+  tagline: string;
+  primary: string;
+  secondary: string;
+  backgroundStart: string;
+  backgroundMiddle: string;
+  backgroundEnd: string;
+  pattern: ScorecardPattern;
+  logoSide: "left" | "right";
+};
 
 type ScorecardHole = {
   distance: string;
@@ -14,9 +33,12 @@ type ScorecardDraft = {
   teamName: string;
   courseName: string;
   handicap: string;
+  grossScore: string;
+  netScore: string;
   roundDate: string;
   roundLabel: string;
   distanceUnit: DistanceUnit;
+  designIndex: number;
   holes: ScorecardHole[];
 };
 
@@ -28,6 +50,94 @@ type Notice = {
 const CANVAS_WIDTH = 1080;
 const CANVAS_HEIGHT = 1350;
 const DRAFT_STORAGE_KEY = "cgs-scorecard-studio-draft-v1";
+const SCORECARD_DESIGNS: ScorecardDesign[] = [
+  {
+    name: "Sky Strike",
+    tagline: "Fast lines. Big finish.",
+    primary: "#65d7ff",
+    secondary: "#ffbe18",
+    backgroundStart: "#082c46",
+    backgroundMiddle: "#020b13",
+    backgroundEnd: "#0a1d2b",
+    pattern: "slashes",
+    logoSide: "left",
+  },
+  {
+    name: "Gold Rush",
+    tagline: "Built for the podium.",
+    primary: "#ffca3a",
+    secondary: "#41ccff",
+    backgroundStart: "#352409",
+    backgroundMiddle: "#080c12",
+    backgroundEnd: "#102839",
+    pattern: "rings",
+    logoSide: "right",
+  },
+  {
+    name: "Coastal Split",
+    tagline: "Fresh air. Low numbers.",
+    primary: "#52e2ff",
+    secondary: "#d99b6c",
+    backgroundStart: "#07364a",
+    backgroundMiddle: "#04131d",
+    backgroundEnd: "#29190e",
+    pattern: "waves",
+    logoSide: "left",
+  },
+  {
+    name: "Night Flight",
+    tagline: "After dark. All attack.",
+    primary: "#2fbfff",
+    secondary: "#ff9148",
+    backgroundStart: "#071523",
+    backgroundMiddle: "#02060b",
+    backgroundEnd: "#28130b",
+    pattern: "grid",
+    logoSide: "right",
+  },
+  {
+    name: "Trophy Gold",
+    tagline: "Championship energy.",
+    primary: "#ffbe18",
+    secondary: "#6ae0ff",
+    backgroundStart: "#3a2505",
+    backgroundMiddle: "#071019",
+    backgroundEnd: "#082a40",
+    pattern: "burst",
+    logoSide: "left",
+  },
+  {
+    name: "Clubhouse Clash",
+    tagline: "Different team. Same fight.",
+    primary: "#70e4ff",
+    secondary: "#ffb01f",
+    backgroundStart: "#12324a",
+    backgroundMiddle: "#030b12",
+    backgroundEnd: "#312006",
+    pattern: "chevrons",
+    logoSide: "right",
+  },
+];
+
+function hashString(value: string) {
+  return [...value].reduce(
+    (hash, character) => (hash * 31 + character.charCodeAt(0)) >>> 0,
+    0
+  );
+}
+
+function getTeamDesignIndex(teamName: string) {
+  return teamName.trim()
+    ? hashString(teamName.trim().toLowerCase()) % SCORECARD_DESIGNS.length
+    : 0;
+}
+
+function getDesign(index: number) {
+  return SCORECARD_DESIGNS[
+    ((index % SCORECARD_DESIGNS.length) + SCORECARD_DESIGNS.length) %
+      SCORECARD_DESIGNS.length
+  ];
+}
 
 function createBlankHoles(): ScorecardHole[] {
   return Array.from({ length: 18 }, () => ({
@@ -42,9 +152,12 @@ function createBlankDraft(): ScorecardDraft {
     teamName: "",
     courseName: "",
     handicap: "",
+    grossScore: "",
+    netScore: "",
     roundDate: "",
     roundLabel: "",
     distanceUnit: "m",
+    designIndex: 0,
     holes: createBlankHoles(),
   };
 }
@@ -62,11 +175,21 @@ function restoreDraft(rawValue: string): ScorecardDraft | null {
       courseName:
         typeof parsed.courseName === "string" ? parsed.courseName : "",
       handicap: typeof parsed.handicap === "string" ? parsed.handicap : "",
+      grossScore:
+        typeof parsed.grossScore === "string" ? parsed.grossScore : "",
+      netScore: typeof parsed.netScore === "string" ? parsed.netScore : "",
       roundDate:
         typeof parsed.roundDate === "string" ? parsed.roundDate : "",
       roundLabel:
         typeof parsed.roundLabel === "string" ? parsed.roundLabel : "",
       distanceUnit: parsed.distanceUnit === "yd" ? "yd" : "m",
+      designIndex:
+        typeof parsed.designIndex === "number" &&
+        Number.isFinite(parsed.designIndex)
+          ? parsed.designIndex
+          : getTeamDesignIndex(
+              typeof parsed.teamName === "string" ? parsed.teamName : ""
+            ),
       holes: parsed.holes.map((hole) => ({
         distance: typeof hole?.distance === "string" ? hole.distance : "",
         par: typeof hole?.par === "string" ? hole.par : "",
@@ -222,24 +345,141 @@ function drawFittedText(
   context.fillText(text, x, y);
 }
 
-function drawDecorativeStreaks(context: CanvasRenderingContext2D) {
+function withAlpha(hexColor: string, alpha: number) {
+  const normalized = hexColor.replace("#", "");
+  const red = Number.parseInt(normalized.slice(0, 2), 16);
+  const green = Number.parseInt(normalized.slice(2, 4), 16);
+  const blue = Number.parseInt(normalized.slice(4, 6), 16);
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
+function getTeamInitials(teamName: string) {
+  const words = teamName
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter((word) => !["team", "the"].includes(word.toLowerCase()));
+
+  if (words.length === 0) {
+    return "CGS";
+  }
+
+  return words
+    .slice(0, 3)
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase();
+}
+
+function drawTeamPattern(
+  context: CanvasRenderingContext2D,
+  design: ScorecardDesign,
+  teamName: string
+) {
+  const teamHash = hashString(teamName || design.name);
+  const horizontalShift = teamHash % 120;
   context.save();
-  context.globalAlpha = 0.24;
   context.lineCap = "round";
 
-  for (let index = 0; index < 9; index += 1) {
-    context.strokeStyle = index % 2 === 0 ? "#33cfff" : "#ffbe18";
-    context.lineWidth = index % 3 === 0 ? 8 : 3;
-    context.beginPath();
-    context.moveTo(-90 + index * 22, 330 + index * 24);
-    context.lineTo(250 + index * 24, 110 + index * 19);
-    context.stroke();
+  if (design.pattern === "slashes") {
+    context.globalAlpha = 0.25;
+    for (let index = 0; index < 10; index += 1) {
+      context.strokeStyle = index % 2 === 0 ? design.primary : design.secondary;
+      context.lineWidth = index % 3 === 0 ? 8 : 3;
+      context.beginPath();
+      context.moveTo(-90 + index * 22 + horizontalShift, 350 + index * 24);
+      context.lineTo(250 + index * 24 + horizontalShift, 110 + index * 19);
+      context.stroke();
 
-    context.beginPath();
-    context.moveTo(850 + index * 24, 1260 - index * 21);
-    context.lineTo(1160 + index * 18, 1040 - index * 17);
-    context.stroke();
+      context.beginPath();
+      context.moveTo(820 + index * 24 - horizontalShift, 1280 - index * 21);
+      context.lineTo(1160 + index * 18 - horizontalShift, 1040 - index * 17);
+      context.stroke();
+    }
   }
+
+  if (design.pattern === "rings") {
+    context.globalAlpha = 0.22;
+    for (let ringIndex = 0, radius = 90; radius < 590; ringIndex += 1, radius += 72) {
+      context.strokeStyle = ringIndex % 2 === 0 ? design.primary : design.secondary;
+      context.lineWidth = ringIndex % 2 === 0 ? 8 : 3;
+      context.beginPath();
+      context.arc(1050 - horizontalShift / 2, 180, radius, 0, Math.PI * 2);
+      context.stroke();
+    }
+  }
+
+  if (design.pattern === "waves") {
+    context.globalAlpha = 0.24;
+    for (let index = 0; index < 9; index += 1) {
+      const waveY = 170 + index * 135;
+      context.strokeStyle = index % 2 === 0 ? design.primary : design.secondary;
+      context.lineWidth = index % 3 === 0 ? 7 : 3;
+      context.beginPath();
+      context.moveTo(-80, waveY);
+      context.bezierCurveTo(
+        210 + horizontalShift,
+        waveY - 120,
+        610 - horizontalShift,
+        waveY + 120,
+        1160,
+        waveY - 10
+      );
+      context.stroke();
+    }
+  }
+
+  if (design.pattern === "burst") {
+    context.globalAlpha = 0.2;
+    const originX = 910 - horizontalShift;
+    const originY = 1160;
+    for (let index = 0; index < 30; index += 1) {
+      const angle = (Math.PI * 2 * index) / 30;
+      const length = index % 2 === 0 ? 920 : 680;
+      context.strokeStyle = index % 3 === 0 ? design.primary : design.secondary;
+      context.lineWidth = index % 4 === 0 ? 7 : 2;
+      context.beginPath();
+      context.moveTo(originX, originY);
+      context.lineTo(
+        originX + Math.cos(angle) * length,
+        originY + Math.sin(angle) * length
+      );
+      context.stroke();
+    }
+  }
+
+  if (design.pattern === "grid") {
+    context.globalAlpha = 0.18;
+    context.lineWidth = 2;
+    for (let offset = -900; offset < 1500; offset += 74) {
+      context.strokeStyle = offset % 148 === 0 ? design.secondary : design.primary;
+      context.beginPath();
+      context.moveTo(offset + horizontalShift, 0);
+      context.lineTo(offset + 660 + horizontalShift, CANVAS_HEIGHT);
+      context.stroke();
+    }
+  }
+
+  if (design.pattern === "chevrons") {
+    context.globalAlpha = 0.2;
+    for (let index = 0; index < 8; index += 1) {
+      const inset = index * 58;
+      context.strokeStyle = index % 2 === 0 ? design.primary : design.secondary;
+      context.lineWidth = index % 2 === 0 ? 8 : 3;
+      context.beginPath();
+      context.moveTo(-160 + inset + horizontalShift, 190);
+      context.lineTo(330 + inset + horizontalShift, 675);
+      context.lineTo(-160 + inset + horizontalShift, 1160);
+      context.stroke();
+    }
+  }
+
+  context.globalAlpha = 0.045;
+  context.fillStyle = design.primary;
+  context.font = '900 520px "Arial Black", "Aptos Display", sans-serif';
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(getTeamInitials(teamName), 540, 742);
 
   context.restore();
 }
@@ -251,6 +491,7 @@ function getHoleTotal(holes: ScorecardHole[], key: keyof ScorecardHole) {
 function drawNineTable(
   context: CanvasRenderingContext2D,
   draft: ScorecardDraft,
+  design: ScorecardDesign,
   startHole: number,
   y: number,
   label: string,
@@ -267,7 +508,7 @@ function drawNineTable(
   const bodyY = y + titleHeight;
   const totalHeight = rowHeights.reduce((total, value) => total + value, 0);
 
-  context.fillStyle = "#69dcff";
+  context.fillStyle = design.primary;
   context.font = '900 20px "Arial Black", "Aptos Display", sans-serif';
   context.textAlign = "left";
   context.textBaseline = "middle";
@@ -280,7 +521,16 @@ function drawNineTable(
   context.letterSpacing = "0px";
 
   fillRoundedRect(context, x, bodyY, width, totalHeight, 16, "rgba(3, 13, 23, 0.88)");
-  strokeRoundedRect(context, x, bodyY, width, totalHeight, 16, "rgba(101, 215, 255, 0.5)", 2);
+  strokeRoundedRect(
+    context,
+    x,
+    bodyY,
+    width,
+    totalHeight,
+    16,
+    withAlpha(design.primary, 0.5),
+    2
+  );
 
   let rowY = bodyY;
 
@@ -288,10 +538,10 @@ function drawNineTable(
     const rowHeight = rowHeights[rowIndex];
 
     if (rowIndex === 0) {
-      context.fillStyle = "rgba(101, 215, 255, 0.17)";
+      context.fillStyle = withAlpha(design.primary, 0.17);
       context.fillRect(x, rowY, width, rowHeight);
     } else if (rowIndex === 3) {
-      context.fillStyle = "rgba(255, 190, 24, 0.11)";
+      context.fillStyle = withAlpha(design.secondary, 0.11);
       context.fillRect(x, rowY, width, rowHeight);
     } else if (rowIndex % 2 === 0) {
       context.fillStyle = "rgba(255,255,255,0.025)";
@@ -305,7 +555,8 @@ function drawNineTable(
     context.lineTo(x + width, rowY + rowHeight);
     context.stroke();
 
-    context.fillStyle = rowIndex === 3 ? "#ffca3a" : "rgba(255,255,255,0.66)";
+    context.fillStyle =
+      rowIndex === 3 ? design.secondary : "rgba(255,255,255,0.66)";
     context.font = `900 ${rowIndex === 3 ? 17 : 14}px "Aptos", "Bahnschrift", sans-serif`;
     context.textAlign = "left";
     context.fillText(rowLabel, x + 18, rowY + rowHeight / 2 + 1);
@@ -340,7 +591,10 @@ function drawNineTable(
       const isTotal = columnIndex === 9;
 
       if (isTotal) {
-        context.fillStyle = rowIndex === 3 ? "rgba(255,190,24,0.24)" : "rgba(255,190,24,0.12)";
+        context.fillStyle = withAlpha(
+          design.secondary,
+          rowIndex === 3 ? 0.24 : 0.12
+        );
         context.fillRect(cellX, rowY, columnWidth, rowHeight);
       }
 
@@ -351,7 +605,7 @@ function drawNineTable(
       context.stroke();
 
       context.fillStyle = isTotal
-        ? "#ffca3a"
+        ? design.secondary
         : rowIndex === 3 && value !== "-"
           ? "#ffffff"
           : "rgba(255,255,255,0.88)";
@@ -371,11 +625,18 @@ function drawMetricCard(
   width: number,
   label: string,
   value: string,
+  design: ScorecardDesign,
   highlighted = false
 ) {
   const gradient = context.createLinearGradient(x, y, x, y + 142);
-  gradient.addColorStop(0, highlighted ? "#ffca3a" : "rgba(16, 42, 62, 0.98)");
-  gradient.addColorStop(1, highlighted ? "#ffad0a" : "rgba(5, 22, 36, 0.98)");
+  gradient.addColorStop(
+    0,
+    highlighted ? design.secondary : withAlpha(design.primary, 0.22)
+  );
+  gradient.addColorStop(
+    1,
+    highlighted ? design.primary : "rgba(5, 22, 36, 0.98)"
+  );
   fillRoundedRect(context, x, y, width, 142, 18, gradient);
   strokeRoundedRect(
     context,
@@ -384,7 +645,7 @@ function drawMetricCard(
     width,
     142,
     18,
-    highlighted ? "rgba(255,255,255,0.52)" : "rgba(101,215,255,0.42)",
+    highlighted ? "rgba(255,255,255,0.52)" : withAlpha(design.primary, 0.48),
     2
   );
 
@@ -410,30 +671,32 @@ function drawScorecard(
     return;
   }
 
+  const design = getDesign(draft.designIndex);
+
   canvas.width = CANVAS_WIDTH;
   canvas.height = CANVAS_HEIGHT;
   context.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
   const background = context.createLinearGradient(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-  background.addColorStop(0, "#061a2a");
-  background.addColorStop(0.48, "#020b13");
-  background.addColorStop(1, "#071b28");
+  background.addColorStop(0, design.backgroundStart);
+  background.addColorStop(0.48, design.backgroundMiddle);
+  background.addColorStop(1, design.backgroundEnd);
   context.fillStyle = background;
   context.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
   const cyanGlow = context.createRadialGradient(90, 180, 20, 90, 180, 520);
-  cyanGlow.addColorStop(0, "rgba(42, 198, 255, 0.34)");
-  cyanGlow.addColorStop(1, "rgba(42, 198, 255, 0)");
+  cyanGlow.addColorStop(0, withAlpha(design.primary, 0.34));
+  cyanGlow.addColorStop(1, withAlpha(design.primary, 0));
   context.fillStyle = cyanGlow;
   context.fillRect(0, 0, 620, 720);
 
   const goldGlow = context.createRadialGradient(1030, 1180, 30, 1030, 1180, 470);
-  goldGlow.addColorStop(0, "rgba(255, 190, 24, 0.26)");
-  goldGlow.addColorStop(1, "rgba(255, 190, 24, 0)");
+  goldGlow.addColorStop(0, withAlpha(design.secondary, 0.28));
+  goldGlow.addColorStop(1, withAlpha(design.secondary, 0));
   context.fillStyle = goldGlow;
   context.fillRect(500, 760, 580, 590);
 
-  drawDecorativeStreaks(context);
+  drawTeamPattern(context, design, draft.teamName);
 
   context.save();
   context.globalAlpha = 0.08;
@@ -447,44 +710,67 @@ function drawScorecard(
   }
   context.restore();
 
-  strokeRoundedRect(context, 28, 28, CANVAS_WIDTH - 56, CANVAS_HEIGHT - 56, 30, "rgba(101,215,255,0.5)", 3);
-  strokeRoundedRect(context, 39, 39, CANVAS_WIDTH - 78, CANVAS_HEIGHT - 78, 25, "rgba(255,190,24,0.24)", 2);
+  strokeRoundedRect(
+    context,
+    28,
+    28,
+    CANVAS_WIDTH - 56,
+    CANVAS_HEIGHT - 56,
+    30,
+    withAlpha(design.primary, 0.58),
+    3
+  );
+  strokeRoundedRect(
+    context,
+    39,
+    39,
+    CANVAS_WIDTH - 78,
+    CANVAS_HEIGHT - 78,
+    25,
+    withAlpha(design.secondary, 0.3),
+    2
+  );
+
+  const logoOnRight = design.logoSide === "right";
+  const logoX = logoOnRight ? 828 : 64;
+  const textX = logoOnRight ? 64 : 282;
+  const metaX = logoOnRight ? 64 : 284;
 
   if (logo?.complete) {
-    context.drawImage(logo, 64, 58, 188, 188);
+    context.drawImage(logo, logoX, 58, 188, 188);
   } else {
-    fillRoundedRect(context, 64, 58, 188, 188, 28, "rgba(255,255,255,0.08)");
-    context.fillStyle = "#65d7ff";
+    fillRoundedRect(context, logoX, 58, 188, 188, 28, "rgba(255,255,255,0.08)");
+    context.fillStyle = design.primary;
     context.font = '900 52px "Arial Black", sans-serif';
     context.textAlign = "center";
     context.textBaseline = "middle";
-    context.fillText("CGS", 158, 152);
+    context.fillText("CGS", logoX + 94, 152);
   }
 
-  context.fillStyle = "#ffbe18";
+  context.fillStyle = design.secondary;
   context.font = '900 17px "Aptos", "Bahnschrift", sans-serif';
   context.textAlign = "left";
   context.textBaseline = "alphabetic";
   context.letterSpacing = "4px";
-  context.fillText("OFFICIAL TEAM SCORECARD", 286, 83);
+  context.fillText("OFFICIAL TEAM SCORECARD", textX + 4, 83);
   context.letterSpacing = "0px";
 
   context.fillStyle = "#ffffff";
   drawFittedText(
     context,
     (draft.teamName || "TEAM NAME").toUpperCase(),
-    282,
+    textX,
     151,
     724,
     58,
     33
   );
 
-  context.fillStyle = "#65d7ff";
+  context.fillStyle = design.primary;
   drawFittedText(
     context,
     (draft.courseName || "COURSE NAME").toUpperCase(),
-    284,
+    textX + 2,
     199,
     720,
     31,
@@ -495,33 +781,54 @@ function drawScorecard(
 
   const roundLabel = (draft.roundLabel || "ROUND / COMPETITION").toUpperCase();
   const dateLabel = formatRoundDate(draft.roundDate);
-  fillRoundedRect(context, 284, 219, 342, 38, 19, "rgba(101,215,255,0.14)");
-  fillRoundedRect(context, 638, 219, 244, 38, 19, "rgba(255,190,24,0.14)");
+  fillRoundedRect(
+    context,
+    metaX,
+    219,
+    logoOnRight ? 330 : 342,
+    38,
+    19,
+    withAlpha(design.primary, 0.14)
+  );
+  const dateX = metaX + (logoOnRight ? 342 : 354);
+  fillRoundedRect(
+    context,
+    dateX,
+    219,
+    logoOnRight ? 230 : 244,
+    38,
+    19,
+    withAlpha(design.secondary, 0.14)
+  );
   context.font = '850 14px "Aptos", "Bahnschrift", sans-serif';
   context.textBaseline = "middle";
   context.fillStyle = "rgba(255,255,255,0.84)";
   context.textAlign = "left";
-  context.fillText(roundLabel.slice(0, 34), 302, 238);
-  context.fillStyle = "#ffca3a";
-  context.fillText(dateLabel, 658, 238);
+  context.fillText(roundLabel.slice(0, 34), metaX + 18, 238);
+  context.fillStyle = design.secondary;
+  context.fillText(dateLabel, dateX + 20, 238);
 
-  fillRoundedRect(context, 894, 219, 112, 38, 19, "#65d7ff");
+  const holesX = dateX + (logoOnRight ? 242 : 256);
+  fillRoundedRect(context, holesX, 219, 112, 38, 19, design.primary);
   context.fillStyle = "#04111d";
   context.textAlign = "center";
   context.font = '900 14px "Aptos", "Bahnschrift", sans-serif';
-  context.fillText("18 HOLES", 950, 238);
+  context.fillText("18 HOLES", holesX + 56, 238);
 
   context.fillStyle = "rgba(255,255,255,0.12)";
   context.fillRect(54, 285, 972, 1);
 
-  drawNineTable(context, draft, 0, 308, "FRONT NINE", "OUT");
-  drawNineTable(context, draft, 9, 596, "BACK NINE", "IN");
+  drawNineTable(context, draft, design, 0, 308, "FRONT NINE", "OUT");
+  drawNineTable(context, draft, design, 9, 596, "BACK NINE", "IN");
 
   const totalDistance = getHoleTotal(draft.holes, "distance");
   const totalPar = getHoleTotal(draft.holes, "par");
-  const grossScore = getHoleTotal(draft.holes, "score");
+  const cardGrossScore = getHoleTotal(draft.holes, "score");
+  const grossScore = toNumber(draft.grossScore) ?? cardGrossScore;
   const handicap = toNumber(draft.handicap);
-  const netScore = grossScore !== null && handicap !== null ? grossScore - handicap : null;
+  const calculatedNetScore =
+    grossScore !== null && handicap !== null ? grossScore - handicap : null;
+  const netScore = toNumber(draft.netScore) ?? calculatedNetScore;
   const toPar = netScore !== null && totalPar !== null ? netScore - totalPar : null;
 
   context.textAlign = "center";
@@ -554,20 +861,21 @@ function drawScorecard(
       cardWidth,
       label,
       value,
+      design,
       index === 4
     );
   });
 
   const resultGradient = context.createLinearGradient(54, 1108, 1026, 1224);
-  resultGradient.addColorStop(0, "rgba(37, 190, 239, 0.95)");
-  resultGradient.addColorStop(0.58, "rgba(22, 128, 171, 0.95)");
-  resultGradient.addColorStop(1, "rgba(255, 190, 24, 0.92)");
+  resultGradient.addColorStop(0, withAlpha(design.primary, 0.98));
+  resultGradient.addColorStop(0.58, withAlpha(design.primary, 0.72));
+  resultGradient.addColorStop(1, withAlpha(design.secondary, 0.96));
   fillRoundedRect(context, 54, 1111, 972, 118, 22, resultGradient);
 
   context.fillStyle = "rgba(3,17,29,0.7)";
   context.font = '900 15px "Aptos", "Bahnschrift", sans-serif';
   context.textAlign = "left";
-  context.fillText("FINAL TEAM RESULT", 82, 1146);
+  context.fillText(`FINAL TEAM RESULT / ${design.name.toUpperCase()}`, 82, 1146);
 
   context.fillStyle = "#ffffff";
   drawFittedText(
@@ -585,13 +893,13 @@ function drawScorecard(
   context.textAlign = "left";
   context.font = '900 14px "Aptos", "Bahnschrift", sans-serif';
   context.fillText("CROSSODOG GOLF SOCIETY", 60, 1284);
-  context.fillStyle = "#65d7ff";
+  context.fillStyle = design.primary;
   context.textAlign = "right";
   context.fillText("CROSSODOGGOLF.COM", 1020, 1284);
 
-  context.fillStyle = "#ffbe18";
+  context.fillStyle = design.secondary;
   context.fillRect(60, 1304, 242, 5);
-  context.fillStyle = "#65d7ff";
+  context.fillStyle = design.primary;
   context.fillRect(312, 1304, 708, 5);
 }
 
@@ -714,10 +1022,18 @@ export default function ScorecardStudio() {
     key: Key,
     value: ScorecardDraft[Key]
   ) {
-    setDraft((currentDraft) => ({
-      ...currentDraft,
-      [key]: value,
-    }));
+    setDraft((currentDraft) => {
+      const nextDraft = {
+        ...currentDraft,
+        [key]: value,
+      };
+
+      if (key === "teamName" && typeof value === "string") {
+        nextDraft.designIndex = getTeamDesignIndex(value);
+      }
+
+      return nextDraft;
+    });
     setNotice(null);
   }
 
@@ -739,6 +1055,21 @@ export default function ScorecardStudio() {
       message: "The scorecard is blank and ready for a new team.",
     });
     window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+  }
+
+  function shuffleDesign() {
+    const nextDesignIndex =
+      (draft.designIndex + 1) % SCORECARD_DESIGNS.length;
+    const nextDesign = getDesign(nextDesignIndex);
+
+    setDraft((currentDraft) => ({
+      ...currentDraft,
+      designIndex: nextDesignIndex,
+    }));
+    setNotice({
+      tone: "info",
+      message: `${nextDesign.name} is now in the preview.`,
+    });
   }
 
   async function generateScorecard() {
@@ -764,6 +1095,10 @@ export default function ScorecardStudio() {
     setNotice({ tone: "info", message: "Preparing the full-size Instagram card..." });
 
     try {
+      const exportedDesign = getDesign(draft.designIndex);
+      const nextDesignIndex =
+        (draft.designIndex + 1) % SCORECARD_DESIGNS.length;
+      const nextDesign = getDesign(nextDesignIndex);
       await document.fonts.ready;
       drawScorecard(canvas, draft, logo);
       const blob = await canvasToBlob(canvas);
@@ -771,16 +1106,21 @@ export default function ScorecardStudio() {
       const link = document.createElement("a");
       const teamSlug = slugify(draft.teamName) || "team";
       const courseSlug = slugify(draft.courseName) || "course";
+      const designSlug = slugify(exportedDesign.name);
       link.href = objectUrl;
-      link.download = `cgs-scorecard-${teamSlug}-${courseSlug}.png`;
+      link.download = `cgs-scorecard-${teamSlug}-${courseSlug}-${designSlug}.png`;
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
       setShowValidation(false);
+      setDraft((currentDraft) => ({
+        ...currentDraft,
+        designIndex: nextDesignIndex,
+      }));
       setNotice({
         tone: "success",
-        message: "Scorecard generated at 1080 x 1350 and downloaded as a PNG.",
+        message: `${exportedDesign.name} downloaded at 1080 x 1350. The preview has rotated to ${nextDesign.name} for the next export.`,
       });
     } catch {
       setNotice({
@@ -799,9 +1139,13 @@ export default function ScorecardStudio() {
     score: getHoleTotal(draft.holes, "score"),
   };
   const handicap = toNumber(draft.handicap);
+  const gross = toNumber(draft.grossScore) ?? totals.score;
+  const calculatedNet =
+    gross !== null && handicap !== null ? gross - handicap : null;
   const net =
-    totals.score !== null && handicap !== null ? totals.score - handicap : null;
+    toNumber(draft.netScore) ?? calculatedNet;
   const toPar = net !== null && totals.par !== null ? net - totals.par : null;
+  const currentDesign = getDesign(draft.designIndex);
   const noticeClasses = {
     info: "border-sky-300/20 bg-sky-300/8 text-sky-100",
     success: "border-emerald-300/20 bg-emerald-300/8 text-emerald-100",
@@ -820,8 +1164,8 @@ export default function ScorecardStudio() {
                 </p>
                 <h2 className="mt-2 text-3xl text-white">Set up the round</h2>
                 <p className="mt-2 max-w-2xl text-sm leading-7 text-zinc-300">
-                  Start with the team and course, then enter each hole below. The
-                  finished graphic updates live on the right.
+                  Start with the team and course, add official totals if needed,
+                  then enter each hole below. The graphic updates live on the right.
                 </p>
               </div>
               <span className="w-fit rounded-full border border-[var(--gold)]/30 bg-[var(--gold)]/10 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-[var(--gold)]">
@@ -920,6 +1264,42 @@ export default function ScorecardStudio() {
                 <option value="yd">Yards</option>
               </select>
             </div>
+
+            <div>
+              <label className="field-label" htmlFor="scorecard-gross-score">
+                Gross score
+              </label>
+              <input
+                id="scorecard-gross-score"
+                type="number"
+                step="0.1"
+                className="field-control"
+                value={draft.grossScore}
+                onChange={(event) => updateField("grossScore", event.target.value)}
+                placeholder={`Auto from holes: ${formatNumber(totals.score, 0)}`}
+              />
+              <p className="field-hint">
+                Optional. Leave blank to use the total of all 18 hole scores.
+              </p>
+            </div>
+
+            <div>
+              <label className="field-label" htmlFor="scorecard-net-score">
+                Net score
+              </label>
+              <input
+                id="scorecard-net-score"
+                type="number"
+                step="0.1"
+                className="field-control"
+                value={draft.netScore}
+                onChange={(event) => updateField("netScore", event.target.value)}
+                placeholder={`Auto after handicap: ${formatNumber(calculatedNet)}`}
+              />
+              <p className="field-hint">
+                Optional. Enter the official net result if it differs from the calculation.
+              </p>
+            </div>
           </div>
         </section>
 
@@ -940,7 +1320,7 @@ export default function ScorecardStudio() {
                 Par {formatNumber(totals.par, 0)}
               </span>
               <span className="rounded-full bg-white/6 px-3 py-2 text-zinc-300">
-                Gross {formatNumber(totals.score, 0)}
+                Gross {formatNumber(gross, 0)}
               </span>
               <span className="rounded-full bg-[var(--gold)]/12 px-3 py-2 text-[var(--gold)]">
                 Net {formatNumber(net)} / {formatRelative(toPar)}
@@ -1017,7 +1397,7 @@ export default function ScorecardStudio() {
             ))}
           </div>
 
-          <div className="mt-5 grid gap-3 rounded-[1.4rem] border border-white/8 bg-white/4 px-5 py-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-5 grid gap-3 rounded-[1.4rem] border border-white/8 bg-white/4 px-5 py-4 sm:grid-cols-2 lg:grid-cols-5">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Distance</p>
               <p className="mt-1 text-lg font-black text-white">
@@ -1027,6 +1407,10 @@ export default function ScorecardStudio() {
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Total par</p>
               <p className="mt-1 text-lg font-black text-white">{formatNumber(totals.par, 0)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Gross score</p>
+              <p className="mt-1 text-lg font-black text-white">{formatNumber(gross)}</p>
             </div>
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Net score</p>
@@ -1064,6 +1448,32 @@ export default function ScorecardStudio() {
             </span>
           </div>
 
+          <div className="mt-5 rounded-[1.2rem] border border-white/8 bg-black/12 px-4 py-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">
+                  Current team look
+                </p>
+                <p className="mt-1 text-lg font-black text-white">
+                  {currentDesign.name}
+                </p>
+                <p className="mt-1 text-xs text-zinc-400">
+                  {currentDesign.tagline}
+                </p>
+              </div>
+              <div className="flex gap-2" aria-hidden="true">
+                <span
+                  className="h-8 w-8 rounded-full border-2 border-white/70"
+                  style={{ backgroundColor: currentDesign.primary }}
+                />
+                <span
+                  className="h-8 w-8 rounded-full border-2 border-white/70"
+                  style={{ backgroundColor: currentDesign.secondary }}
+                />
+              </div>
+            </div>
+          </div>
+
           {notice ? (
             <div
               className={`mt-5 rounded-[1.1rem] border px-4 py-3 text-sm leading-6 ${noticeClasses[notice.tone]}`}
@@ -1084,7 +1494,17 @@ export default function ScorecardStudio() {
             onClick={generateScorecard}
             disabled={isGenerating}
           >
-            {isGenerating ? "Generating full-size PNG..." : "Generate scorecard PNG"}
+            {isGenerating
+              ? "Generating full-size PNG..."
+              : `Generate ${currentDesign.name} PNG`}
+          </button>
+          <button
+            type="button"
+            className="btn-secondary mt-3 w-full justify-center"
+            onClick={shuffleDesign}
+            disabled={isGenerating}
+          >
+            Shuffle design preview
           </button>
           <button
             type="button"
@@ -1095,8 +1515,9 @@ export default function ScorecardStudio() {
           </button>
 
           <p className="mt-4 text-xs leading-6 text-zinc-500">
-            The PNG uses the exact preview shown above and is sized for a portrait
-            Instagram feed post.
+            Each successful export advances to a different CGS team design. The PNG
+            uses the exact preview shown above and is sized for a portrait Instagram
+            feed post.
           </p>
         </section>
       </aside>
