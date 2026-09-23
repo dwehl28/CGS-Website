@@ -29,6 +29,12 @@ type ScorecardHole = {
   score: string;
 };
 
+type HandicapAllocation = {
+  playingHandicap: number | null;
+  strokes: Array<number | null>;
+  netScores: Array<number | null>;
+};
+
 type ScorecardDraft = {
   teamName: string;
   courseName: string;
@@ -218,6 +224,68 @@ function sumValues(values: string[]): number | null {
   }
 
   return numbers.reduce((total, value) => total + value, 0);
+}
+
+function sumNumbers(values: Array<number | null>): number | null {
+  const numbers = values.filter((value): value is number => value !== null);
+
+  if (numbers.length === 0) {
+    return null;
+  }
+
+  return numbers.reduce((total, value) => total + value, 0);
+}
+
+function getHandicapAllocation(
+  holes: ScorecardHole[],
+  handicapValue: string
+): HandicapAllocation {
+  const handicap = toNumber(handicapValue);
+  const playingHandicap =
+    handicap === null ? null : Math.max(0, Math.round(handicap));
+
+  if (playingHandicap === null) {
+    return {
+      playingHandicap: null,
+      strokes: holes.map(() => null),
+      netScores: holes.map(() => null),
+    };
+  }
+
+  const difficultyOrder = holes
+    .map((hole, index) => ({
+      index,
+      par: toNumber(hole.par) ?? 0,
+      distance: toNumber(hole.distance) ?? 0,
+    }))
+    .sort((left, right) => {
+      if (right.par !== left.par) {
+        return right.par - left.par;
+      }
+
+      if (right.distance !== left.distance) {
+        return right.distance - left.distance;
+      }
+
+      return left.index - right.index;
+    });
+
+  const baseStrokes = Math.floor(playingHandicap / holes.length);
+  const extraStrokes = playingHandicap % holes.length;
+  const strokes = holes.map(() => baseStrokes);
+
+  difficultyOrder.slice(0, extraStrokes).forEach(({ index }) => {
+    strokes[index] += 1;
+  });
+
+  return {
+    playingHandicap,
+    strokes,
+    netScores: holes.map((hole, index) => {
+      const grossScore = toNumber(hole.score);
+      return grossScore === null ? null : grossScore - strokes[index];
+    }),
+  };
 }
 
 function formatNumber(value: number | null, fractionDigits = 1): string {
@@ -488,6 +556,42 @@ function getHoleTotal(holes: ScorecardHole[], key: keyof ScorecardHole) {
   return sumValues(holes.map((hole) => hole[key]));
 }
 
+function drawScoreMarker(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  score: number,
+  par: number,
+  design: ScorecardDesign
+) {
+  const scoreToPar = score - par;
+
+  if (scoreToPar === 0) {
+    return;
+  }
+
+  context.save();
+  context.lineWidth = 2.5;
+  context.strokeStyle =
+    scoreToPar < 0 ? withAlpha(design.primary, 0.9) : withAlpha(design.secondary, 0.9);
+
+  if (scoreToPar < 0) {
+    const rings = scoreToPar <= -2 ? [18, 23] : [20];
+    rings.forEach((radius) => {
+      context.beginPath();
+      context.arc(x, y, radius, 0, Math.PI * 2);
+      context.stroke();
+    });
+  } else {
+    const sizes = scoreToPar >= 2 ? [36, 46] : [40];
+    sizes.forEach((size) => {
+      context.strokeRect(x - size / 2, y - size / 2, size, size);
+    });
+  }
+
+  context.restore();
+}
+
 function drawNineTable(
   context: CanvasRenderingContext2D,
   draft: ScorecardDraft,
@@ -501,10 +605,18 @@ function drawNineTable(
   const width = 972;
   const labelWidth = 132;
   const columnWidth = (width - labelWidth) / 10;
-  const titleHeight = 44;
-  const rowHeights = [50, 54, 58, 68];
-  const rows = ["HOLE", draft.distanceUnit === "m" ? "METRES" : "YARDS", "PAR", "SCORE"];
+  const titleHeight = 40;
+  const rowHeights = [42, 42, 42, 56, 56];
+  const rows = [
+    "HOLE",
+    draft.distanceUnit === "m" ? "METRES" : "YARDS",
+    "PAR",
+    "GROSS",
+    "NET",
+  ];
   const holes = draft.holes.slice(startHole, startHole + 9);
+  const allocation = getHandicapAllocation(draft.holes, draft.handicap);
+  const netScores = allocation.netScores.slice(startHole, startHole + 9);
   const bodyY = y + titleHeight;
   const totalHeight = rowHeights.reduce((total, value) => total + value, 0);
 
@@ -543,6 +655,9 @@ function drawNineTable(
     } else if (rowIndex === 3) {
       context.fillStyle = withAlpha(design.secondary, 0.11);
       context.fillRect(x, rowY, width, rowHeight);
+    } else if (rowIndex === 4) {
+      context.fillStyle = withAlpha(design.primary, 0.13);
+      context.fillRect(x, rowY, width, rowHeight);
     } else if (rowIndex % 2 === 0) {
       context.fillStyle = "rgba(255,255,255,0.025)";
       context.fillRect(x, rowY, width, rowHeight);
@@ -556,8 +671,12 @@ function drawNineTable(
     context.stroke();
 
     context.fillStyle =
-      rowIndex === 3 ? design.secondary : "rgba(255,255,255,0.66)";
-    context.font = `900 ${rowIndex === 3 ? 17 : 14}px "Aptos", "Bahnschrift", sans-serif`;
+      rowIndex === 3
+        ? design.secondary
+        : rowIndex === 4
+          ? design.primary
+          : "rgba(255,255,255,0.66)";
+    context.font = `900 ${rowIndex >= 3 ? 16 : 14}px "Aptos", "Bahnschrift", sans-serif`;
     context.textAlign = "left";
     context.fillText(rowLabel, x + 18, rowY + rowHeight / 2 + 1);
 
@@ -574,7 +693,11 @@ function drawNineTable(
         return hole.par || "-";
       }
 
-      return hole.score || "-";
+      if (rowIndex === 3) {
+        return hole.score || "-";
+      }
+
+      return formatNumber(netScores[index], 0).replace("--", "-");
     });
 
     const total =
@@ -584,7 +707,9 @@ function drawNineTable(
           ? formatNumber(getHoleTotal(holes, "distance"), 0)
           : rowIndex === 2
             ? formatNumber(getHoleTotal(holes, "par"), 0)
-            : formatNumber(getHoleTotal(holes, "score"), 0);
+            : rowIndex === 3
+              ? formatNumber(getHoleTotal(holes, "score"), 0)
+              : formatNumber(sumNumbers(netScores), 0);
 
     [...values, total].forEach((value, columnIndex) => {
       const cellX = x + labelWidth + columnIndex * columnWidth;
@@ -593,7 +718,7 @@ function drawNineTable(
       if (isTotal) {
         context.fillStyle = withAlpha(
           design.secondary,
-          rowIndex === 3 ? 0.24 : 0.12
+          rowIndex >= 3 ? 0.24 : 0.12
         );
         context.fillRect(cellX, rowY, columnWidth, rowHeight);
       }
@@ -606,11 +731,28 @@ function drawNineTable(
 
       context.fillStyle = isTotal
         ? design.secondary
-        : rowIndex === 3 && value !== "-"
+        : rowIndex >= 3 && value !== "-"
           ? "#ffffff"
           : "rgba(255,255,255,0.88)";
-      context.font = `900 ${rowIndex === 3 ? 24 : 18}px "Aptos Display", "Bahnschrift", sans-serif`;
+      context.font = `900 ${rowIndex >= 3 ? 21 : 17}px "Aptos Display", "Bahnschrift", sans-serif`;
       context.textAlign = "center";
+
+      if (rowIndex === 3 && !isTotal) {
+        const score = toNumber(holes[columnIndex]?.score ?? "");
+        const par = toNumber(holes[columnIndex]?.par ?? "");
+
+        if (score !== null && par !== null) {
+          drawScoreMarker(
+            context,
+            cellX + columnWidth / 2,
+            rowY + rowHeight / 2,
+            score,
+            par,
+            design
+          );
+        }
+      }
+
       context.fillText(value, cellX + columnWidth / 2, rowY + rowHeight / 2 + 1);
     });
 
@@ -825,21 +967,31 @@ function drawScorecard(
   const totalPar = getHoleTotal(draft.holes, "par");
   const cardGrossScore = getHoleTotal(draft.holes, "score");
   const grossScore = toNumber(draft.grossScore) ?? cardGrossScore;
-  const handicap = toNumber(draft.handicap);
+  const handicapAllocation = getHandicapAllocation(draft.holes, draft.handicap);
+  const playingHandicap = handicapAllocation.playingHandicap;
   const calculatedNetScore =
-    grossScore !== null && handicap !== null ? grossScore - handicap : null;
+    grossScore !== null && playingHandicap !== null
+      ? grossScore - playingHandicap
+      : null;
   const netScore = toNumber(draft.netScore) ?? calculatedNetScore;
   const toPar = netScore !== null && totalPar !== null ? netScore - totalPar : null;
 
-  context.textAlign = "center";
+  context.textAlign = "left";
   context.textBaseline = "middle";
   context.fillStyle = "rgba(255,255,255,0.66)";
-  context.font = '850 15px "Aptos", "Bahnschrift", sans-serif';
+  context.font = '850 13px "Aptos", "Bahnschrift", sans-serif';
   const distanceLabel =
     totalDistance === null
       ? "TOTAL DISTANCE --"
       : `TOTAL DISTANCE ${formatNumber(totalDistance, 0)} ${draft.distanceUnit.toUpperCase()}`;
-  context.fillText(`${distanceLabel}  /  18 HOLES`, CANVAS_WIDTH / 2, 904);
+  context.fillText(`${distanceLabel}  /  18 HOLES`, 54, 904);
+  context.fillStyle = design.primary;
+  context.textAlign = "right";
+  context.fillText(
+    `NET STROKES / PAR 5S RANKED FIRST / PLAYING H'CAP ${formatNumber(playingHandicap, 0)}`,
+    1026,
+    904
+  );
 
   const cardX = 54;
   const cardGap = 12;
@@ -848,7 +1000,7 @@ function drawScorecard(
   const metrics = [
     ["TOTAL PAR", formatNumber(totalPar, 0)],
     ["GROSS", formatNumber(grossScore, 0)],
-    ["H'CAP", formatNumber(handicap)],
+    ["PLAY H'CAP", formatNumber(playingHandicap, 0)],
     ["NET", formatNumber(netScore)],
     ["TO PAR", formatRelative(toPar)],
   ] as const;
@@ -1138,10 +1290,13 @@ export default function ScorecardStudio() {
     par: getHoleTotal(draft.holes, "par"),
     score: getHoleTotal(draft.holes, "score"),
   };
-  const handicap = toNumber(draft.handicap);
+  const handicapAllocation = getHandicapAllocation(draft.holes, draft.handicap);
+  const playingHandicap = handicapAllocation.playingHandicap;
   const gross = toNumber(draft.grossScore) ?? totals.score;
   const calculatedNet =
-    gross !== null && handicap !== null ? gross - handicap : null;
+    gross !== null && playingHandicap !== null
+      ? gross - playingHandicap
+      : null;
   const net =
     toNumber(draft.netScore) ?? calculatedNet;
   const toPar = net !== null && totals.par !== null ? net - totals.par : null;
@@ -1240,12 +1395,17 @@ export default function ScorecardStudio() {
                 id="scorecard-handicap"
                 type="number"
                 step="0.1"
+                min="0"
                 className="field-control"
                 value={draft.handicap}
                 onChange={(event) => updateField("handicap", event.target.value)}
                 placeholder="e.g. 6.4"
                 aria-invalid={showValidation && !draft.handicap.trim()}
               />
+              <p className="field-hint">
+                Rounded to a playing handicap of {formatNumber(playingHandicap, 0)} for
+                hole-by-hole stroke allocation.
+              </p>
             </div>
 
             <div>
@@ -1297,7 +1457,8 @@ export default function ScorecardStudio() {
                 placeholder={`Auto after handicap: ${formatNumber(calculatedNet)}`}
               />
               <p className="field-hint">
-                Optional. Enter the official net result if it differs from the calculation.
+                Optional. Enter the official net result if it differs from the rounded
+                playing-handicap calculation.
               </p>
             </div>
           </div>
@@ -1328,6 +1489,20 @@ export default function ScorecardStudio() {
             </div>
           </div>
 
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            <div className="rounded-[1.2rem] border border-[var(--sky)]/20 bg-[var(--sky)]/7 px-4 py-3 text-sm leading-6 text-sky-100">
+              <span className="font-black text-white">Net strokes:</span>{" "}
+              {playingHandicap === null
+                ? "enter a handicap to calculate each hole."
+                : `${playingHandicap} shot${playingHandicap === 1 ? "" : "s"} allocated with par 5s first, then longer par 4s and par 3s.`}
+            </div>
+            <div className="rounded-[1.2rem] border border-[var(--gold)]/20 bg-[var(--gold)]/7 px-4 py-3 text-sm leading-6 text-amber-100">
+              <span className="font-black text-white">Gross score key:</span>{" "}
+              circle birdie, double circle eagle or better, square bogey, double
+              square double bogey or worse.
+            </div>
+          </div>
+
           <div className="mt-7 grid gap-5 lg:grid-cols-2">
             {[0, 9].map((startHole) => (
               <div
@@ -1344,7 +1519,7 @@ export default function ScorecardStudio() {
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[430px] border-collapse">
+                  <table className="w-full min-w-[570px] border-collapse">
                     <thead>
                       <tr className="border-b border-white/8 text-left text-[11px] uppercase tracking-[0.14em] text-zinc-500">
                         <th className="px-4 py-3">Hole</th>
@@ -1353,11 +1528,15 @@ export default function ScorecardStudio() {
                         </th>
                         <th className="px-2 py-3">Par</th>
                         <th className="px-2 py-3">Score</th>
+                        <th className="px-2 py-3">Shots</th>
+                        <th className="px-3 py-3">Net</th>
                       </tr>
                     </thead>
                     <tbody>
                       {draft.holes.slice(startHole, startHole + 9).map((hole, index) => {
                         const holeIndex = startHole + index;
+                        const holeStrokes = handicapAllocation.strokes[holeIndex];
+                        const holeNet = handicapAllocation.netScores[holeIndex];
                         return (
                           <tr
                             key={holeIndex}
@@ -1387,6 +1566,17 @@ export default function ScorecardStudio() {
                                 />
                               </td>
                             ))}
+                            <td className="px-2 py-2.5 text-center">
+                              <span
+                                className="inline-flex min-w-9 justify-center rounded-full border border-[var(--sky)]/20 bg-[var(--sky)]/8 px-2 py-2 text-sm font-black text-[var(--sky)]"
+                                title="Calculated handicap strokes received on this hole"
+                              >
+                                {holeStrokes ?? "-"}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2.5 text-center text-base font-black text-[var(--gold)]">
+                              {formatNumber(holeNet, 0)}
+                            </td>
                           </tr>
                         );
                       })}
@@ -1397,7 +1587,7 @@ export default function ScorecardStudio() {
             ))}
           </div>
 
-          <div className="mt-5 grid gap-3 rounded-[1.4rem] border border-white/8 bg-white/4 px-5 py-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="mt-5 grid gap-3 rounded-[1.4rem] border border-white/8 bg-white/4 px-5 py-4 sm:grid-cols-2 lg:grid-cols-6">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Distance</p>
               <p className="mt-1 text-lg font-black text-white">
@@ -1407,6 +1597,10 @@ export default function ScorecardStudio() {
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Total par</p>
               <p className="mt-1 text-lg font-black text-white">{formatNumber(totals.par, 0)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Playing handicap</p>
+              <p className="mt-1 text-lg font-black text-[var(--sky)]">{formatNumber(playingHandicap, 0)}</p>
             </div>
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Gross score</p>

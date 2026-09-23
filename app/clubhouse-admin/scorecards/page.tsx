@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   ...buildMetadata({
     title: "CGS Scorecard Studio",
     description:
-      "Private CGS admin tool for creating rotating branded team scorecards for social media.",
+      "Private CGS admin tool for creating branded team scorecards with hole-by-hole net results and scoring marks.",
     path: "/clubhouse-admin/scorecards",
   }),
   robots: {
@@ -60,7 +60,7 @@ export default async function ScorecardStudioPage() {
     <AdminShell
       eyebrow="Social graphics"
       title="CGS Scorecard Studio"
-      description="Build a complete 18-hole team scorecard, enter official gross and net results, and rotate through colourful team-specific Instagram designs without leaving the admin area."
+      description="Build a complete 18-hole team scorecard with gross and net results, automatic handicap strokes, professional scoring marks, and rotating Instagram designs."
       actions={
         <>
           <Link href="/clubhouse-admin" className="btn-secondary">
