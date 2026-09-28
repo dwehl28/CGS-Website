@@ -5,7 +5,7 @@ import { logoutAdminAction } from "@/app/clubhouse-admin/actions";
 import AdminShell, {
   AdminAccessState,
 } from "@/components/admin/AdminShell";
-import ScorecardStudio from "@/components/admin/ScorecardStudio";
+import FantasyPointsStudio from "@/components/admin/FantasyPointsStudio";
 import ClubhouseAdminLogin from "@/components/ClubhouseAdminLogin";
 import {
   hasAdminSecretConfigured,
@@ -15,10 +15,10 @@ import { buildMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = {
   ...buildMetadata({
-    title: "CGS Scorecard Studio",
+    title: "CGS Fantasy Points Studio",
     description:
-      "Private CGS admin tool for creating branded team scorecards with hole-by-hole net results and scoring marks.",
-    path: "/clubhouse-admin/scorecards",
+      "Private CGS admin tool for creating branded weekly team fantasy-points graphics.",
+    path: "/clubhouse-admin/fantasy-points",
   }),
   robots: {
     index: false,
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function ScorecardStudioPage() {
+export default async function FantasyPointsStudioPage() {
   const hasSecretConfigured = hasAdminSecretConfigured();
   const isAuthenticated = hasSecretConfigured
     ? await isAdminAuthenticated()
@@ -38,7 +38,7 @@ export default async function ScorecardStudioPage() {
     return (
       <AdminAccessState
         eyebrow="Admin setup needed"
-        title="Scorecard Studio is not ready yet"
+        title="Fantasy Points Studio is not ready yet"
         description="Add CGS_ADMIN_SECRET to the local and hosted environment so this internal route can be used safely."
       />
     );
@@ -48,8 +48,8 @@ export default async function ScorecardStudioPage() {
     return (
       <AdminAccessState
         eyebrow="Private route"
-        title="CGS Scorecard Studio"
-        description="Sign in to enter an 18-hole team result and turn it into a finished CGS graphic for Instagram."
+        title="CGS Fantasy Points Studio"
+        description="Sign in to turn a team's weekly performance into a finished CGS fantasy-points post."
       >
         <ClubhouseAdminLogin />
       </AdminAccessState>
@@ -58,13 +58,13 @@ export default async function ScorecardStudioPage() {
 
   return (
     <AdminShell
-      eyebrow="Social graphics"
-      title="CGS Scorecard Studio"
-      description="Build a complete 18-hole team scorecard with gross and net results, automatic handicap strokes, professional scoring marks, and rotating Instagram designs."
+      eyebrow="Weekly social graphics"
+      title="CGS Fantasy Points Studio"
+      description="Import a completed scorecard, add driving and accuracy stats, then generate a colourful team fantasy-points graphic for Instagram."
       actions={
         <>
-          <Link href="/clubhouse-admin/fantasy-points" className="btn-secondary">
-            Fantasy Points Studio
+          <Link href="/clubhouse-admin/scorecards" className="btn-secondary">
+            Scorecard Studio
           </Link>
           <Link href="/clubhouse-admin" className="btn-secondary">
             Dashboard
@@ -77,7 +77,7 @@ export default async function ScorecardStudioPage() {
         </>
       }
     >
-      <ScorecardStudio />
+      <FantasyPointsStudio />
     </AdminShell>
   );
 }

@@ -158,6 +158,11 @@ export default async function ClubhouseAdminPage() {
               detail="Enter an 18-hole team result and download a finished CGS graphic."
             />
             <AdminQuickLink
+              href="/clubhouse-admin/fantasy-points"
+              label="Create a fantasy-points post"
+              detail="Turn a team's scorecard, driving, and accuracy stats into a weekly Instagram graphic."
+            />
+            <AdminQuickLink
               href="/clubhouse-admin/round-stats"
               label="Open round stats admin"
               detail="Enter hole-by-hole Ambrose stats and review richer team/player displays."

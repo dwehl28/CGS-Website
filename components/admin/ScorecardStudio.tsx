@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { SCORECARD_DRAFT_STORAGE_KEY } from "@/lib/scorecard-storage";
+
 type DistanceUnit = "m" | "yd";
 type ScorecardPattern =
   | "slashes"
@@ -55,7 +57,6 @@ type Notice = {
 
 const CANVAS_WIDTH = 1080;
 const CANVAS_HEIGHT = 1350;
-const DRAFT_STORAGE_KEY = "cgs-scorecard-studio-draft-v1";
 const SCORECARD_DESIGNS: ScorecardDesign[] = [
   {
     name: "Sky Strike",
@@ -1121,7 +1122,7 @@ export default function ScorecardStudio() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const savedDraft = window.localStorage.getItem(DRAFT_STORAGE_KEY);
+    const savedDraft = window.localStorage.getItem(SCORECARD_DRAFT_STORAGE_KEY);
     const restoredDraft = savedDraft ? restoreDraft(savedDraft) : null;
 
     if (restoredDraft) {
@@ -1146,7 +1147,10 @@ export default function ScorecardStudio() {
       return;
     }
 
-    window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+    window.localStorage.setItem(
+      SCORECARD_DRAFT_STORAGE_KEY,
+      JSON.stringify(draft)
+    );
   }, [draft, draftReady]);
 
   useEffect(() => {
@@ -1206,7 +1210,7 @@ export default function ScorecardStudio() {
       tone: "info",
       message: "The scorecard is blank and ready for a new team.",
     });
-    window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+    window.localStorage.removeItem(SCORECARD_DRAFT_STORAGE_KEY);
   }
 
   function shuffleDesign() {
