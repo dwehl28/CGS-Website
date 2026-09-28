@@ -282,6 +282,16 @@ function deriveDraftFromScorecard(
   };
 }
 
+function hasUsableScorecardData(snapshot: ScorecardDraftSnapshot) {
+  return Boolean(
+    snapshot.teamName.trim() ||
+      snapshot.courseName.trim() ||
+      snapshot.holes.some(
+        (hole) => hole.par.trim() || hole.score.trim() || hole.distance.trim()
+      )
+  );
+}
+
 function roundedPath(
   context: CanvasRenderingContext2D,
   x: number,
@@ -966,7 +976,7 @@ export default function FantasyPointsStudio() {
         ? parseScorecardDraftSnapshot(scorecardValue)
         : null;
 
-      if (scorecardDraft) {
+      if (scorecardDraft && hasUsableScorecardData(scorecardDraft)) {
         setDraft((currentDraft) =>
           deriveDraftFromScorecard(scorecardDraft, currentDraft)
         );
@@ -1041,11 +1051,11 @@ export default function FantasyPointsStudio() {
       ? parseScorecardDraftSnapshot(rawValue)
       : null;
 
-    if (!scorecardDraft) {
+    if (!scorecardDraft || !hasUsableScorecardData(scorecardDraft)) {
       setNotice({
         tone: "error",
         message:
-          "No complete Scorecard Studio draft was found in this browser yet.",
+          "No scorecard with team or hole data was found in this browser yet.",
       });
       return;
     }
