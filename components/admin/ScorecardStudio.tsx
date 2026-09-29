@@ -454,17 +454,32 @@ function drawFittedText(
   weight = 900,
   family = '"Arial Black", "Aptos Display", "Bahnschrift", sans-serif'
 ) {
+  const safeText = text.trim();
   let fontSize = startingSize;
 
   while (fontSize > minimumSize) {
     context.font = `${weight} ${fontSize}px ${family}`;
-    if (context.measureText(text).width <= maxWidth) {
+    if (context.measureText(safeText).width <= maxWidth) {
       break;
     }
     fontSize -= 1;
   }
 
-  context.fillText(text, x, y);
+  context.font = `${weight} ${Math.max(fontSize, minimumSize)}px ${family}`;
+
+  let fittedText = safeText;
+  if (context.measureText(fittedText).width > maxWidth) {
+    const suffix = "...";
+    while (
+      fittedText.length > 1 &&
+      context.measureText(`${fittedText}${suffix}`).width > maxWidth
+    ) {
+      fittedText = fittedText.slice(0, -1).trimEnd();
+    }
+    fittedText = `${fittedText}${suffix}`;
+  }
+
+  context.fillText(fittedText, x, y);
 }
 
 function withAlpha(hexColor: string, alpha: number) {
@@ -859,6 +874,42 @@ function drawMetricCard(
   context.fillText(value, x + width / 2, y + 91);
 }
 
+function drawSummaryTile(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  label: string,
+  value: string,
+  design: ScorecardDesign,
+  accent: "primary" | "secondary"
+) {
+  const color = accent === "primary" ? design.primary : design.secondary;
+  const gradient = context.createLinearGradient(x, y, x + width, y + 58);
+  gradient.addColorStop(0, withAlpha(color, 0.2));
+  gradient.addColorStop(1, "rgba(3, 14, 24, 0.9)");
+  fillRoundedRect(context, x, y, width, 58, 16, gradient);
+  strokeRoundedRect(context, x, y, width, 58, 16, withAlpha(color, 0.46), 2);
+
+  context.textAlign = "left";
+  context.textBaseline = "middle";
+  context.fillStyle = "rgba(255,255,255,0.48)";
+  context.font = '900 11px "Aptos", "Bahnschrift", sans-serif';
+  context.fillText(label, x + 16, y + 18);
+  context.fillStyle = color;
+  drawFittedText(
+    context,
+    value,
+    x + 16,
+    y + 41,
+    width - 32,
+    19,
+    14,
+    900,
+    '"Aptos Display", "Bahnschrift", sans-serif'
+  );
+}
+
 function drawScorecard(
   canvas: HTMLCanvasElement,
   draft: ScorecardDraft,
@@ -876,8 +927,12 @@ function drawScorecard(
     activeHoles.length > 0
       ? activeHoles
       : draft.holes.slice(0, 9).map((hole, index) => ({ hole, index }));
-  const firstTableHoles = previewHoles.slice(0, 9);
-  const secondTableHoles = previewHoles.slice(9);
+  const hasSecondTable = previewHoles.length > 9;
+  const firstTableCount = hasSecondTable
+    ? Math.ceil(previewHoles.length / 2)
+    : previewHoles.length;
+  const firstTableHoles = previewHoles.slice(0, firstTableCount);
+  const secondTableHoles = previewHoles.slice(firstTableCount);
   const activeHoleCount = activeHoles.length;
   const activeHoleRows = activeHoles.map(({ hole }) => hole);
   const handicapAllocation = getHandicapAllocation(draft.holes, draft.handicap);
@@ -1013,9 +1068,29 @@ function drawScorecard(
   context.textBaseline = "middle";
   context.fillStyle = "rgba(255,255,255,0.84)";
   context.textAlign = "left";
-  context.fillText(roundLabel.slice(0, 34), metaX + 18, 238);
+  drawFittedText(
+    context,
+    roundLabel,
+    metaX + 18,
+    238,
+    (logoOnRight ? 330 : 342) - 36,
+    14,
+    11,
+    850,
+    '"Aptos", "Bahnschrift", sans-serif'
+  );
   context.fillStyle = design.secondary;
-  context.fillText(dateLabel, dateX + 20, 238);
+  drawFittedText(
+    context,
+    dateLabel,
+    dateX + 20,
+    238,
+    (logoOnRight ? 230 : 244) - 40,
+    14,
+    11,
+    850,
+    '"Aptos", "Bahnschrift", sans-serif'
+  );
 
   const holesX = dateX + (logoOnRight ? 242 : 256);
   fillRoundedRect(context, holesX, 219, 112, 38, 19, design.primary);
@@ -1033,15 +1108,17 @@ function drawScorecard(
   context.fillStyle = "rgba(255,255,255,0.12)";
   context.fillRect(54, 285, 972, 1);
 
-  if (secondTableHoles.length > 0) {
+  if (hasSecondTable) {
     drawHoleTable(
       context,
       draft,
       design,
       firstTableHoles,
       handicapAllocation,
-      308,
-      activeHoleCount === 18 ? "FRONT NINE" : "OPENING NINE",
+      300,
+      activeHoleCount === 18
+        ? "FRONT NINE"
+        : `OPENING ${firstTableHoles.length}`,
       activeHoleCount === 18 ? "OUT" : "SUB"
     );
     drawHoleTable(
@@ -1050,7 +1127,7 @@ function drawScorecard(
       design,
       secondTableHoles,
       handicapAllocation,
-      596,
+      582,
       activeHoleCount === 18
         ? "BACK NINE"
         : `FINAL ${secondTableHoles.length}`,
@@ -1063,7 +1140,7 @@ function drawScorecard(
       design,
       firstTableHoles,
       handicapAllocation,
-      430,
+      344,
       activeHoleCount > 0
         ? `${activeHoleCount}-HOLE SCORECARD`
         : "SCORECARD PREVIEW",
@@ -1083,31 +1160,53 @@ function drawScorecard(
   const netScore = toNumber(draft.netScore) ?? calculatedNetScore;
   const toPar = netScore !== null && totalPar !== null ? netScore - totalPar : null;
 
-  context.textAlign = "left";
-  context.textBaseline = "middle";
-  context.fillStyle = "rgba(255,255,255,0.66)";
-  context.font = '850 13px "Aptos", "Bahnschrift", sans-serif';
   const distanceLabel =
     totalDistance === null
-      ? "TOTAL DISTANCE --"
-      : `TOTAL DISTANCE ${formatNumber(totalDistance, 0)} ${draft.distanceUnit.toUpperCase()}`;
+      ? "--"
+      : `${formatNumber(totalDistance, 0)} ${draft.distanceUnit.toUpperCase()}`;
   const holeCountLabel =
     activeHoleCount === 0
-      ? "NO HOLES SELECTED"
+      ? "PREVIEW"
       : `${activeHoleCount} HOLE${activeHoleCount === 1 ? "" : "S"}`;
-  context.fillText(`${distanceLabel}  /  ${holeCountLabel}`, 54, 904);
-  context.fillStyle = design.primary;
-  context.textAlign = "right";
-  context.fillText(
-    `NET STROKES / PAR 5S RANKED FIRST / PLAYING H'CAP ${formatNumber(playingHandicap, 0)}`,
-    1026,
-    904
+
+  const summaryY = hasSecondTable ? 874 : 654;
+  const summaryGap = 12;
+  const summaryWidth = (972 - summaryGap * 2) / 3;
+  drawSummaryTile(
+    context,
+    54,
+    summaryY,
+    summaryWidth,
+    "ROUND DISTANCE",
+    distanceLabel,
+    design,
+    "primary"
+  );
+  drawSummaryTile(
+    context,
+    54 + summaryWidth + summaryGap,
+    summaryY,
+    summaryWidth,
+    "SCORECARD FORMAT",
+    holeCountLabel,
+    design,
+    "secondary"
+  );
+  drawSummaryTile(
+    context,
+    54 + (summaryWidth + summaryGap) * 2,
+    summaryY,
+    summaryWidth,
+    "PLAYING HANDICAP",
+    `${formatNumber(playingHandicap, 0)} / PAR 5S FIRST`,
+    design,
+    "primary"
   );
 
   const cardX = 54;
   const cardGap = 12;
   const cardWidth = (972 - cardGap * 4) / 5;
-  const cardY = 939;
+  const cardY = hasSecondTable ? 949 : 737;
   const metrics = [
     ["TOTAL PAR", formatNumber(totalPar, 0)],
     ["GROSS", formatNumber(grossScore, 0)],
@@ -1129,28 +1228,65 @@ function drawScorecard(
     );
   });
 
-  const resultGradient = context.createLinearGradient(54, 1108, 1026, 1224);
+  const resultY = hasSecondTable ? 1111 : 930;
+  const resultHeight = hasSecondTable ? 118 : 230;
+  const resultGradient = context.createLinearGradient(
+    54,
+    resultY,
+    1026,
+    resultY + resultHeight
+  );
   resultGradient.addColorStop(0, withAlpha(design.primary, 0.98));
   resultGradient.addColorStop(0.58, withAlpha(design.primary, 0.72));
   resultGradient.addColorStop(1, withAlpha(design.secondary, 0.96));
-  fillRoundedRect(context, 54, 1111, 972, 118, 22, resultGradient);
+  fillRoundedRect(context, 54, resultY, 972, resultHeight, 22, resultGradient);
 
   context.fillStyle = "rgba(3,17,29,0.7)";
   context.font = '900 15px "Aptos", "Bahnschrift", sans-serif';
   context.textAlign = "left";
-  context.fillText(`FINAL TEAM RESULT / ${design.name.toUpperCase()}`, 82, 1146);
+  context.fillText(
+    `FINAL TEAM RESULT / ${design.name.toUpperCase()}`,
+    82,
+    resultY + 35
+  );
 
   context.fillStyle = "#ffffff";
   drawFittedText(
     context,
-    `${(draft.teamName || "TEAM NAME").toUpperCase()}  ${formatRelative(toPar)}`,
+    (draft.teamName || "TEAM NAME").toUpperCase(),
     82,
-    1200,
-    910,
-    46,
-    28,
+    resultY + (hasSecondTable ? 88 : 105),
+    690,
+    hasSecondTable ? 42 : 54,
+    hasSecondTable ? 27 : 32,
     900
   );
+
+  context.textAlign = "right";
+  context.fillStyle = "#06111e";
+  context.font = `900 ${hasSecondTable ? 50 : 72}px "Arial Black", "Aptos Display", sans-serif`;
+  context.fillText(
+    formatRelative(toPar),
+    994,
+    resultY + (hasSecondTable ? 83 : 113)
+  );
+
+  if (!hasSecondTable) {
+    context.fillStyle = "rgba(3,17,29,0.64)";
+    context.textAlign = "left";
+    context.font = '850 15px "Aptos", "Bahnschrift", sans-serif';
+    context.fillText(
+      `GROSS ${formatNumber(grossScore, 0)}  /  NET ${formatNumber(netScore)}  /  PAR ${formatNumber(totalPar, 0)}`,
+      82,
+      resultY + 166
+    );
+    context.fillStyle = "rgba(255,255,255,0.82)";
+    context.fillText(
+      "NET STROKES ALLOCATED WITH PAR 5S RANKED FIRST",
+      82,
+      resultY + 199
+    );
+  }
 
   context.fillStyle = "rgba(255,255,255,0.78)";
   context.textAlign = "left";

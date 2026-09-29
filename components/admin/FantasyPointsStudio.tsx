@@ -378,17 +378,32 @@ function drawFittedText(
   minimumSize: number,
   weight = 900
 ) {
+  const safeText = text.trim();
   let fontSize = startingSize;
 
   while (fontSize > minimumSize) {
     context.font = `${weight} ${fontSize}px "Arial Black", "Aptos Display", "Bahnschrift", sans-serif`;
-    if (context.measureText(text).width <= maxWidth) {
+    if (context.measureText(safeText).width <= maxWidth) {
       break;
     }
     fontSize -= 1;
   }
 
-  context.fillText(text, x, y);
+  context.font = `${weight} ${Math.max(fontSize, minimumSize)}px "Arial Black", "Aptos Display", "Bahnschrift", sans-serif`;
+
+  let fittedText = safeText;
+  if (context.measureText(fittedText).width > maxWidth) {
+    const suffix = "...";
+    while (
+      fittedText.length > 1 &&
+      context.measureText(`${fittedText}${suffix}`).width > maxWidth
+    ) {
+      fittedText = fittedText.slice(0, -1).trimEnd();
+    }
+    fittedText = `${fittedText}${suffix}`;
+  }
+
+  context.fillText(fittedText, x, y);
 }
 
 function getTeamInitials(teamName: string) {
@@ -459,14 +474,14 @@ function drawContainedImage(
 function drawPerformanceCard(
   context: CanvasRenderingContext2D,
   x: number,
+  y: number,
   label: string,
   rawValue: string,
   points: number,
   accent: string
 ) {
   const width = 234;
-  const y = 632;
-  const height = 132;
+  const height = 144;
   const gradient = context.createLinearGradient(x, y, x, y + height);
   gradient.addColorStop(0, `${accent}36`);
   gradient.addColorStop(1, "rgba(3, 14, 24, 0.97)");
@@ -477,20 +492,21 @@ function drawPerformanceCard(
   context.textBaseline = "middle";
   context.fillStyle = "rgba(255,255,255,0.58)";
   context.font = '900 13px "Aptos", "Bahnschrift", sans-serif';
-  context.fillText(label, x + 18, y + 28);
+  context.fillText(label, x + 18, y + 30);
 
   context.fillStyle = "#ffffff";
   context.font = '900 32px "Arial Black", "Aptos Display", sans-serif';
-  context.fillText(rawValue, x + 18, y + 71);
+  context.fillText(rawValue, x + 18, y + 78);
 
   context.fillStyle = accent;
   context.font = '900 19px "Aptos Display", "Bahnschrift", sans-serif';
-  context.fillText(`${formatPoints(points)} PTS`, x + 18, y + 108);
+  context.fillText(`${formatPoints(points)} PTS`, x + 18, y + 119);
 }
 
 function drawScoringCategory(
   context: CanvasRenderingContext2D,
   x: number,
+  y: number,
   width: number,
   label: string,
   count: string,
@@ -501,15 +517,15 @@ function drawScoringCategory(
   context.textBaseline = "middle";
   context.fillStyle = "rgba(255,255,255,0.54)";
   context.font = '900 12px "Aptos", "Bahnschrift", sans-serif';
-  context.fillText(label, x + width / 2, 850);
+  context.fillText(label, x + width / 2, y + 34);
 
   context.fillStyle = "#ffffff";
   context.font = '900 40px "Arial Black", "Aptos Display", sans-serif';
-  context.fillText(count || "0", x + width / 2, 900);
+  context.fillText(count || "0", x + width / 2, y + 86);
 
   context.fillStyle = accent;
   context.font = '900 18px "Aptos Display", "Bahnschrift", sans-serif';
-  context.fillText(`${formatPoints(points)} PTS`, x + width / 2, 950);
+  context.fillText(`${formatPoints(points)} PTS`, x + width / 2, y + 137);
 }
 
 function drawFantasyCard(
@@ -647,13 +663,18 @@ function drawFantasyCard(
   const heroX = 54;
   const heroY = 242;
   const heroWidth = 972;
-  const heroHeight = 330;
+  const heroHeight = 260;
   fillRoundedRect(context, heroX, heroY, heroWidth, heroHeight, 26, "#071929");
 
   if (teamPhoto?.complete) {
     drawCoverImage(context, teamPhoto, heroX, heroY, heroWidth, heroHeight, 26);
   } else {
-    const placeholder = context.createLinearGradient(heroX, heroY, 1026, 572);
+    const placeholder = context.createLinearGradient(
+      heroX,
+      heroY,
+      heroX + heroWidth,
+      heroY + heroHeight
+    );
     placeholder.addColorStop(0, "#0a4968");
     placeholder.addColorStop(0.55, "#06121e");
     placeholder.addColorStop(1, "#4a3008");
@@ -663,10 +684,16 @@ function drawFantasyCard(
     context.clip();
     context.globalAlpha = 0.09;
     context.fillStyle = "#ffffff";
-    context.font = '900 260px "Arial Black", sans-serif';
+    context.font = '900 190px "Arial Black", sans-serif';
     context.textAlign = "center";
     context.textBaseline = "middle";
-    context.fillText(getTeamInitials(draft.teamName), 540, 410);
+    context.fillText(getTeamInitials(draft.teamName), 540, 360);
+    context.globalAlpha = 0.46;
+    context.fillStyle = sky;
+    context.font = '900 13px "Aptos", "Bahnschrift", sans-serif';
+    context.letterSpacing = "5px";
+    context.fillText("TEAM PROFILE", 540, 459);
+    context.letterSpacing = "0px";
     context.restore();
   }
 
@@ -682,62 +709,68 @@ function drawFantasyCard(
   context.restore();
   strokeRoundedRect(context, heroX, heroY, heroWidth, heroHeight, 26, "rgba(85,216,255,0.56)", 2);
 
-  fillRoundedRect(context, 835, 270, 154, 154, 24, "rgba(3,13,22,0.84)");
-  strokeRoundedRect(context, 835, 270, 154, 154, 24, "rgba(255,190,24,0.72)", 3);
+  fillRoundedRect(context, 846, 265, 136, 136, 22, "rgba(3,13,22,0.84)");
+  strokeRoundedRect(context, 846, 265, 136, 136, 22, "rgba(255,190,24,0.72)", 3);
   if (teamLogo?.complete) {
-    drawContainedImage(context, teamLogo, 850, 285, 124, 124);
+    drawContainedImage(context, teamLogo, 860, 279, 108, 108);
   } else {
     context.fillStyle = gold;
     context.font = '900 47px "Arial Black", sans-serif';
     context.textAlign = "center";
     context.textBaseline = "middle";
-    context.fillText(getTeamInitials(draft.teamName), 912, 347);
+    context.fillText(getTeamInitials(draft.teamName), 914, 333);
   }
 
-  const roster = draft.playerNames
+  const rosterNames = draft.playerNames
     .split(/[\n,]+/)
     .map((name) => name.trim())
     .filter(Boolean)
-    .slice(0, 6)
-    .join("  /  ");
+    .slice(0, 6);
+  const rosterLines =
+    rosterNames.length > 3
+      ? [rosterNames.slice(0, 3).join("  /  "), rosterNames.slice(3).join("  /  ")]
+      : [rosterNames.join("  /  ")];
   context.textAlign = "left";
   context.textBaseline = "alphabetic";
   context.fillStyle = "rgba(255,255,255,0.58)";
   context.font = '900 12px "Aptos", "Bahnschrift", sans-serif';
-  context.fillText("TEAM SHEET", 82, 503);
+  context.fillText("TEAM SHEET", 82, 420);
   context.fillStyle = "#ffffff";
-  drawFittedText(
-    context,
-    (roster || "ADD PLAYER NAMES").toUpperCase(),
-    82,
-    542,
-    674,
-    26,
-    16,
-    850
-  );
+  rosterLines.forEach((line, index) => {
+    drawFittedText(
+      context,
+      (line || "ADD PLAYER NAMES").toUpperCase(),
+      82,
+      rosterLines.length === 1 ? 464 : 448 + index * 29,
+      662,
+      rosterLines.length === 1 ? 24 : 19,
+      rosterLines.length === 1 ? 16 : 13,
+      850
+    );
+  });
 
-  const totalGradient = context.createLinearGradient(774, 432, 1000, 550);
+  const totalGradient = context.createLinearGradient(774, 386, 1000, 478);
   totalGradient.addColorStop(0, sky);
   totalGradient.addColorStop(1, gold);
-  fillRoundedRect(context, 774, 432, 226, 116, 22, totalGradient);
+  fillRoundedRect(context, 774, 386, 226, 92, 20, totalGradient);
   context.textAlign = "center";
   context.textBaseline = "middle";
   context.fillStyle = "rgba(2,12,20,0.7)";
   context.font = '900 12px "Aptos", "Bahnschrift", sans-serif';
-  context.fillText("FANTASY POINTS", 887, 457);
+  context.fillText("FANTASY POINTS", 887, 408);
   context.fillStyle = "#06111e";
-  context.font = '900 52px "Arial Black", "Aptos Display", sans-serif';
-  context.fillText(formatPoints(points.total, false), 887, 505);
+  context.font = '900 46px "Arial Black", "Aptos Display", sans-serif';
+  context.fillText(formatPoints(points.total, false), 887, 449);
 
   context.textAlign = "left";
   context.fillStyle = sky;
   context.font = '900 18px "Arial Black", "Aptos Display", sans-serif';
-  context.fillText("PERFORMANCE METRICS", 54, 611);
+  context.fillText("PERFORMANCE METRICS", 54, 541);
 
   drawPerformanceCard(
     context,
     54,
+    559,
     "LONGEST DRIVE",
     `${formatNumber(toNumber(draft.longestDrive))}m`,
     points.longestDrive,
@@ -746,6 +779,7 @@ function drawFantasyCard(
   drawPerformanceCard(
     context,
     300,
+    559,
     "AVERAGE DRIVE",
     `${formatNumber(toNumber(draft.averageDrive))}m`,
     points.averageDrive,
@@ -754,6 +788,7 @@ function drawFantasyCard(
   drawPerformanceCard(
     context,
     546,
+    559,
     "GREENS IN REG.",
     `${formatNumber(toNumber(draft.girPercent))}%`,
     points.gir,
@@ -762,6 +797,7 @@ function drawFantasyCard(
   drawPerformanceCard(
     context,
     792,
+    559,
     "FAIRWAYS IN REG.",
     `${formatNumber(toNumber(draft.firPercent))}%`,
     points.fir,
@@ -770,9 +806,10 @@ function drawFantasyCard(
 
   context.fillStyle = gold;
   context.font = '900 18px "Arial Black", "Aptos Display", sans-serif';
-  context.fillText("SCORING RETURN", 54, 800);
-  fillRoundedRect(context, 54, 817, 972, 168, 20, "rgba(3,14,24,0.91)");
-  strokeRoundedRect(context, 54, 817, 972, 168, 20, "rgba(255,190,24,0.4)", 2);
+  context.fillText("SCORING RETURN", 54, 746);
+  const scoringY = 764;
+  fillRoundedRect(context, 54, scoringY, 972, 176, 20, "rgba(3,14,24,0.91)");
+  strokeRoundedRect(context, 54, scoringY, 972, 176, 20, "rgba(255,190,24,0.4)", 2);
 
   const scoreColumns = [
     ["EAGLES+", draft.eagles, points.eagles, sky],
@@ -789,81 +826,102 @@ function drawFantasyCard(
       context.strokeStyle = "rgba(255,255,255,0.1)";
       context.lineWidth = 1;
       context.beginPath();
-      context.moveTo(x, 839);
-      context.lineTo(x, 963);
+      context.moveTo(x, scoringY + 22);
+      context.lineTo(x, scoringY + 154);
       context.stroke();
     }
-    drawScoringCategory(context, x, scoreColumnWidth, label, count, scorePoints, accent);
+    drawScoringCategory(
+      context,
+      x,
+      scoringY,
+      scoreColumnWidth,
+      label,
+      count,
+      scorePoints,
+      accent
+    );
   });
 
-  const resultGradient = context.createLinearGradient(54, 1010, 684, 1162);
+  const resultGradient = context.createLinearGradient(54, 970, 684, 1140);
   resultGradient.addColorStop(0, "rgba(85,216,255,0.27)");
   resultGradient.addColorStop(1, "rgba(4,18,30,0.96)");
-  fillRoundedRect(context, 54, 1010, 630, 150, 20, resultGradient);
-  strokeRoundedRect(context, 54, 1010, 630, 150, 20, "rgba(85,216,255,0.48)", 2);
+  fillRoundedRect(context, 54, 970, 630, 170, 20, resultGradient);
+  strokeRoundedRect(context, 54, 970, 630, 170, 20, "rgba(85,216,255,0.48)", 2);
 
   context.textAlign = "left";
   context.textBaseline = "middle";
   context.fillStyle = "rgba(255,255,255,0.55)";
   context.font = '900 13px "Aptos", "Bahnschrift", sans-serif';
-  context.fillText("OVERALL RESULT / SCORE RELATIVE TO PAR", 78, 1042);
+  context.fillText("OVERALL RESULT", 78, 1003);
+  context.fillText("RESULT POINTS", 370, 1003);
+  context.strokeStyle = "rgba(255,255,255,0.12)";
+  context.lineWidth = 1;
+  context.beginPath();
+  context.moveTo(338, 994);
+  context.lineTo(338, 1103);
+  context.stroke();
   context.fillStyle = "#ffffff";
-  context.font = '900 50px "Arial Black", "Aptos Display", sans-serif';
-  context.fillText(formatRelative(points.resultToPar), 78, 1103);
+  context.font = '900 54px "Arial Black", "Aptos Display", sans-serif';
+  context.fillText(formatRelative(points.resultToPar), 78, 1062);
   context.fillStyle = sky;
-  context.font = '900 22px "Aptos Display", "Bahnschrift", sans-serif';
-  context.fillText(`${formatPoints(points.result)} PTS`, 262, 1104);
+  context.font = '900 38px "Arial Black", "Aptos Display", sans-serif';
+  context.fillText(`${formatPoints(points.result)} PTS`, 370, 1060);
   context.fillStyle = "rgba(255,255,255,0.5)";
   context.font = '800 13px "Aptos", "Bahnschrift", sans-serif';
-  context.fillText(
+  drawFittedText(
+    context,
     `RESULT ${formatNumber(toNumber(draft.resultScore))} / PAR ${formatNumber(toNumber(draft.totalPar))} / ${formatNumber(holesPlayed, 0)} HOLES`,
     78,
-    1139
+    1112,
+    572,
+    13,
+    11,
+    800
   );
 
-  fillRoundedRect(context, 696, 1010, 330, 150, 20, "rgba(255,190,24,0.11)");
-  strokeRoundedRect(context, 696, 1010, 330, 150, 20, "rgba(255,190,24,0.45)", 2);
+  fillRoundedRect(context, 696, 970, 330, 170, 20, "rgba(255,190,24,0.11)");
+  strokeRoundedRect(context, 696, 970, 330, 170, 20, "rgba(255,190,24,0.45)", 2);
   context.fillStyle = "rgba(255,255,255,0.55)";
   context.font = '900 13px "Aptos", "Bahnschrift", sans-serif';
-  context.fillText("MANUAL ADJUSTMENT", 720, 1042);
+  context.fillText("MANUAL ADJUSTMENT", 720, 1003);
   context.fillStyle = points.manual < 0 ? coral : gold;
   context.font = '900 42px "Arial Black", "Aptos Display", sans-serif';
-  context.fillText(`${formatPoints(points.manual)} PTS`, 720, 1095);
+  context.fillText(`${formatPoints(points.manual)} PTS`, 720, 1062);
   context.fillStyle = "rgba(255,255,255,0.62)";
   context.font = '850 13px "Aptos", "Bahnschrift", sans-serif';
   drawFittedText(
     context,
     (draft.manualLabel || "BONUS / CORRECTION").toUpperCase(),
     720,
-    1135,
+    1112,
     278,
     15,
     11,
     850
   );
 
-  const finalGradient = context.createLinearGradient(54, 1182, 1026, 1284);
+  const finalGradient = context.createLinearGradient(54, 1165, 1026, 1287);
   finalGradient.addColorStop(0, sky);
   finalGradient.addColorStop(0.58, "#3baed4");
   finalGradient.addColorStop(1, gold);
-  fillRoundedRect(context, 54, 1182, 972, 102, 22, finalGradient);
+  fillRoundedRect(context, 54, 1165, 972, 122, 22, finalGradient);
   context.fillStyle = "rgba(3,17,29,0.72)";
   context.font = '900 14px "Aptos", "Bahnschrift", sans-serif';
-  context.fillText("FINAL FANTASY TOTAL", 82, 1213);
+  context.fillText("FINAL FANTASY TOTAL", 82, 1200);
   context.fillStyle = "#ffffff";
   drawFittedText(
     context,
     (draft.teamName || "TEAM NAME").toUpperCase(),
     82,
-    1261,
-    690,
-    37,
-    23
+    1256,
+    625,
+    39,
+    24
   );
   context.textAlign = "right";
   context.fillStyle = "#06111e";
   context.font = '900 48px "Arial Black", "Aptos Display", sans-serif';
-  context.fillText(`${formatPoints(points.total, false)} PTS`, 998, 1243);
+  context.fillText(`${formatPoints(points.total, false)} PTS`, 998, 1240);
 
   context.textBaseline = "alphabetic";
   context.textAlign = "left";
