@@ -42,6 +42,7 @@ type FantasyPoints = {
   pars: number;
   bogeys: number;
   doubleBogeys: number;
+  holeScoring: number;
   result: number;
   manual: number;
   resultToPar: number | null;
@@ -212,9 +213,16 @@ function calculateFantasyPoints(draft: FantasyDraft): FantasyPoints {
     result: resultToPar === null ? 0 : -resultToPar,
     manual: numberOrZero(draft.manualPoints),
   };
+  const holeScoring =
+    points.eagles +
+    points.birdies +
+    points.pars +
+    points.bogeys +
+    points.doubleBogeys;
 
   return {
     ...points,
+    holeScoring,
     resultToPar,
     total: Object.values(points).reduce((total, value) => total + value, 0),
   };
@@ -887,15 +895,15 @@ function drawFantasyCard(
   strokeRoundedRect(context, 696, 970, 330, 170, 20, "rgba(255,190,24,0.45)", 2);
   context.fillStyle = "rgba(255,255,255,0.55)";
   context.font = '900 13px "Aptos", "Bahnschrift", sans-serif';
-  context.fillText("MANUAL ADJUSTMENT", 720, 1003);
-  context.fillStyle = points.manual < 0 ? coral : gold;
+  context.fillText("NETT HOLE POINTS", 720, 1003);
+  context.fillStyle = gold;
   context.font = '900 42px "Arial Black", "Aptos Display", sans-serif';
-  context.fillText(`${formatPoints(points.manual)} PTS`, 720, 1062);
+  context.fillText(`${formatPoints(points.holeScoring)} PTS`, 720, 1062);
   context.fillStyle = "rgba(255,255,255,0.62)";
   context.font = '850 13px "Aptos", "Bahnschrift", sans-serif';
   drawFittedText(
     context,
-    (draft.manualLabel || "BONUS / CORRECTION").toUpperCase(),
+    `${formatNumber(numberOrZero(draft.eagles), 0)} EAGLES / ${formatNumber(numberOrZero(draft.birdies), 0)} BIRDIES / ${formatNumber(numberOrZero(draft.pars), 0)} PARS`,
     720,
     1112,
     278,
@@ -911,7 +919,18 @@ function drawFantasyCard(
   fillRoundedRect(context, 54, 1165, 972, 122, 22, finalGradient);
   context.fillStyle = "rgba(3,17,29,0.72)";
   context.font = '900 14px "Aptos", "Bahnschrift", sans-serif';
-  context.fillText("FINAL FANTASY TOTAL", 82, 1200);
+  drawFittedText(
+    context,
+    points.manual === 0
+      ? "FINAL FANTASY TOTAL"
+      : `FINAL FANTASY TOTAL / ${formatPoints(points.manual)} ADJUSTMENT INCLUDED`,
+    82,
+    1200,
+    610,
+    14,
+    11,
+    900
+  );
   context.fillStyle = "#ffffff";
   drawFittedText(
     context,
