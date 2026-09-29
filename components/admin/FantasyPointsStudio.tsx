@@ -4,6 +4,7 @@ import type { ChangeEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
 import {
+  getScorecardHandicapAllocation,
   parseScorecardDraftSnapshot,
   SCORECARD_DRAFT_STORAGE_KEY,
   type ScorecardDraftSnapshot,
@@ -240,18 +241,25 @@ function deriveDraftFromScorecard(
     bogeys: 0,
     doubleBogeys: 0,
   };
+  const handicapAllocation = getScorecardHandicapAllocation(
+    snapshot.holes,
+    snapshot.handicap
+  );
   const completedHoles = snapshot.holes
-    .map((hole) => ({
+    .map((hole, index) => ({
       par: toNumber(hole.par),
       score: toNumber(hole.score),
+      netScore: handicapAllocation.netScores[index],
     }))
     .filter(
-      (hole): hole is { par: number; score: number } =>
+      (
+        hole
+      ): hole is { par: number; score: number; netScore: number | null } =>
         hole.par !== null && hole.score !== null
     );
 
-  completedHoles.forEach(({ par, score }) => {
-    const scoreToPar = score - par;
+  completedHoles.forEach(({ par, score, netScore }) => {
+    const scoreToPar = (netScore ?? score) - par;
 
     if (scoreToPar <= -2) {
       scoringCounts.eagles += 1;
@@ -269,11 +277,7 @@ function deriveDraftFromScorecard(
   const totalPar = sumNumbers(completedHoles.map(({ par }) => par));
   const holeGross = sumNumbers(completedHoles.map(({ score }) => score));
   const grossScore = toNumber(snapshot.grossScore) ?? holeGross;
-  const handicap = toNumber(snapshot.handicap);
-  const playingHandicap =
-    handicap !== null && completedHoles.length > 0
-      ? Math.max(0, Math.round((handicap * completedHoles.length) / 18))
-      : null;
+  const playingHandicap = handicapAllocation.playingHandicap;
   const calculatedNet =
     grossScore !== null && playingHandicap !== null
       ? grossScore - playingHandicap
@@ -806,7 +810,7 @@ function drawFantasyCard(
 
   context.fillStyle = gold;
   context.font = '900 18px "Arial Black", "Aptos Display", sans-serif';
-  context.fillText("SCORING RETURN", 54, 746);
+  context.fillText("NETT SCORING RETURN", 54, 746);
   const scoringY = 764;
   fillRoundedRect(context, 54, scoringY, 972, 176, 20, "rgba(3,14,24,0.91)");
   strokeRoundedRect(context, 54, scoringY, 972, 176, 20, "rgba(255,190,24,0.4)", 2);
@@ -1096,7 +1100,7 @@ export default function FantasyPointsStudio() {
         setNotice({
           tone: "success",
           message:
-            "The current scorecard supplied the team details, round length, hole scoring, par, and overall result.",
+            "The current scorecard supplied the team details, round length, nett hole scoring, par, and overall result.",
         });
       }
     }
@@ -1180,7 +1184,7 @@ export default function FantasyPointsStudio() {
     setNotice({
       tone: "success",
       message:
-        "Imported the round length, team details, hole results, scoring counts, par, and the scorecard net result.",
+        "Imported the round length, team details, nett hole scoring, par, and the scorecard net result.",
     });
   }
 
@@ -1565,12 +1569,12 @@ export default function FantasyPointsStudio() {
           <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.2em] text-[var(--gold)]">
-                Stableford-style return
+                Nett Stableford-style return
               </p>
-              <h2 className="mt-2 text-3xl text-white">Hole scoring</h2>
+              <h2 className="mt-2 text-3xl text-white">Nett hole scoring</h2>
               <p className="mt-2 text-sm leading-7 text-zinc-400">
-                These counts import automatically from gross hole scores and remain
-                editable for corrections.
+                These counts use each hole score after allocated handicap strokes and
+                remain editable for corrections.
               </p>
             </div>
             <span

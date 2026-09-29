@@ -2,7 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { SCORECARD_DRAFT_STORAGE_KEY } from "@/lib/scorecard-storage";
+import {
+  getScorecardHandicapAllocation,
+  SCORECARD_DRAFT_STORAGE_KEY,
+  type ScorecardHandicapAllocation,
+} from "@/lib/scorecard-storage";
 
 type DistanceUnit = "m" | "yd";
 type ScorecardPattern =
@@ -34,12 +38,6 @@ type ScorecardHole = {
 type ActiveScorecardHole = {
   index: number;
   hole: ScorecardHole;
-};
-
-type HandicapAllocation = {
-  playingHandicap: number | null;
-  strokes: Array<number | null>;
-  netScores: Array<number | null>;
 };
 
 type ScorecardDraft = {
@@ -278,68 +276,6 @@ function getHoleRangeLabel(holes: ActiveScorecardHole[]) {
   }
 
   return `${holeNumbers.length} SELECTED HOLES`;
-}
-
-function getHandicapAllocation(
-  holes: ScorecardHole[],
-  handicapValue: string
-): HandicapAllocation {
-  const handicap = toNumber(handicapValue);
-  const activeHoles = getActiveHoles(holes);
-  const playingHandicap =
-    handicap === null || activeHoles.length === 0
-      ? null
-      : Math.max(0, Math.round((handicap * activeHoles.length) / 18));
-
-  if (playingHandicap === null) {
-    return {
-      playingHandicap: null,
-      strokes: holes.map(() => null),
-      netScores: holes.map(() => null),
-    };
-  }
-
-  const difficultyOrder = activeHoles
-    .map(({ hole, index }) => ({
-      index,
-      par: toNumber(hole.par) ?? 0,
-      distance: toNumber(hole.distance) ?? 0,
-    }))
-    .sort((left, right) => {
-      if (right.par !== left.par) {
-        return right.par - left.par;
-      }
-
-      if (right.distance !== left.distance) {
-        return right.distance - left.distance;
-      }
-
-      return left.index - right.index;
-    });
-
-  const baseStrokes = Math.floor(playingHandicap / activeHoles.length);
-  const extraStrokes = playingHandicap % activeHoles.length;
-  const strokes: Array<number | null> = holes.map(() => null);
-
-  activeHoles.forEach(({ index }) => {
-    strokes[index] = baseStrokes;
-  });
-
-  difficultyOrder.slice(0, extraStrokes).forEach(({ index }) => {
-    strokes[index] = (strokes[index] ?? 0) + 1;
-  });
-
-  return {
-    playingHandicap,
-    strokes,
-    netScores: holes.map((hole, index) => {
-      const grossScore = toNumber(hole.score);
-      const receivedStrokes = strokes[index];
-      return grossScore === null || receivedStrokes === null
-        ? null
-        : grossScore - receivedStrokes;
-    }),
-  };
 }
 
 function formatNumber(value: number | null, fractionDigits = 1): string {
@@ -666,7 +602,7 @@ function drawHoleTable(
   draft: ScorecardDraft,
   design: ScorecardDesign,
   scorecardHoles: ActiveScorecardHole[],
-  allocation: HandicapAllocation,
+  allocation: ScorecardHandicapAllocation,
   y: number,
   label: string,
   totalLabel: string
@@ -935,7 +871,10 @@ function drawScorecard(
   const secondTableHoles = previewHoles.slice(firstTableCount);
   const activeHoleCount = activeHoles.length;
   const activeHoleRows = activeHoles.map(({ hole }) => hole);
-  const handicapAllocation = getHandicapAllocation(draft.holes, draft.handicap);
+  const handicapAllocation = getScorecardHandicapAllocation(
+    draft.holes,
+    draft.handicap
+  );
 
   canvas.width = CANVAS_WIDTH;
   canvas.height = CANVAS_HEIGHT;
@@ -1557,7 +1496,10 @@ export default function ScorecardStudio() {
     par: getHoleTotal(activeHoleRows, "par"),
     score: getHoleTotal(activeHoleRows, "score"),
   };
-  const handicapAllocation = getHandicapAllocation(draft.holes, draft.handicap);
+  const handicapAllocation = getScorecardHandicapAllocation(
+    draft.holes,
+    draft.handicap
+  );
   const playingHandicap = handicapAllocation.playingHandicap;
   const gross = toNumber(draft.grossScore) ?? totals.score;
   const calculatedNet =
