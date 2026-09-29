@@ -31,6 +31,11 @@ type ScorecardHole = {
   score: string;
 };
 
+type ActiveScorecardHole = {
+  index: number;
+  hole: ScorecardHole;
+};
+
 type HandicapAllocation = {
   playingHandicap: number | null;
   strokes: Array<number | null>;
@@ -237,13 +242,54 @@ function sumNumbers(values: Array<number | null>): number | null {
   return numbers.reduce((total, value) => total + value, 0);
 }
 
+function hasAnyHoleValue(hole: ScorecardHole) {
+  return Boolean(
+    hole.distance.trim() || hole.par.trim() || hole.score.trim()
+  );
+}
+
+function isCompleteHole(hole: ScorecardHole) {
+  return Boolean(
+    hole.distance.trim() && hole.par.trim() && hole.score.trim()
+  );
+}
+
+function getActiveHoles(holes: ScorecardHole[]): ActiveScorecardHole[] {
+  return holes
+    .map((hole, index) => ({ hole, index }))
+    .filter(({ hole }) => hasAnyHoleValue(hole));
+}
+
+function getHoleRangeLabel(holes: ActiveScorecardHole[]) {
+  if (holes.length === 0) {
+    return "ADD HOLES";
+  }
+
+  const holeNumbers = holes.map(({ index }) => index + 1);
+  const isContiguous = holeNumbers.every(
+    (holeNumber, index) =>
+      index === 0 || holeNumber === holeNumbers[index - 1] + 1
+  );
+
+  if (isContiguous) {
+    return holeNumbers.length === 1
+      ? `HOLE ${holeNumbers[0]}`
+      : `HOLES ${holeNumbers[0]}-${holeNumbers[holeNumbers.length - 1]}`;
+  }
+
+  return `${holeNumbers.length} SELECTED HOLES`;
+}
+
 function getHandicapAllocation(
   holes: ScorecardHole[],
   handicapValue: string
 ): HandicapAllocation {
   const handicap = toNumber(handicapValue);
+  const activeHoles = getActiveHoles(holes);
   const playingHandicap =
-    handicap === null ? null : Math.max(0, Math.round(handicap));
+    handicap === null || activeHoles.length === 0
+      ? null
+      : Math.max(0, Math.round((handicap * activeHoles.length) / 18));
 
   if (playingHandicap === null) {
     return {
@@ -253,8 +299,8 @@ function getHandicapAllocation(
     };
   }
 
-  const difficultyOrder = holes
-    .map((hole, index) => ({
+  const difficultyOrder = activeHoles
+    .map(({ hole, index }) => ({
       index,
       par: toNumber(hole.par) ?? 0,
       distance: toNumber(hole.distance) ?? 0,
@@ -271,12 +317,16 @@ function getHandicapAllocation(
       return left.index - right.index;
     });
 
-  const baseStrokes = Math.floor(playingHandicap / holes.length);
-  const extraStrokes = playingHandicap % holes.length;
-  const strokes = holes.map(() => baseStrokes);
+  const baseStrokes = Math.floor(playingHandicap / activeHoles.length);
+  const extraStrokes = playingHandicap % activeHoles.length;
+  const strokes: Array<number | null> = holes.map(() => null);
+
+  activeHoles.forEach(({ index }) => {
+    strokes[index] = baseStrokes;
+  });
 
   difficultyOrder.slice(0, extraStrokes).forEach(({ index }) => {
-    strokes[index] += 1;
+    strokes[index] = (strokes[index] ?? 0) + 1;
   });
 
   return {
@@ -284,7 +334,10 @@ function getHandicapAllocation(
     strokes,
     netScores: holes.map((hole, index) => {
       const grossScore = toNumber(hole.score);
-      return grossScore === null ? null : grossScore - strokes[index];
+      const receivedStrokes = strokes[index];
+      return grossScore === null || receivedStrokes === null
+        ? null
+        : grossScore - receivedStrokes;
     }),
   };
 }
@@ -593,11 +646,12 @@ function drawScoreMarker(
   context.restore();
 }
 
-function drawNineTable(
+function drawHoleTable(
   context: CanvasRenderingContext2D,
   draft: ScorecardDraft,
   design: ScorecardDesign,
-  startHole: number,
+  scorecardHoles: ActiveScorecardHole[],
+  allocation: HandicapAllocation,
   y: number,
   label: string,
   totalLabel: string
@@ -605,7 +659,8 @@ function drawNineTable(
   const x = 54;
   const width = 972;
   const labelWidth = 132;
-  const columnWidth = (width - labelWidth) / 10;
+  const columnWidth =
+    (width - labelWidth) / Math.max(2, scorecardHoles.length + 1);
   const titleHeight = 40;
   const rowHeights = [42, 42, 42, 56, 56];
   const rows = [
@@ -615,9 +670,10 @@ function drawNineTable(
     "GROSS",
     "NET",
   ];
-  const holes = draft.holes.slice(startHole, startHole + 9);
-  const allocation = getHandicapAllocation(draft.holes, draft.handicap);
-  const netScores = allocation.netScores.slice(startHole, startHole + 9);
+  const holes = scorecardHoles.map(({ hole }) => hole);
+  const netScores = scorecardHoles.map(
+    ({ index }) => allocation.netScores[index]
+  );
   const bodyY = y + titleHeight;
   const totalHeight = rowHeights.reduce((total, value) => total + value, 0);
 
@@ -630,7 +686,7 @@ function drawNineTable(
   context.fillStyle = "rgba(255,255,255,0.52)";
   context.font = '800 13px "Aptos", "Bahnschrift", sans-serif';
   context.letterSpacing = "2px";
-  context.fillText(`${startHole + 1}-${startHole + 9}`, x + 150, y + 17);
+  context.fillText(getHoleRangeLabel(scorecardHoles), x + 150, y + 17);
   context.letterSpacing = "0px";
 
   fillRoundedRect(context, x, bodyY, width, totalHeight, 16, "rgba(3, 13, 23, 0.88)");
@@ -683,7 +739,7 @@ function drawNineTable(
 
     const values = holes.map((hole, index) => {
       if (rowIndex === 0) {
-        return `${startHole + index + 1}`;
+        return `${scorecardHoles[index].index + 1}`;
       }
 
       if (rowIndex === 1) {
@@ -714,7 +770,7 @@ function drawNineTable(
 
     [...values, total].forEach((value, columnIndex) => {
       const cellX = x + labelWidth + columnIndex * columnWidth;
-      const isTotal = columnIndex === 9;
+      const isTotal = columnIndex === scorecardHoles.length;
 
       if (isTotal) {
         context.fillStyle = withAlpha(
@@ -815,6 +871,16 @@ function drawScorecard(
   }
 
   const design = getDesign(draft.designIndex);
+  const activeHoles = getActiveHoles(draft.holes);
+  const previewHoles =
+    activeHoles.length > 0
+      ? activeHoles
+      : draft.holes.slice(0, 9).map((hole, index) => ({ hole, index }));
+  const firstTableHoles = previewHoles.slice(0, 9);
+  const secondTableHoles = previewHoles.slice(9);
+  const activeHoleCount = activeHoles.length;
+  const activeHoleRows = activeHoles.map(({ hole }) => hole);
+  const handicapAllocation = getHandicapAllocation(draft.holes, draft.handicap);
 
   canvas.width = CANVAS_WIDTH;
   canvas.height = CANVAS_HEIGHT;
@@ -956,19 +1022,59 @@ function drawScorecard(
   context.fillStyle = "#04111d";
   context.textAlign = "center";
   context.font = '900 14px "Aptos", "Bahnschrift", sans-serif';
-  context.fillText("18 HOLES", holesX + 56, 238);
+  context.fillText(
+    activeHoleCount > 0
+      ? `${activeHoleCount} HOLE${activeHoleCount === 1 ? "" : "S"}`
+      : "ADD HOLES",
+    holesX + 56,
+    238
+  );
 
   context.fillStyle = "rgba(255,255,255,0.12)";
   context.fillRect(54, 285, 972, 1);
 
-  drawNineTable(context, draft, design, 0, 308, "FRONT NINE", "OUT");
-  drawNineTable(context, draft, design, 9, 596, "BACK NINE", "IN");
+  if (secondTableHoles.length > 0) {
+    drawHoleTable(
+      context,
+      draft,
+      design,
+      firstTableHoles,
+      handicapAllocation,
+      308,
+      activeHoleCount === 18 ? "FRONT NINE" : "OPENING NINE",
+      activeHoleCount === 18 ? "OUT" : "SUB"
+    );
+    drawHoleTable(
+      context,
+      draft,
+      design,
+      secondTableHoles,
+      handicapAllocation,
+      596,
+      activeHoleCount === 18
+        ? "BACK NINE"
+        : `FINAL ${secondTableHoles.length}`,
+      activeHoleCount === 18 ? "IN" : "FIN"
+    );
+  } else {
+    drawHoleTable(
+      context,
+      draft,
+      design,
+      firstTableHoles,
+      handicapAllocation,
+      430,
+      activeHoleCount > 0
+        ? `${activeHoleCount}-HOLE SCORECARD`
+        : "SCORECARD PREVIEW",
+      "TOTAL"
+    );
+  }
 
-  const totalDistance = getHoleTotal(draft.holes, "distance");
-  const totalPar = getHoleTotal(draft.holes, "par");
-  const cardGrossScore = getHoleTotal(draft.holes, "score");
+  const totalDistance = getHoleTotal(activeHoleRows, "distance");
+  const totalPar = getHoleTotal(activeHoleRows, "par");
+  const cardGrossScore = getHoleTotal(activeHoleRows, "score");
   const grossScore = toNumber(draft.grossScore) ?? cardGrossScore;
-  const handicapAllocation = getHandicapAllocation(draft.holes, draft.handicap);
   const playingHandicap = handicapAllocation.playingHandicap;
   const calculatedNetScore =
     grossScore !== null && playingHandicap !== null
@@ -985,7 +1091,11 @@ function drawScorecard(
     totalDistance === null
       ? "TOTAL DISTANCE --"
       : `TOTAL DISTANCE ${formatNumber(totalDistance, 0)} ${draft.distanceUnit.toUpperCase()}`;
-  context.fillText(`${distanceLabel}  /  18 HOLES`, 54, 904);
+  const holeCountLabel =
+    activeHoleCount === 0
+      ? "NO HOLES SELECTED"
+      : `${activeHoleCount} HOLE${activeHoleCount === 1 ? "" : "S"}`;
+  context.fillText(`${distanceLabel}  /  ${holeCountLabel}`, 54, 904);
   context.fillStyle = design.primary;
   context.textAlign = "right";
   context.fillText(
@@ -1062,13 +1172,27 @@ function getValidationMessage(draft: ScorecardDraft): string | null {
     !draft.courseName.trim() ? "course name" : null,
     !draft.handicap.trim() ? "handicap" : null,
   ].filter(Boolean);
-  const missingDistances = draft.holes.filter((hole) => !hole.distance.trim()).length;
-  const missingPars = draft.holes.filter((hole) => !hole.par.trim()).length;
-  const missingScores = draft.holes.filter((hole) => !hole.score.trim()).length;
+  const activeHoles = getActiveHoles(draft.holes);
+  const incompleteHoles = activeHoles.filter(
+    ({ hole }) => !isCompleteHole(hole)
+  );
+  const missingDistances = incompleteHoles.filter(
+    ({ hole }) => !hole.distance.trim()
+  ).length;
+  const missingPars = incompleteHoles.filter(
+    ({ hole }) => !hole.par.trim()
+  ).length;
+  const missingScores = incompleteHoles.filter(
+    ({ hole }) => !hole.score.trim()
+  ).length;
   const messages: string[] = [];
 
   if (missingDetails.length > 0) {
     messages.push(missingDetails.join(", "));
+  }
+
+  if (activeHoles.length === 0) {
+    messages.push("at least one completed hole");
   }
 
   if (missingDistances > 0) {
@@ -1084,7 +1208,7 @@ function getValidationMessage(draft: ScorecardDraft): string | null {
   }
 
   return messages.length > 0
-    ? `Complete ${messages.join(", ")} before generating the finished card.`
+    ? `Complete ${messages.join(", ")} before generating the finished card. Completely blank holes will be left out.`
     : null;
 }
 
@@ -1289,10 +1413,13 @@ export default function ScorecardStudio() {
   }
 
   const validationMessage = showValidation ? getValidationMessage(draft) : null;
+  const activeHoles = getActiveHoles(draft.holes);
+  const activeHoleRows = activeHoles.map(({ hole }) => hole);
+  const activeHoleCount = activeHoles.length;
   const totals = {
-    distance: getHoleTotal(draft.holes, "distance"),
-    par: getHoleTotal(draft.holes, "par"),
-    score: getHoleTotal(draft.holes, "score"),
+    distance: getHoleTotal(activeHoleRows, "distance"),
+    par: getHoleTotal(activeHoleRows, "par"),
+    score: getHoleTotal(activeHoleRows, "score"),
   };
   const handicapAllocation = getHandicapAllocation(draft.holes, draft.handicap);
   const playingHandicap = handicapAllocation.playingHandicap;
@@ -1407,8 +1534,9 @@ export default function ScorecardStudio() {
                 aria-invalid={showValidation && !draft.handicap.trim()}
               />
               <p className="field-hint">
-                Rounded to a playing handicap of {formatNumber(playingHandicap, 0)} for
-                hole-by-hole stroke allocation.
+                {activeHoleCount > 0
+                  ? `Enter the 18-hole handicap. For ${activeHoleCount} holes, the playing handicap is ${formatNumber(playingHandicap, 0)}.`
+                  : "Enter the 18-hole handicap. It will scale to the number of holes filled in."}
               </p>
             </div>
 
@@ -1443,7 +1571,7 @@ export default function ScorecardStudio() {
                 placeholder={`Auto from holes: ${formatNumber(totals.score, 0)}`}
               />
               <p className="field-hint">
-                Optional. Leave blank to use the total of all 18 hole scores.
+                Optional. Leave blank to total only the holes filled in below.
               </p>
             </div>
 
@@ -1476,11 +1604,15 @@ export default function ScorecardStudio() {
               </p>
               <h2 className="mt-2 text-3xl text-white">Complete the scorecard</h2>
               <p className="mt-2 text-sm leading-7 text-zinc-400">
-                Every distance, par, and score is required for the final download.
+                Fill only the holes played. Blank holes are excluded; any hole you
+                start must include distance, par, and score.
               </p>
             </div>
 
             <div className="flex flex-wrap gap-2 text-xs font-black uppercase tracking-[0.13em]">
+              <span className="rounded-full bg-[var(--sky)]/12 px-3 py-2 text-[var(--sky)]">
+                Holes {activeHoleCount}
+              </span>
               <span className="rounded-full bg-white/6 px-3 py-2 text-zinc-300">
                 Par {formatNumber(totals.par, 0)}
               </span>
@@ -1497,8 +1629,8 @@ export default function ScorecardStudio() {
             <div className="rounded-[1.2rem] border border-[var(--sky)]/20 bg-[var(--sky)]/7 px-4 py-3 text-sm leading-6 text-sky-100">
               <span className="font-black text-white">Net strokes:</span>{" "}
               {playingHandicap === null
-                ? "enter a handicap to calculate each hole."
-                : `${playingHandicap} shot${playingHandicap === 1 ? "" : "s"} allocated with par 5s first, then longer par 4s and par 3s.`}
+                ? "enter a handicap and at least one hole to calculate each net score."
+                : `${playingHandicap} shot${playingHandicap === 1 ? "" : "s"} for ${activeHoleCount} hole${activeHoleCount === 1 ? "" : "s"}, allocated with par 5s first, then longer par 4s and par 3s.`}
             </div>
             <div className="rounded-[1.2rem] border border-[var(--gold)]/20 bg-[var(--gold)]/7 px-4 py-3 text-sm leading-6 text-amber-100">
               <span className="font-black text-white">Gross score key:</span>{" "}
@@ -1565,7 +1697,11 @@ export default function ScorecardStudio() {
                                   onChange={(event) =>
                                     updateHole(holeIndex, field, event.target.value)
                                   }
-                                  aria-invalid={showValidation && !hole[field].trim()}
+                                  aria-invalid={
+                                    showValidation &&
+                                    hasAnyHoleValue(hole) &&
+                                    !hole[field].trim()
+                                  }
                                   placeholder="-"
                                 />
                               </td>
@@ -1591,7 +1727,11 @@ export default function ScorecardStudio() {
             ))}
           </div>
 
-          <div className="mt-5 grid gap-3 rounded-[1.4rem] border border-white/8 bg-white/4 px-5 py-4 sm:grid-cols-2 lg:grid-cols-6">
+          <div className="mt-5 grid gap-3 rounded-[1.4rem] border border-white/8 bg-white/4 px-5 py-4 sm:grid-cols-2 lg:grid-cols-7">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Holes played</p>
+              <p className="mt-1 text-lg font-black text-[var(--sky)]">{activeHoleCount}</p>
+            </div>
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Distance</p>
               <p className="mt-1 text-lg font-black text-white">
