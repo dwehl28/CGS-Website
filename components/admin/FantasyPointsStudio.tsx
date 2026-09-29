@@ -19,6 +19,7 @@ type FantasyDraft = {
   averageDrive: string;
   girPercent: string;
   firPercent: string;
+  holesPlayed: string;
   eagles: string;
   birdies: string;
   pars: string;
@@ -77,6 +78,7 @@ function createBlankDraft(): FantasyDraft {
     averageDrive: "",
     girPercent: "",
     firPercent: "",
+    holesPlayed: "",
     eagles: "0",
     birdies: "0",
     pars: "0",
@@ -93,13 +95,20 @@ function restoreFantasyDraft(rawValue: string): FantasyDraft | null {
   try {
     const parsed = JSON.parse(rawValue) as Partial<FantasyDraft>;
     const blankDraft = createBlankDraft();
-
-    return Object.fromEntries(
+    const restoredDraft = Object.fromEntries(
       Object.keys(blankDraft).map((key) => {
         const field = key as keyof FantasyDraft;
         return [field, typeof parsed[field] === "string" ? parsed[field] : blankDraft[field]];
       })
     ) as FantasyDraft;
+
+    if (!restoredDraft.holesPlayed) {
+      const restoredHoleCount = getScoringHoleCount(restoredDraft);
+      restoredDraft.holesPlayed =
+        restoredHoleCount > 0 ? String(restoredHoleCount) : "";
+    }
+
+    return restoredDraft;
   } catch {
     return null;
   }
@@ -231,15 +240,17 @@ function deriveDraftFromScorecard(
     bogeys: 0,
     doubleBogeys: 0,
   };
+  const completedHoles = snapshot.holes
+    .map((hole) => ({
+      par: toNumber(hole.par),
+      score: toNumber(hole.score),
+    }))
+    .filter(
+      (hole): hole is { par: number; score: number } =>
+        hole.par !== null && hole.score !== null
+    );
 
-  snapshot.holes.forEach((hole) => {
-    const par = toNumber(hole.par);
-    const score = toNumber(hole.score);
-
-    if (par === null || score === null) {
-      return;
-    }
-
+  completedHoles.forEach(({ par, score }) => {
     const scoreToPar = score - par;
 
     if (scoreToPar <= -2) {
@@ -255,13 +266,17 @@ function deriveDraftFromScorecard(
     }
   });
 
-  const totalPar = sumNumbers(snapshot.holes.map((hole) => toNumber(hole.par)));
-  const holeGross = sumNumbers(snapshot.holes.map((hole) => toNumber(hole.score)));
+  const totalPar = sumNumbers(completedHoles.map(({ par }) => par));
+  const holeGross = sumNumbers(completedHoles.map(({ score }) => score));
   const grossScore = toNumber(snapshot.grossScore) ?? holeGross;
   const handicap = toNumber(snapshot.handicap);
+  const playingHandicap =
+    handicap !== null && completedHoles.length > 0
+      ? Math.max(0, Math.round((handicap * completedHoles.length) / 18))
+      : null;
   const calculatedNet =
-    grossScore !== null && handicap !== null
-      ? grossScore - Math.max(0, Math.round(handicap))
+    grossScore !== null && playingHandicap !== null
+      ? grossScore - playingHandicap
       : grossScore;
   const resultScore = toNumber(snapshot.netScore) ?? calculatedNet;
 
@@ -271,6 +286,10 @@ function deriveDraftFromScorecard(
     courseName: snapshot.courseName || currentDraft.courseName,
     roundLabel: snapshot.roundLabel || currentDraft.roundLabel,
     roundDate: snapshot.roundDate || currentDraft.roundDate,
+    holesPlayed:
+      completedHoles.length > 0
+        ? String(completedHoles.length)
+        : currentDraft.holesPlayed,
     eagles: String(scoringCounts.eagles),
     birdies: String(scoringCounts.birdies),
     pars: String(scoringCounts.pars),
@@ -507,6 +526,8 @@ function drawFantasyCard(
   }
 
   const points = calculateFantasyPoints(draft);
+  const scoringHoleCount = getScoringHoleCount(draft);
+  const holesPlayed = toNumber(draft.holesPlayed) ?? scoringHoleCount;
   const sky = "#55d8ff";
   const gold = "#ffbe18";
   const coral = "#ff725f";
@@ -590,12 +611,37 @@ function drawFantasyCard(
     850
   );
 
-  context.font = '850 14px "Aptos", "Bahnschrift", sans-serif';
   context.fillStyle = "rgba(255,255,255,0.68)";
-  context.fillText(
+  drawFittedText(
+    context,
     `${(draft.roundLabel || "ROUND / COMPETITION").toUpperCase()}  /  ${formatRoundDate(draft.roundDate)}`,
     216,
-    214
+    214,
+    620,
+    14,
+    10,
+    850
+  );
+
+  fillRoundedRect(context, 862, 190, 138, 36, 18, "rgba(85,216,255,0.16)");
+  strokeRoundedRect(
+    context,
+    862,
+    190,
+    138,
+    36,
+    18,
+    "rgba(85,216,255,0.52)",
+    2
+  );
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillStyle = sky;
+  context.font = '900 13px "Aptos", "Bahnschrift", sans-serif';
+  context.fillText(
+    `${formatNumber(holesPlayed, 0)} HOLE${holesPlayed === 1 ? "" : "S"}`,
+    931,
+    208
   );
 
   const heroX = 54;
@@ -770,7 +816,7 @@ function drawFantasyCard(
   context.fillStyle = "rgba(255,255,255,0.5)";
   context.font = '800 13px "Aptos", "Bahnschrift", sans-serif';
   context.fillText(
-    `RESULT ${formatNumber(toNumber(draft.resultScore))} / PAR ${formatNumber(toNumber(draft.totalPar))}`,
+    `RESULT ${formatNumber(toNumber(draft.resultScore))} / PAR ${formatNumber(toNumber(draft.totalPar))} / ${formatNumber(holesPlayed, 0)} HOLES`,
     78,
     1139
   );
@@ -916,6 +962,12 @@ async function prepareUploadedImage(file: File, kind: MediaKind) {
 }
 
 function getValidationMessage(draft: FantasyDraft) {
+  const holesPlayed = toNumber(draft.holesPlayed);
+  const hasValidHoleCount =
+    holesPlayed !== null &&
+    Number.isInteger(holesPlayed) &&
+    holesPlayed >= 1 &&
+    holesPlayed <= 18;
   const missing = [
     !draft.teamName.trim() ? "team name" : null,
     !draft.courseName.trim() ? "course name" : null,
@@ -923,14 +975,17 @@ function getValidationMessage(draft: FantasyDraft) {
     toNumber(draft.averageDrive) === null ? "average drive" : null,
     toNumber(draft.girPercent) === null ? "GIR percentage" : null,
     toNumber(draft.firPercent) === null ? "FIR percentage" : null,
-    toNumber(draft.totalPar) === null ? "course par" : null,
+    !hasValidHoleCount ? "holes played (1-18)" : null,
+    toNumber(draft.totalPar) === null ? "round par" : null,
     toNumber(draft.resultScore) === null ? "overall result score" : null,
   ].filter(Boolean);
 
   const scoringHoleCount = getScoringHoleCount(draft);
 
-  if (scoringHoleCount !== 18) {
-    missing.push(`18 hole results (currently ${formatNumber(scoringHoleCount)})`);
+  if (holesPlayed !== null && hasValidHoleCount && scoringHoleCount !== holesPlayed) {
+    missing.push(
+      `${formatNumber(holesPlayed, 0)} scoring results (currently ${formatNumber(scoringHoleCount, 0)})`
+    );
   }
 
   return missing.length > 0
@@ -983,7 +1038,7 @@ export default function FantasyPointsStudio() {
         setNotice({
           tone: "success",
           message:
-            "The current scorecard supplied the team details, hole scoring, par, and overall result.",
+            "The current scorecard supplied the team details, round length, hole scoring, par, and overall result.",
         });
       }
     }
@@ -1067,7 +1122,7 @@ export default function FantasyPointsStudio() {
     setNotice({
       tone: "success",
       message:
-        "Imported team details, hole results, scoring counts, par, and the scorecard net result.",
+        "Imported the round length, team details, hole results, scoring counts, par, and the scorecard net result.",
     });
   }
 
@@ -1196,6 +1251,14 @@ export default function FantasyPointsStudio() {
 
   const points = calculateFantasyPoints(draft);
   const scoringHoleCount = getScoringHoleCount(draft);
+  const roundHoleCount = toNumber(draft.holesPlayed);
+  const hasValidRoundHoleCount =
+    roundHoleCount !== null &&
+    Number.isInteger(roundHoleCount) &&
+    roundHoleCount >= 1 &&
+    roundHoleCount <= 18;
+  const scoringMatchesRound =
+    hasValidRoundHoleCount && scoringHoleCount === roundHoleCount;
   const noticeClasses = {
     info: "border-sky-300/20 bg-sky-300/8 text-sky-100",
     success: "border-emerald-300/20 bg-emerald-300/8 text-emerald-100",
@@ -1454,16 +1517,40 @@ export default function FantasyPointsStudio() {
             </div>
             <span
               className={`w-fit rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.14em] ${
-                scoringHoleCount === 18
+                scoringMatchesRound
                   ? "border-emerald-300/20 bg-emerald-300/8 text-emerald-200"
                   : "border-amber-300/20 bg-amber-300/8 text-amber-200"
               }`}
             >
-              {formatNumber(scoringHoleCount)} / 18 holes
+              {hasValidRoundHoleCount
+                ? `${formatNumber(scoringHoleCount, 0)} / ${formatNumber(roundHoleCount, 0)} holes`
+                : `${formatNumber(scoringHoleCount, 0)} holes counted`}
             </span>
           </div>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="mt-6 max-w-sm">
+            <label className="field-label" htmlFor="fantasy-holes-played">
+              Holes played
+            </label>
+            <input
+              id="fantasy-holes-played"
+              type="number"
+              min="1"
+              max="18"
+              step="1"
+              className="field-control"
+              value={draft.holesPlayed}
+              onChange={(event) => updateField("holesPlayed", event.target.value)}
+              placeholder="e.g. 12"
+              aria-invalid={showValidation && !hasValidRoundHoleCount}
+            />
+            <p className="field-hint">
+              Imported automatically from Scorecard Studio. The scoring categories
+              below must add up to this number.
+            </p>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             {scoringFields.map((item) => (
               <div
                 key={item.field}
@@ -1488,6 +1575,7 @@ export default function FantasyPointsStudio() {
                   className="field-control text-center"
                   value={draft[item.field]}
                   onChange={(event) => updateField(item.field, event.target.value)}
+                  aria-invalid={showValidation && hasValidRoundHoleCount && !scoringMatchesRound}
                 />
                 <p className="mt-3 text-center text-sm font-black text-[var(--sky)]">
                   {formatPoints(item.points)} pts
@@ -1510,7 +1598,7 @@ export default function FantasyPointsStudio() {
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             <div>
               <label className="field-label" htmlFor="fantasy-total-par">
-                Course par
+                Round par
               </label>
               <input
                 id="fantasy-total-par"
@@ -1520,7 +1608,7 @@ export default function FantasyPointsStudio() {
                 className="field-control"
                 value={draft.totalPar}
                 onChange={(event) => updateField("totalPar", event.target.value)}
-                placeholder="e.g. 72"
+                placeholder="e.g. 47 for 12 holes"
                 aria-invalid={showValidation && toNumber(draft.totalPar) === null}
               />
             </div>

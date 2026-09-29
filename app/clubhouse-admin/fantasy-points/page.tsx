@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   ...buildMetadata({
     title: "CGS Fantasy Points Studio",
     description:
-      "Private CGS admin tool for creating branded weekly team fantasy-points graphics.",
+      "Private CGS admin tool for creating flexible-round branded weekly team fantasy-points graphics.",
     path: "/clubhouse-admin/fantasy-points",
   }),
   robots: {
@@ -60,7 +60,7 @@ export default async function FantasyPointsStudioPage() {
     <AdminShell
       eyebrow="Weekly social graphics"
       title="CGS Fantasy Points Studio"
-      description="Import a completed scorecard, add driving and accuracy stats, then generate a colourful team fantasy-points graphic for Instagram."
+      description="Import a completed scorecard of any round length, add driving and accuracy stats, then generate a colourful team fantasy-points graphic for Instagram."
       actions={
         <>
           <Link href="/clubhouse-admin/scorecards" className="btn-secondary">
