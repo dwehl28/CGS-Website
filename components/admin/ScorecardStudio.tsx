@@ -619,7 +619,7 @@ function drawHoleTable(
     draft.distanceUnit === "m" ? "METRES" : "YARDS",
     "PAR",
     "GROSS",
-    "NET",
+    "NETT",
   ];
   const holes = scorecardHoles.map(({ hole }) => hole);
   const netScores = scorecardHoles.map(
@@ -656,16 +656,24 @@ function drawHoleTable(
 
   rows.forEach((rowLabel, rowIndex) => {
     const rowHeight = rowHeights[rowIndex];
+    const isGrossRow = rowIndex === 3;
+    const isNettRow = rowIndex === 4;
 
     if (rowIndex === 0) {
       context.fillStyle = withAlpha(design.primary, 0.17);
       context.fillRect(x, rowY, width, rowHeight);
-    } else if (rowIndex === 3) {
-      context.fillStyle = withAlpha(design.secondary, 0.11);
+    } else if (isGrossRow) {
+      context.fillStyle = withAlpha(design.secondary, 0.07);
       context.fillRect(x, rowY, width, rowHeight);
-    } else if (rowIndex === 4) {
-      context.fillStyle = withAlpha(design.primary, 0.13);
+    } else if (isNettRow) {
+      const nettGradient = context.createLinearGradient(x, rowY, x + width, rowY);
+      nettGradient.addColorStop(0, withAlpha(design.primary, 0.32));
+      nettGradient.addColorStop(0.72, withAlpha(design.primary, 0.18));
+      nettGradient.addColorStop(1, withAlpha(design.secondary, 0.18));
+      context.fillStyle = nettGradient;
       context.fillRect(x, rowY, width, rowHeight);
+      context.fillStyle = design.primary;
+      context.fillRect(x, rowY, 7, rowHeight);
     } else if (rowIndex % 2 === 0) {
       context.fillStyle = "rgba(255,255,255,0.025)";
       context.fillRect(x, rowY, width, rowHeight);
@@ -678,13 +686,14 @@ function drawHoleTable(
     context.lineTo(x + width, rowY + rowHeight);
     context.stroke();
 
-    context.fillStyle =
-      rowIndex === 3
-        ? design.secondary
-        : rowIndex === 4
-          ? design.primary
-          : "rgba(255,255,255,0.66)";
-    context.font = `900 ${rowIndex >= 3 ? 16 : 14}px "Aptos", "Bahnschrift", sans-serif`;
+    context.fillStyle = isGrossRow
+      ? withAlpha(design.secondary, 0.82)
+      : isNettRow
+        ? "#ffffff"
+        : "rgba(255,255,255,0.66)";
+    context.font = isNettRow
+      ? '900 18px "Arial Black", "Aptos Display", sans-serif'
+      : `900 ${isGrossRow ? 16 : 14}px "Aptos", "Bahnschrift", sans-serif`;
     context.textAlign = "left";
     context.fillText(rowLabel, x + 18, rowY + rowHeight / 2 + 1);
 
@@ -724,10 +733,9 @@ function drawHoleTable(
       const isTotal = columnIndex === scorecardHoles.length;
 
       if (isTotal) {
-        context.fillStyle = withAlpha(
-          design.secondary,
-          rowIndex >= 3 ? 0.24 : 0.12
-        );
+        context.fillStyle = isNettRow
+          ? design.primary
+          : withAlpha(design.secondary, isGrossRow ? 0.2 : 0.12);
         context.fillRect(cellX, rowY, columnWidth, rowHeight);
       }
 
@@ -737,12 +745,18 @@ function drawHoleTable(
       context.lineTo(cellX, rowY + rowHeight);
       context.stroke();
 
-      context.fillStyle = isTotal
-        ? design.secondary
-        : rowIndex >= 3 && value !== "-"
-          ? "#ffffff"
-          : "rgba(255,255,255,0.88)";
-      context.font = `900 ${rowIndex >= 3 ? 21 : 17}px "Aptos Display", "Bahnschrift", sans-serif`;
+      context.fillStyle = isNettRow
+        ? isTotal
+          ? "#04111d"
+          : design.primary
+        : isTotal
+          ? design.secondary
+          : isGrossRow && value !== "-"
+            ? "rgba(255,255,255,0.9)"
+            : "rgba(255,255,255,0.88)";
+      context.font = isNettRow
+        ? '900 25px "Arial Black", "Aptos Display", sans-serif'
+        : `900 ${isGrossRow ? 20 : 17}px "Aptos Display", "Bahnschrift", sans-serif`;
       context.textAlign = "center";
 
       if (rowIndex === 3 && !isTotal) {
@@ -1150,8 +1164,8 @@ function drawScorecard(
     ["TOTAL PAR", formatNumber(totalPar, 0)],
     ["GROSS", formatNumber(grossScore, 0)],
     ["PLAY H'CAP", formatNumber(playingHandicap, 0)],
-    ["NET", formatNumber(netScore)],
-    ["TO PAR", formatRelative(toPar)],
+    ["NETT SCORE", formatNumber(netScore)],
+    ["NETT TO PAR", formatRelative(toPar)],
   ] as const;
 
   metrics.forEach(([label, value], index) => {
@@ -1163,7 +1177,7 @@ function drawScorecard(
       label,
       value,
       design,
-      index === 4
+      index === 3
     );
   });
 
@@ -1184,7 +1198,7 @@ function drawScorecard(
   context.font = '900 15px "Aptos", "Bahnschrift", sans-serif';
   context.textAlign = "left";
   context.fillText(
-    `FINAL TEAM RESULT / ${design.name.toUpperCase()}`,
+    `OFFICIAL NETT RESULT / ${design.name.toUpperCase()}`,
     82,
     resultY + 35
   );
@@ -1195,19 +1209,56 @@ function drawScorecard(
     (draft.teamName || "TEAM NAME").toUpperCase(),
     82,
     resultY + (hasSecondTable ? 88 : 105),
-    690,
+    hasSecondTable ? 690 : 650,
     hasSecondTable ? 42 : 54,
     hasSecondTable ? 27 : 32,
     900
   );
 
+  const resultDividerX = hasSecondTable ? 790 : 760;
+  context.strokeStyle = "rgba(3,17,29,0.24)";
+  context.lineWidth = 2;
+  context.beginPath();
+  context.moveTo(resultDividerX, resultY + 18);
+  context.lineTo(resultDividerX, resultY + resultHeight - 18);
+  context.stroke();
+
   context.textAlign = "right";
-  context.fillStyle = "#06111e";
-  context.font = `900 ${hasSecondTable ? 50 : 72}px "Arial Black", "Aptos Display", sans-serif`;
+  context.fillStyle = "rgba(3,17,29,0.64)";
+  context.font = `900 ${hasSecondTable ? 11 : 14}px "Aptos", "Bahnschrift", sans-serif`;
   context.fillText(
-    formatRelative(toPar),
+    "NETT SCORE",
     994,
-    resultY + (hasSecondTable ? 83 : 113)
+    resultY + (hasSecondTable ? 16 : 43)
+  );
+  context.fillStyle = "#06111e";
+  context.font = `900 ${hasSecondTable ? 48 : 72}px "Arial Black", "Aptos Display", sans-serif`;
+  context.fillText(
+    formatNumber(netScore),
+    994,
+    resultY + (hasSecondTable ? 50 : 102)
+  );
+
+  const toParPillX = hasSecondTable ? 842 : 822;
+  const toParPillY = resultY + (hasSecondTable ? 79 : 145);
+  const toParPillWidth = hasSecondTable ? 152 : 172;
+  const toParPillHeight = hasSecondTable ? 27 : 38;
+  fillRoundedRect(
+    context,
+    toParPillX,
+    toParPillY,
+    toParPillWidth,
+    toParPillHeight,
+    toParPillHeight / 2,
+    "rgba(3,17,29,0.76)"
+  );
+  context.fillStyle = "#ffffff";
+  context.textAlign = "center";
+  context.font = `900 ${hasSecondTable ? 12 : 15}px "Aptos", "Bahnschrift", sans-serif`;
+  context.fillText(
+    `${formatRelative(toPar)} TO PAR`,
+    toParPillX + toParPillWidth / 2,
+    toParPillY + toParPillHeight / 2 + 1
   );
 
   if (!hasSecondTable) {
@@ -1215,13 +1266,13 @@ function drawScorecard(
     context.textAlign = "left";
     context.font = '850 15px "Aptos", "Bahnschrift", sans-serif';
     context.fillText(
-      `GROSS ${formatNumber(grossScore, 0)}  /  NET ${formatNumber(netScore)}  /  PAR ${formatNumber(totalPar, 0)}`,
+      `GROSS ${formatNumber(grossScore, 0)}  /  H'CAP ${formatNumber(playingHandicap, 0)}  /  PAR ${formatNumber(totalPar, 0)}`,
       82,
       resultY + 166
     );
     context.fillStyle = "rgba(255,255,255,0.82)";
     context.fillText(
-      "NET STROKES ALLOCATED WITH PAR 5S RANKED FIRST",
+      "NETT SCORE IS THE OFFICIAL COMPETITION RESULT",
       82,
       resultY + 199
     );
@@ -1654,8 +1705,8 @@ export default function ScorecardStudio() {
             </div>
 
             <div>
-              <label className="field-label" htmlFor="scorecard-net-score">
-                Net score
+              <label className="field-label text-[var(--gold)]" htmlFor="scorecard-net-score">
+                Official nett score
               </label>
               <input
                 id="scorecard-net-score"
@@ -1667,7 +1718,7 @@ export default function ScorecardStudio() {
                 placeholder={`Auto after handicap: ${formatNumber(calculatedNet)}`}
               />
               <p className="field-hint">
-                Optional. Enter the official net result if it differs from the rounded
+                Optional. Enter the official nett result if it differs from the rounded
                 playing-handicap calculation.
               </p>
             </div>
@@ -1698,16 +1749,16 @@ export default function ScorecardStudio() {
                 Gross {formatNumber(gross, 0)}
               </span>
               <span className="rounded-full bg-[var(--gold)]/12 px-3 py-2 text-[var(--gold)]">
-                Net {formatNumber(net)} / {formatRelative(toPar)}
+                Nett {formatNumber(net)} / {formatRelative(toPar)}
               </span>
             </div>
           </div>
 
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             <div className="rounded-[1.2rem] border border-[var(--sky)]/20 bg-[var(--sky)]/7 px-4 py-3 text-sm leading-6 text-sky-100">
-              <span className="font-black text-white">Net strokes:</span>{" "}
+              <span className="font-black text-white">Nett strokes:</span>{" "}
               {playingHandicap === null
-                ? "enter a handicap and at least one hole to calculate each net score."
+                ? "enter a handicap and at least one hole to calculate each nett score."
                 : `${playingHandicap} shot${playingHandicap === 1 ? "" : "s"} for ${activeHoleCount} hole${activeHoleCount === 1 ? "" : "s"}, allocated with par 5s first, then longer par 4s and par 3s.`}
             </div>
             <div className="rounded-[1.2rem] border border-[var(--gold)]/20 bg-[var(--gold)]/7 px-4 py-3 text-sm leading-6 text-amber-100">
@@ -1743,7 +1794,9 @@ export default function ScorecardStudio() {
                         <th className="px-2 py-3">Par</th>
                         <th className="px-2 py-3">Score</th>
                         <th className="px-2 py-3">Shots</th>
-                        <th className="px-3 py-3">Net</th>
+                        <th className="border-l border-[var(--gold)]/20 bg-[var(--gold)]/8 px-3 py-3 text-[var(--gold)]">
+                          Nett
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1792,8 +1845,10 @@ export default function ScorecardStudio() {
                                 {holeStrokes ?? "-"}
                               </span>
                             </td>
-                            <td className="px-3 py-2.5 text-center text-base font-black text-[var(--gold)]">
-                              {formatNumber(holeNet, 0)}
+                            <td className="border-l border-[var(--gold)]/18 bg-[var(--gold)]/6 px-3 py-2.5 text-center">
+                              <span className="inline-flex min-w-12 items-center justify-center rounded-xl border border-[var(--gold)]/30 bg-[var(--gold)]/12 px-2 py-2 text-xl font-black text-[var(--gold)]">
+                                {formatNumber(holeNet, 0)}
+                              </span>
                             </td>
                           </tr>
                         );
@@ -1828,13 +1883,13 @@ export default function ScorecardStudio() {
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Gross score</p>
               <p className="mt-1 text-lg font-black text-white">{formatNumber(gross)}</p>
             </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Net score</p>
-              <p className="mt-1 text-lg font-black text-white">{formatNumber(net)}</p>
+            <div className="-my-1 rounded-xl border border-[var(--gold)]/30 bg-[var(--gold)]/10 px-3 py-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[var(--gold)]">Official nett</p>
+              <p className="mt-1 text-2xl font-black text-[var(--gold)]">{formatNumber(net)}</p>
             </div>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Result</p>
-              <p className="mt-1 text-lg font-black text-[var(--gold)]">{formatRelative(toPar)}</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Nett to par</p>
+              <p className="mt-1 text-lg font-black text-[var(--sky)]">{formatRelative(toPar)}</p>
             </div>
           </div>
         </section>
