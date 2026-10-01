@@ -613,7 +613,7 @@ function drawFantasyCard(
   context.fillStyle = gold;
   context.font = '900 16px "Aptos", "Bahnschrift", sans-serif';
   context.letterSpacing = "4px";
-  context.fillText("CGS WEEKLY FANTASY RETURN", 214, 76);
+  context.fillText("WEEKLY FANTASY SCORECARD", 214, 76);
   context.letterSpacing = "0px";
 
   context.fillStyle = "#ffffff";
