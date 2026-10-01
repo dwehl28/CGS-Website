@@ -576,9 +576,11 @@ function drawScoreMarker(
   }
 
   context.save();
-  context.lineWidth = 2.5;
+  context.lineWidth = 2;
   context.strokeStyle =
-    scoreToPar < 0 ? withAlpha(design.primary, 0.9) : withAlpha(design.secondary, 0.9);
+    scoreToPar < 0
+      ? withAlpha(design.primary, 0.55)
+      : withAlpha(design.secondary, 0.48);
 
   if (scoreToPar < 0) {
     const rings = scoreToPar <= -2 ? [18, 23] : [20];
@@ -663,39 +665,46 @@ function drawHoleTable(
       context.fillStyle = withAlpha(design.primary, 0.17);
       context.fillRect(x, rowY, width, rowHeight);
     } else if (isGrossRow) {
-      context.fillStyle = withAlpha(design.secondary, 0.07);
+      context.fillStyle = "rgba(255,255,255,0.025)";
       context.fillRect(x, rowY, width, rowHeight);
     } else if (isNettRow) {
       const nettGradient = context.createLinearGradient(x, rowY, x + width, rowY);
-      nettGradient.addColorStop(0, withAlpha(design.primary, 0.32));
-      nettGradient.addColorStop(0.72, withAlpha(design.primary, 0.18));
-      nettGradient.addColorStop(1, withAlpha(design.secondary, 0.18));
+      nettGradient.addColorStop(0, "#f8fbff");
+      nettGradient.addColorStop(0.7, design.primary);
+      nettGradient.addColorStop(1, design.secondary);
       context.fillStyle = nettGradient;
       context.fillRect(x, rowY, width, rowHeight);
-      context.fillStyle = design.primary;
+      context.fillStyle = "#04111d";
       context.fillRect(x, rowY, 7, rowHeight);
     } else if (rowIndex % 2 === 0) {
       context.fillStyle = "rgba(255,255,255,0.025)";
       context.fillRect(x, rowY, width, rowHeight);
     }
 
-    context.strokeStyle = "rgba(255,255,255,0.12)";
+    context.strokeStyle = isNettRow
+      ? "rgba(4,17,29,0.24)"
+      : "rgba(255,255,255,0.12)";
     context.lineWidth = 1;
     context.beginPath();
     context.moveTo(x, rowY + rowHeight);
     context.lineTo(x + width, rowY + rowHeight);
     context.stroke();
 
-    context.fillStyle = isGrossRow
-      ? withAlpha(design.secondary, 0.82)
-      : isNettRow
-        ? "#ffffff"
-        : "rgba(255,255,255,0.66)";
-    context.font = isNettRow
-      ? '900 18px "Arial Black", "Aptos Display", sans-serif'
-      : `900 ${isGrossRow ? 16 : 14}px "Aptos", "Bahnschrift", sans-serif`;
     context.textAlign = "left";
-    context.fillText(rowLabel, x + 18, rowY + rowHeight / 2 + 1);
+    if (isNettRow) {
+      context.fillStyle = "rgba(4,17,29,0.68)";
+      context.font = '900 9px "Aptos", "Bahnschrift", sans-serif';
+      context.fillText("OFFICIAL", x + 18, rowY + 17);
+      context.fillStyle = "#04111d";
+      context.font = '900 18px "Arial Black", "Aptos Display", sans-serif';
+      context.fillText(rowLabel, x + 18, rowY + 38);
+    } else {
+      context.fillStyle = isGrossRow
+        ? "rgba(255,255,255,0.42)"
+        : "rgba(255,255,255,0.66)";
+      context.font = `900 ${isGrossRow ? 15 : 14}px "Aptos", "Bahnschrift", sans-serif`;
+      context.fillText(rowLabel, x + 18, rowY + rowHeight / 2 + 1);
+    }
 
     const values = holes.map((hole, index) => {
       if (rowIndex === 0) {
@@ -734,12 +743,16 @@ function drawHoleTable(
 
       if (isTotal) {
         context.fillStyle = isNettRow
-          ? design.primary
-          : withAlpha(design.secondary, isGrossRow ? 0.2 : 0.12);
+          ? "#04111d"
+          : isGrossRow
+            ? "rgba(255,255,255,0.055)"
+            : withAlpha(design.secondary, 0.12);
         context.fillRect(cellX, rowY, columnWidth, rowHeight);
       }
 
-      context.strokeStyle = "rgba(255,255,255,0.1)";
+      context.strokeStyle = isNettRow
+        ? "rgba(4,17,29,0.2)"
+        : "rgba(255,255,255,0.1)";
       context.beginPath();
       context.moveTo(cellX, rowY);
       context.lineTo(cellX, rowY + rowHeight);
@@ -747,16 +760,18 @@ function drawHoleTable(
 
       context.fillStyle = isNettRow
         ? isTotal
-          ? "#04111d"
-          : design.primary
+          ? "#ffffff"
+          : "#04111d"
         : isTotal
-          ? design.secondary
+          ? isGrossRow
+            ? "rgba(255,255,255,0.72)"
+            : design.secondary
           : isGrossRow && value !== "-"
-            ? "rgba(255,255,255,0.9)"
+            ? "rgba(255,255,255,0.7)"
             : "rgba(255,255,255,0.88)";
       context.font = isNettRow
         ? '900 25px "Arial Black", "Aptos Display", sans-serif'
-        : `900 ${isGrossRow ? 20 : 17}px "Aptos Display", "Bahnschrift", sans-serif`;
+        : `900 ${isGrossRow ? 18 : 17}px "Aptos Display", "Bahnschrift", sans-serif`;
       context.textAlign = "center";
 
       if (rowIndex === 3 && !isTotal) {
