@@ -597,7 +597,6 @@ function drawFantasyCard(
   }
 
   const points = calculateFantasyPoints(draft);
-  const driveScoring = calculateDriveScoring(draft);
   const scoringHoleCount = getScoringHoleCount(draft);
   const holesPlayed = toNumber(draft.holesPlayed) ?? scoringHoleCount;
   const sky = "#55d8ff";
@@ -828,11 +827,11 @@ function drawFantasyCard(
     54,
     559,
     "LONGEST DRIVE",
-    `${formatNumber(driveScoring.longestDistance)}m`,
+    `${formatNumber(toNumber(draft.longestDrive))}m`,
     points.longestDrive,
     sky,
     draft.juniorTeam
-      ? `JUNIOR ${formatNumber(JUNIOR_DRIVE_MULTIPLIER)}X`
+      ? `JUNIOR PTS ${formatNumber(JUNIOR_DRIVE_MULTIPLIER)}X`
       : undefined
   );
   drawPerformanceCard(
@@ -840,11 +839,11 @@ function drawFantasyCard(
     300,
     559,
     "AVERAGE DRIVE",
-    `${formatNumber(driveScoring.averageDistance)}m`,
+    `${formatNumber(toNumber(draft.averageDrive))}m`,
     points.averageDrive,
     gold,
     draft.juniorTeam
-      ? `JUNIOR ${formatNumber(JUNIOR_DRIVE_MULTIPLIER)}X`
+      ? `JUNIOR PTS ${formatNumber(JUNIOR_DRIVE_MULTIPLIER)}X`
       : undefined
   );
   drawPerformanceCard(
@@ -1630,9 +1629,9 @@ export default function FantasyPointsStudio() {
                 id="fantasy-junior-team-description"
                 className="mt-1 block text-sm leading-6 text-zinc-400"
               >
-                Multiply the longest and average drive distances by{" "}
-                {formatNumber(JUNIOR_DRIVE_MULTIPLIER)} before their fantasy points
-                are calculated.
+                Keep the actual drive distances on the graphic, but multiply them by{" "}
+                {formatNumber(JUNIOR_DRIVE_MULTIPLIER)} when calculating fantasy
+                points.
               </span>
             </span>
             <span
@@ -1643,7 +1642,7 @@ export default function FantasyPointsStudio() {
               }`}
             >
               {draft.juniorTeam
-                ? `${formatNumber(JUNIOR_DRIVE_MULTIPLIER)}x active`
+                ? `${formatNumber(JUNIOR_DRIVE_MULTIPLIER)}x points`
                 : "Standard"}
             </span>
           </label>
@@ -1681,9 +1680,10 @@ export default function FantasyPointsStudio() {
                 </div>
                 {draft.juniorTeam && item.adjustedDistance !== null ? (
                   <p className="mt-3 text-xs font-bold leading-5 text-[var(--sky)]">
-                    {formatNumber(toNumber(draft[item.field]))}{item.suffix} x{" "}
+                    Points basis: {formatNumber(toNumber(draft[item.field]))}
+                    {item.suffix} x{" "}
                     {formatNumber(JUNIOR_DRIVE_MULTIPLIER)} ={" "}
-                    {formatNumber(item.adjustedDistance)}{item.suffix} fantasy distance
+                    {formatNumber(item.adjustedDistance)}{item.suffix} equivalent
                   </p>
                 ) : null}
               </div>
