@@ -16,6 +16,7 @@ type FantasyDraft = {
   roundLabel: string;
   roundDate: string;
   playerNames: string;
+  juniorTeam: boolean;
   longestDrive: string;
   averageDrive: string;
   girPercent: string;
@@ -49,6 +50,13 @@ type FantasyPoints = {
   total: number;
 };
 
+type DriveScoring = {
+  longestDistance: number | null;
+  averageDistance: number | null;
+  longestPoints: number;
+  averagePoints: number;
+};
+
 type Notice = {
   tone: "info" | "success" | "error";
   message: string;
@@ -59,6 +67,7 @@ type MediaKind = "photo" | "logo";
 const CANVAS_WIDTH = 1080;
 const CANVAS_HEIGHT = 1350;
 const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
+const JUNIOR_DRIVE_MULTIPLIER = 1.5;
 const FANTASY_DRAFT_STORAGE_KEY = "cgs-fantasy-points-studio-draft-v1";
 
 const SCORE_VALUES = {
@@ -76,6 +85,7 @@ function createBlankDraft(): FantasyDraft {
     roundLabel: "",
     roundDate: "",
     playerNames: "",
+    juniorTeam: false,
     longestDrive: "",
     averageDrive: "",
     girPercent: "",
@@ -100,7 +110,13 @@ function restoreFantasyDraft(rawValue: string): FantasyDraft | null {
     const restoredDraft = Object.fromEntries(
       Object.keys(blankDraft).map((key) => {
         const field = key as keyof FantasyDraft;
-        return [field, typeof parsed[field] === "string" ? parsed[field] : blankDraft[field]];
+        const savedValue = parsed[field];
+        const fallbackValue = blankDraft[field];
+
+        return [
+          field,
+          typeof savedValue === typeof fallbackValue ? savedValue : fallbackValue,
+        ];
       })
     ) as FantasyDraft;
 
@@ -193,15 +209,33 @@ function formatRoundDate(value: string) {
     .toUpperCase();
 }
 
+function calculateDriveScoring(draft: FantasyDraft): DriveScoring {
+  const multiplier = draft.juniorTeam ? JUNIOR_DRIVE_MULTIPLIER : 1;
+  const longestDrive = toNumber(draft.longestDrive);
+  const averageDrive = toNumber(draft.averageDrive);
+  const longestDistance =
+    longestDrive === null ? null : longestDrive * multiplier;
+  const averageDistance =
+    averageDrive === null ? null : averageDrive * multiplier;
+
+  return {
+    longestDistance,
+    averageDistance,
+    longestPoints: (longestDistance ?? 0) / 10,
+    averagePoints: (averageDistance ?? 0) / 10,
+  };
+}
+
 function calculateFantasyPoints(draft: FantasyDraft): FantasyPoints {
   const totalPar = toNumber(draft.totalPar);
   const resultScore = toNumber(draft.resultScore);
+  const driveScoring = calculateDriveScoring(draft);
   const resultToPar =
     totalPar !== null && resultScore !== null ? resultScore - totalPar : null;
 
   const points = {
-    longestDrive: numberOrZero(draft.longestDrive) / 10,
-    averageDrive: numberOrZero(draft.averageDrive) / 10,
+    longestDrive: driveScoring.longestPoints,
+    averageDrive: driveScoring.averagePoints,
     gir: Math.max(0, Math.min(100, numberOrZero(draft.girPercent))) / 10,
     fir: Math.max(0, Math.min(100, numberOrZero(draft.firPercent))) / 10,
     eagles: numberOrZero(draft.eagles) * SCORE_VALUES.eagles,
@@ -490,7 +524,8 @@ function drawPerformanceCard(
   label: string,
   rawValue: string,
   points: number,
-  accent: string
+  accent: string,
+  qualifier?: string
 ) {
   const width = 234;
   const height = 144;
@@ -505,6 +540,14 @@ function drawPerformanceCard(
   context.fillStyle = "rgba(255,255,255,0.58)";
   context.font = '900 13px "Aptos", "Bahnschrift", sans-serif';
   context.fillText(label, x + 18, y + 30);
+
+  if (qualifier) {
+    context.textAlign = "right";
+    context.fillStyle = accent;
+    context.font = '900 10px "Aptos", "Bahnschrift", sans-serif';
+    context.fillText(qualifier, x + width - 18, y + 30);
+    context.textAlign = "left";
+  }
 
   context.fillStyle = "#ffffff";
   context.font = '900 32px "Arial Black", "Aptos Display", sans-serif';
@@ -554,6 +597,7 @@ function drawFantasyCard(
   }
 
   const points = calculateFantasyPoints(draft);
+  const driveScoring = calculateDriveScoring(draft);
   const scoringHoleCount = getScoringHoleCount(draft);
   const holesPlayed = toNumber(draft.holesPlayed) ?? scoringHoleCount;
   const sky = "#55d8ff";
@@ -784,18 +828,24 @@ function drawFantasyCard(
     54,
     559,
     "LONGEST DRIVE",
-    `${formatNumber(toNumber(draft.longestDrive))}m`,
+    `${formatNumber(driveScoring.longestDistance)}m`,
     points.longestDrive,
-    sky
+    sky,
+    draft.juniorTeam
+      ? `JUNIOR ${formatNumber(JUNIOR_DRIVE_MULTIPLIER)}X`
+      : undefined
   );
   drawPerformanceCard(
     context,
     300,
     559,
     "AVERAGE DRIVE",
-    `${formatNumber(toNumber(draft.averageDrive))}m`,
+    `${formatNumber(driveScoring.averageDistance)}m`,
     points.averageDrive,
-    gold
+    gold,
+    draft.juniorTeam
+      ? `JUNIOR ${formatNumber(JUNIOR_DRIVE_MULTIPLIER)}X`
+      : undefined
   );
   drawPerformanceCard(
     context,
@@ -1176,7 +1226,10 @@ export default function FantasyPointsStudio() {
     };
   }, []);
 
-  function updateField(field: keyof FantasyDraft, value: string) {
+  function updateField<Field extends keyof FantasyDraft>(
+    field: Field,
+    value: FantasyDraft[Field]
+  ) {
     setDraft((currentDraft) => ({ ...currentDraft, [field]: value }));
     setNotice(null);
   }
@@ -1331,6 +1384,7 @@ export default function FantasyPointsStudio() {
   }
 
   const points = calculateFantasyPoints(draft);
+  const driveScoring = calculateDriveScoring(draft);
   const scoringHoleCount = getScoringHoleCount(draft);
   const roundHoleCount = toNumber(draft.holesPlayed);
   const hasValidRoundHoleCount =
@@ -1351,6 +1405,7 @@ export default function FantasyPointsStudio() {
       label: "Longest drive",
       suffix: "m",
       points: points.longestDrive,
+      adjustedDistance: driveScoring.longestDistance,
       placeholder: "e.g. 286",
       max: undefined,
     },
@@ -1359,6 +1414,7 @@ export default function FantasyPointsStudio() {
       label: "Average drive",
       suffix: "m",
       points: points.averageDrive,
+      adjustedDistance: driveScoring.averageDistance,
       placeholder: "e.g. 242",
       max: undefined,
     },
@@ -1367,6 +1423,7 @@ export default function FantasyPointsStudio() {
       label: "GIR",
       suffix: "%",
       points: points.gir,
+      adjustedDistance: null,
       placeholder: "e.g. 72.2",
       max: 100,
     },
@@ -1375,6 +1432,7 @@ export default function FantasyPointsStudio() {
       label: "FIR",
       suffix: "%",
       points: points.fir,
+      adjustedDistance: null,
       placeholder: "e.g. 64.3",
       max: 100,
     },
@@ -1548,7 +1606,49 @@ export default function FantasyPointsStudio() {
             </span>
           </div>
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <label
+            htmlFor="fantasy-junior-team"
+            className={`mt-6 flex cursor-pointer flex-col gap-4 rounded-[1.35rem] border px-5 py-4 transition sm:flex-row sm:items-center ${
+              draft.juniorTeam
+                ? "border-[var(--gold)]/45 bg-[var(--gold)]/10"
+                : "border-white/8 bg-black/15 hover:border-white/15"
+            }`}
+          >
+            <input
+              id="fantasy-junior-team"
+              type="checkbox"
+              checked={draft.juniorTeam}
+              onChange={(event) => updateField("juniorTeam", event.target.checked)}
+              className="h-5 w-5 shrink-0 accent-[var(--gold)]"
+              aria-describedby="fantasy-junior-team-description"
+            />
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-black uppercase tracking-[0.12em] text-white">
+                Junior team drive adjustment
+              </span>
+              <span
+                id="fantasy-junior-team-description"
+                className="mt-1 block text-sm leading-6 text-zinc-400"
+              >
+                Multiply the longest and average drive distances by{" "}
+                {formatNumber(JUNIOR_DRIVE_MULTIPLIER)} before their fantasy points
+                are calculated.
+              </span>
+            </span>
+            <span
+              className={`w-fit rounded-full border px-3 py-2 text-xs font-black uppercase tracking-[0.12em] ${
+                draft.juniorTeam
+                  ? "border-[var(--gold)]/40 bg-[var(--gold)]/15 text-[var(--gold)]"
+                  : "border-white/10 bg-white/5 text-zinc-500"
+              }`}
+            >
+              {draft.juniorTeam
+                ? `${formatNumber(JUNIOR_DRIVE_MULTIPLIER)}x active`
+                : "Standard"}
+            </span>
+          </label>
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
             {performanceFields.map((item) => (
               <div
                 key={item.field}
@@ -1579,6 +1679,13 @@ export default function FantasyPointsStudio() {
                     {item.suffix}
                   </span>
                 </div>
+                {draft.juniorTeam && item.adjustedDistance !== null ? (
+                  <p className="mt-3 text-xs font-bold leading-5 text-[var(--sky)]">
+                    {formatNumber(toNumber(draft[item.field]))}{item.suffix} x{" "}
+                    {formatNumber(JUNIOR_DRIVE_MULTIPLIER)} ={" "}
+                    {formatNumber(item.adjustedDistance)}{item.suffix} fantasy distance
+                  </p>
+                ) : null}
               </div>
             ))}
           </div>
