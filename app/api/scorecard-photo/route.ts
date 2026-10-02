@@ -131,16 +131,6 @@ export async function POST(request: Request) {
     return json({ error: "The prepared photo is too large. Please choose it again." }, 413);
   }
 
-  if (!process.env.AI_GATEWAY_API_KEY && !process.env.VERCEL_OIDC_TOKEN) {
-    return json(
-      {
-        error:
-          "Photo reading is temporarily unavailable. You can still enter the scorecard manually.",
-      },
-      503
-    );
-  }
-
   let formData: FormData;
 
   try {
