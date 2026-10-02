@@ -15961,6 +15961,7 @@ main.text-white {
 .par3-v2-format-section,
 .par3-v2-live-section,
 .par3-v2-course-section,
+.par3-v2-scorecard-section,
 .par3-v2-watch-section,
 .par3-v2-closing {
   width: min(1500px, calc(100% - 64px));
@@ -16900,6 +16901,145 @@ main.text-white {
   line-height: 1.2;
 }
 
+.par3-v2-scorecard-section {
+  position: relative;
+  display: grid;
+  overflow: hidden;
+  grid-template-columns: minmax(340px, 0.76fr) minmax(0, 1.24fr);
+  margin-block: 110px 0;
+  background:
+    radial-gradient(circle at 0 0, rgba(32, 200, 255, 0.24), transparent 38%),
+    linear-gradient(125deg, #082c46, #03111d 55%, #2d1c05);
+  color: white;
+  box-shadow: 0 35px 90px rgba(3, 17, 29, 0.18);
+}
+
+.par3-v2-scorecard-section::after {
+  position: absolute;
+  right: -65px;
+  bottom: -175px;
+  color: rgba(255, 189, 24, 0.055);
+  font-family: Georgia, serif;
+  font-size: 420px;
+  font-weight: 950;
+  line-height: 1;
+  content: "18";
+  pointer-events: none;
+}
+
+.par3-v2-scorecard-copy {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  padding: clamp(45px, 5vw, 82px);
+}
+
+.par3-v2-scorecard-copy > span {
+  color: var(--par3-v2-cyan);
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.par3-v2-scorecard-copy h2 {
+  margin-top: 10px;
+  font-family: var(--font-space-grotesk);
+  font-size: clamp(44px, 5vw, 78px);
+  font-weight: 1000;
+  letter-spacing: -0.07em;
+  line-height: 0.9;
+  text-transform: uppercase;
+}
+
+.par3-v2-scorecard-copy p {
+  max-width: 570px;
+  margin: 25px 0 30px;
+  color: #b3c7d3;
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.par3-v2-scorecard-demo {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  min-width: 0;
+  align-content: center;
+  border-left: 1px solid rgba(165, 235, 255, 0.18);
+  padding: clamp(35px, 4vw, 66px);
+}
+
+.par3-v2-scorecard-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px;
+  background: linear-gradient(90deg, var(--par3-v2-cyan), var(--par3-v2-gold));
+}
+
+.par3-v2-scorecard-steps article {
+  display: grid;
+  min-height: 270px;
+  align-content: end;
+  background: rgba(2, 12, 21, 0.96);
+  padding: 25px;
+}
+
+.par3-v2-scorecard-steps article:nth-child(2) {
+  background: #0a2d43;
+}
+
+.par3-v2-scorecard-steps svg {
+  width: 43px;
+  height: 43px;
+  margin-bottom: auto;
+  color: var(--par3-v2-gold);
+}
+
+.par3-v2-scorecard-steps b {
+  color: var(--par3-v2-cyan);
+  font-size: 11px;
+  letter-spacing: 0.17em;
+}
+
+.par3-v2-scorecard-steps strong {
+  margin-top: 8px;
+  font-size: clamp(20px, 1.8vw, 29px);
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+
+.par3-v2-scorecard-steps span {
+  margin-top: 9px;
+  color: #8fa6b5;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.par3-v2-scorecard-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  border: 1px solid rgba(165, 235, 255, 0.18);
+  border-top: 0;
+  padding: 15px 20px;
+  color: #d8e8ef;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.par3-v2-scorecard-strip i {
+  width: 5px;
+  height: 5px;
+  transform: rotate(45deg);
+  background: var(--par3-v2-gold);
+}
+
 .par3-v2-watch-section {
   display: grid;
   grid-template-columns: 0.8fr 1.2fr;
@@ -17021,8 +17161,14 @@ main.text-white {
   }
 
   .par3-v2-register-layout,
+  .par3-v2-scorecard-section,
   .par3-v2-watch-section {
     grid-template-columns: 1fr;
+  }
+
+  .par3-v2-scorecard-demo {
+    border-top: 1px solid rgba(165, 235, 255, 0.18);
+    border-left: 0;
   }
 
   .par3-v2-course-section {
@@ -17050,6 +17196,7 @@ main.text-white {
   .par3-v2-hero-inner,
   .par3-v2-register-section,
   .par3-v2-live-section,
+  .par3-v2-scorecard-section,
   .par3-v2-watch-section {
     width: min(calc(100% - 28px), 1500px);
   }
@@ -17171,6 +17318,28 @@ main.text-white {
     min-height: 190px;
   }
 
+  .par3-v2-scorecard-section {
+    margin-top: 70px;
+  }
+
+  .par3-v2-scorecard-copy,
+  .par3-v2-scorecard-demo {
+    padding: 32px 22px;
+  }
+
+  .par3-v2-scorecard-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .par3-v2-scorecard-steps article {
+    min-height: 190px;
+  }
+
+  .par3-v2-scorecard-strip {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
   .par3-v2-video-frame {
     box-shadow: 8px 8px 0 var(--par3-v2-cyan);
   }
@@ -17179,4 +17348,42 @@ main.text-white {
     grid-template-columns: 1fr;
     padding: 45px 22px;
   }
+}
+
+/* Dark surfaces that intentionally sit inside the legacy bright application shell. */
+.scorecard-public-hero {
+  color: #f7f5ef;
+}
+
+.scorecard-public-hero h1 {
+  color: #ffffff;
+  font-family: var(--font-space-grotesk);
+}
+
+.site-shell main.text-white .scorecard-public-intro h2 {
+  color: #ffffff !important;
+}
+
+.site-shell main.text-white .scorecard-public-intro > p {
+  color: #aebfca !important;
+}
+
+.site-shell main.text-white .scorecard-public-hero .text-white,
+.site-shell main.text-white .scorecard-public-hero .text-zinc-100,
+.site-shell main.text-white .scorecard-public-hero .text-zinc-200,
+.site-shell main.text-white .scorecard-photo-import .text-white,
+.site-shell main.text-white .scorecard-photo-import .text-zinc-100,
+.site-shell main.text-white .scorecard-photo-import .text-zinc-200 {
+  color: #f7f5ef;
+}
+
+.site-shell main.text-white .scorecard-public-hero .text-zinc-300,
+.site-shell main.text-white .scorecard-public-hero .text-zinc-400,
+.site-shell main.text-white .scorecard-photo-import .text-zinc-300,
+.site-shell main.text-white .scorecard-photo-import .text-zinc-400 {
+  color: #aebfca;
+}
+
+.site-shell main.text-white .scorecard-photo-import .text-zinc-500 {
+  color: #8297a5;
 }

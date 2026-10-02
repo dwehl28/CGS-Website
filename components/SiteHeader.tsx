@@ -10,6 +10,7 @@ const eventLinks = [
   { href: "/#live", label: "Live" },
   { href: "/#watch", label: "Watch" },
   { href: "/#format", label: "Format" },
+  { href: "/scorecard", label: "Scorecard Tool" },
 ];
 
 export default function SiteHeader() {

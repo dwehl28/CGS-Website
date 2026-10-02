@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { type ChangeEvent, useEffect, useRef, useState } from "react";
 
 import {
   getScorecardHandicapAllocation,
@@ -57,6 +57,31 @@ type Notice = {
   tone: "info" | "success" | "error";
   message: string;
 } | null;
+
+type ScanConfidence = "high" | "medium" | "low";
+
+type ScorecardPhotoResult = {
+  courseName: string | null;
+  roundDate: string | null;
+  roundLabel: string | null;
+  handicap: number | null;
+  grossScore: number | null;
+  netScore: number | null;
+  distanceUnit: DistanceUnit | null;
+  holes: Array<{
+    hole: number;
+    distance: number | null;
+    par: number | null;
+    score: number | null;
+    confidence: ScanConfidence;
+  }>;
+  warnings: string[];
+};
+
+type ScorecardPhotoResponse = {
+  data?: ScorecardPhotoResult;
+  error?: string;
+};
 
 const CANVAS_WIDTH = 1080;
 const CANVAS_HEIGHT = 1350;
@@ -1374,17 +1399,82 @@ function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   });
 }
 
+function loadPhoto(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("The selected photo could not be opened."));
+    };
+    image.src = objectUrl;
+  });
+}
+
+async function prepareScorecardPhoto(file: File) {
+  const image = await loadPhoto(file);
+  const longestSide = Math.max(image.naturalWidth, image.naturalHeight);
+  const scale = Math.min(1, 2400 / longestSide);
+  const width = Math.max(1, Math.round(image.naturalWidth * scale));
+  const height = Math.max(1, Math.round(image.naturalHeight * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext("2d");
+  if (!context) {
+    throw new Error("The selected photo could not be prepared.");
+  }
+
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, width, height);
+  context.drawImage(image, 0, 0, width, height);
+
+  const createBlob = (quality: number) =>
+    new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (blob) =>
+          blob
+            ? resolve(blob)
+            : reject(new Error("The selected photo could not be prepared.")),
+        "image/jpeg",
+        quality
+      );
+    });
+
+  let blob = await createBlob(0.9);
+  if (blob.size > 6 * 1024 * 1024) {
+    blob = await createBlob(0.72);
+  }
+
+  return new File([blob], "scorecard-photo.jpg", { type: "image/jpeg" });
+}
+
 export default function ScorecardStudio() {
   const [draft, setDraft] = useState<ScorecardDraft>(createBlankDraft);
   const [draftReady, setDraftReady] = useState(false);
   const [logo, setLogo] = useState<HTMLImageElement | null>(null);
   const [showValidation, setShowValidation] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState("");
+  const [photoConsent, setPhotoConsent] = useState(false);
+  const [isReadingPhoto, setIsReadingPhoto] = useState(false);
+  const [scanWarnings, setScanWarnings] = useState<string[]>([]);
+  const [scanConfidence, setScanConfidence] = useState<
+    Record<number, ScanConfidence>
+  >({});
   const [notice, setNotice] = useState<Notice>({
     tone: "info",
     message: "Your unfinished scorecard will auto-save in this browser.",
   });
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const savedDraft = window.localStorage.getItem(SCORECARD_DRAFT_STORAGE_KEY);
@@ -1439,6 +1529,15 @@ export default function ScorecardStudio() {
     };
   }, [draft, logo]);
 
+  useEffect(
+    () => () => {
+      if (photoPreviewUrl) {
+        URL.revokeObjectURL(photoPreviewUrl);
+      }
+    },
+    [photoPreviewUrl]
+  );
+
   function updateField<Key extends keyof Omit<ScorecardDraft, "holes">>(
     key: Key,
     value: ScorecardDraft[Key]
@@ -1465,12 +1564,184 @@ export default function ScorecardStudio() {
         holeIndex === index ? { ...hole, [key]: value } : hole
       ),
     }));
+    setScanConfidence((currentConfidence) => {
+      if (!(index in currentConfidence)) {
+        return currentConfidence;
+      }
+
+      const nextConfidence = { ...currentConfidence };
+      delete nextConfidence[index];
+      return nextConfidence;
+    });
     setNotice(null);
+  }
+
+  function handlePhotoSelection(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+
+    if (!file) {
+      return;
+    }
+
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      event.target.value = "";
+      setPhotoFile(null);
+      setPhotoPreviewUrl("");
+      setNotice({
+        tone: "error",
+        message: "Choose a JPG, PNG, or WebP photo of the scorecard.",
+      });
+      return;
+    }
+
+    if (file.size > 15 * 1024 * 1024) {
+      event.target.value = "";
+      setPhotoFile(null);
+      setPhotoPreviewUrl("");
+      setNotice({
+        tone: "error",
+        message: "That original photo is larger than 15 MB. Choose a smaller version.",
+      });
+      return;
+    }
+
+    setPhotoFile(file);
+    setPhotoPreviewUrl(URL.createObjectURL(file));
+    setScanWarnings([]);
+    setScanConfidence({});
+    setNotice({
+      tone: "info",
+      message: "Photo ready. Enter the player or team name, then read the card.",
+    });
+  }
+
+  async function readScorecardPhoto() {
+    if (!draft.teamName.trim()) {
+      setNotice({
+        tone: "error",
+        message: "Enter the player or team name so we know which score row to read.",
+      });
+      return;
+    }
+
+    if (!photoFile) {
+      setNotice({
+        tone: "error",
+        message: "Choose or take a clear photo of the full scorecard first.",
+      });
+      return;
+    }
+
+    if (!photoConsent) {
+      setNotice({
+        tone: "error",
+        message: "Confirm the one-time photo analysis before continuing.",
+      });
+      return;
+    }
+
+    setIsReadingPhoto(true);
+    setScanWarnings([]);
+    setNotice({
+      tone: "info",
+      message: "Reading the scorecard. This can take a few seconds...",
+    });
+
+    try {
+      const preparedPhoto = await prepareScorecardPhoto(photoFile);
+      const formData = new FormData();
+      formData.append("image", preparedPhoto);
+      formData.append("targetName", draft.teamName.trim());
+      formData.append("courseName", draft.courseName.trim());
+
+      const response = await fetch("/api/scorecard-photo", {
+        method: "POST",
+        body: formData,
+      });
+      const payload = (await response.json()) as ScorecardPhotoResponse;
+
+      if (!response.ok || !payload.data) {
+        throw new Error(payload.error || "The scorecard could not be read.");
+      }
+
+      const result = payload.data;
+      const importedHoles = createBlankHoles();
+      const importedConfidence: Record<number, ScanConfidence> = {};
+
+      for (const hole of result.holes) {
+        const index = hole.hole - 1;
+        if (index < 0 || index >= importedHoles.length) {
+          continue;
+        }
+
+        importedHoles[index] = {
+          distance: hole.distance === null ? "" : String(hole.distance),
+          par: hole.par === null ? "" : String(hole.par),
+          score: hole.score === null ? "" : String(hole.score),
+        };
+        importedConfidence[index] = hole.confidence;
+      }
+
+      setDraft((currentDraft) => ({
+        ...currentDraft,
+        courseName: currentDraft.courseName.trim()
+          ? currentDraft.courseName
+          : result.courseName || "",
+        handicap:
+          result.handicap === null
+            ? currentDraft.handicap
+            : String(result.handicap),
+        grossScore:
+          result.grossScore === null ? "" : String(result.grossScore),
+        netScore: result.netScore === null ? "" : String(result.netScore),
+        roundDate: currentDraft.roundDate || result.roundDate || "",
+        roundLabel: currentDraft.roundLabel || result.roundLabel || "",
+        distanceUnit: result.distanceUnit || currentDraft.distanceUnit,
+        holes: importedHoles,
+      }));
+      setScanConfidence(importedConfidence);
+
+      const lowConfidenceHoles = result.holes
+        .filter((hole) => hole.confidence === "low")
+        .map((hole) => hole.hole);
+      const warnings = [...result.warnings];
+
+      if (lowConfidenceHoles.length > 0) {
+        warnings.unshift(
+          `Double-check low-confidence hole${lowConfidenceHoles.length === 1 ? "" : "s"}: ${lowConfidenceHoles.join(", ")}.`
+        );
+      }
+
+      setScanWarnings(warnings);
+      setShowValidation(false);
+      setNotice({
+        tone: "success",
+        message: `${result.holes.length} hole${result.holes.length === 1 ? "" : "s"} imported. Review the highlighted checks before exporting.`,
+      });
+    } catch (error) {
+      setNotice({
+        tone: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "The scorecard could not be read. Please try a clearer photo.",
+      });
+    } finally {
+      setIsReadingPhoto(false);
+    }
   }
 
   function clearDraft() {
     setDraft(createBlankDraft());
     setShowValidation(false);
+    setPhotoFile(null);
+    setPhotoPreviewUrl("");
+    setPhotoConsent(false);
+    setScanWarnings([]);
+    setScanConfidence({});
+    if (photoInputRef.current) {
+      photoInputRef.current.value = "";
+    }
     setNotice({
       tone: "info",
       message: "The scorecard is blank and ready for a new team.",
@@ -1585,6 +1856,123 @@ export default function ScorecardStudio() {
   return (
     <div className="grid gap-8 xl:grid-cols-[minmax(0,1.08fr)_minmax(400px,0.72fr)] xl:items-start">
       <div className="space-y-8">
+        <section className="scorecard-photo-import overflow-hidden rounded-[2rem] border border-[var(--sky)]/25 bg-[linear-gradient(145deg,rgba(8,44,70,0.96),rgba(2,10,18,0.98)_58%,rgba(58,37,5,0.88))] shadow-[0_28px_80px_rgba(0,0,0,0.24)]">
+          <div className="grid gap-7 p-6 md:p-8 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
+            <div>
+              <div className="flex items-center gap-3">
+                <span className="rounded-full bg-[var(--gold)] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.17em] text-[#07111b]">
+                  New
+                </span>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-[var(--sky)]">
+                  Photo to Instagram post
+                </p>
+              </div>
+              <h2 className="mt-4 text-3xl text-white md:text-4xl">
+                Photograph the card. We will fill the table.
+              </h2>
+              <p className="mt-4 max-w-xl text-sm leading-7 text-sky-100/75">
+                Take a clear, straight photo showing the full card. Enter the
+                player or team name below so the correct score row can be read;
+                course name can be typed manually if you prefer.
+              </p>
+
+              <ol className="mt-6 grid gap-3 text-sm text-zinc-200 sm:grid-cols-3 lg:grid-cols-1">
+                {[
+                  "Add the name and optional course",
+                  "Choose or take a scorecard photo",
+                  "Review the imported holes and export",
+                ].map((step, index) => (
+                  <li key={step} className="flex items-center gap-3">
+                    <b className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[var(--sky)]/35 bg-[var(--sky)]/10 text-xs text-[var(--sky)]">
+                      {index + 1}
+                    </b>
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            <div className="rounded-[1.5rem] border border-white/10 bg-black/20 p-4 md:p-5">
+              <input
+                ref={photoInputRef}
+                id="scorecard-photo"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
+                onChange={handlePhotoSelection}
+              />
+              <label
+                htmlFor="scorecard-photo"
+                className="group grid min-h-56 cursor-pointer place-items-center overflow-hidden rounded-[1.2rem] border border-dashed border-[var(--sky)]/40 bg-[var(--sky)]/6 text-center transition hover:border-[var(--gold)] hover:bg-[var(--gold)]/7"
+              >
+                {photoPreviewUrl ? (
+                  <span
+                    className="grid h-full min-h-56 w-full place-items-end bg-cover bg-center p-4"
+                    style={{
+                      backgroundImage: `linear-gradient(180deg, transparent 45%, rgba(2, 10, 18, 0.9)), url(${photoPreviewUrl})`,
+                    }}
+                    role="img"
+                    aria-label="Selected scorecard photo preview"
+                  >
+                    <b className="rounded-full bg-black/70 px-4 py-2 text-xs uppercase tracking-[0.13em] text-white backdrop-blur-sm">
+                      Choose a different photo
+                    </b>
+                  </span>
+                ) : (
+                  <span className="px-6 py-10">
+                    <b className="block text-xl text-white">
+                      Take or upload a scorecard photo
+                    </b>
+                    <span className="mt-2 block text-sm leading-6 text-zinc-400">
+                      JPG, PNG, or WebP. Bright light and a straight overhead
+                      angle give the best result.
+                    </span>
+                    <span className="mt-5 inline-flex rounded-full bg-[var(--sky)] px-5 py-2.5 text-xs font-black uppercase tracking-[0.13em] text-[#06111e] transition group-hover:bg-[var(--gold)]">
+                      Choose photo
+                    </span>
+                  </span>
+                )}
+              </label>
+
+              <label className="mt-4 grid cursor-pointer grid-cols-[20px_minmax(0,1fr)] items-start gap-3 text-xs leading-5 text-zinc-400">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 accent-[var(--sky)]"
+                  checked={photoConsent}
+                  onChange={(event) => setPhotoConsent(event.target.checked)}
+                />
+                <span>
+                  I agree to this photo being sent securely to an AI service for
+                  one-time analysis. CGS does not save the photo, and I will review
+                  the imported values before publishing.
+                </span>
+              </label>
+
+              <button
+                type="button"
+                className="btn-primary mt-4 w-full justify-center"
+                onClick={readScorecardPhoto}
+                disabled={isReadingPhoto}
+              >
+                {isReadingPhoto ? "Reading scorecard photo..." : "Read photo into scorecard"}
+              </button>
+
+              {scanWarnings.length > 0 ? (
+                <div className="mt-4 rounded-[1rem] border border-amber-300/25 bg-amber-300/8 px-4 py-3 text-xs leading-5 text-amber-100">
+                  <p className="font-black uppercase tracking-[0.13em] text-[var(--gold)]">
+                    Review before export
+                  </p>
+                  <ul className="mt-2 space-y-1">
+                    {scanWarnings.map((warning) => (
+                      <li key={warning}>- {warning}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </section>
+
         <section className="panel overflow-hidden rounded-[2rem]">
           <div className="border-b border-white/8 bg-[linear-gradient(120deg,rgba(101,215,255,0.15),rgba(255,190,24,0.08))] px-6 py-6 md:px-8">
             <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -1822,10 +2210,21 @@ export default function ScorecardStudio() {
                         return (
                           <tr
                             key={holeIndex}
-                            className="border-b border-white/6 last:border-b-0"
+                            className={`border-b border-white/6 last:border-b-0 ${
+                              scanConfidence[holeIndex] === "low"
+                                ? "bg-amber-300/8"
+                                : scanConfidence[holeIndex] === "medium"
+                                  ? "bg-sky-300/5"
+                                  : ""
+                            }`}
                           >
                             <th className="px-4 py-3 text-left text-sm font-black text-white">
                               {holeIndex + 1}
+                              {scanConfidence[holeIndex] === "low" ? (
+                                <span className="mt-1 block text-[8px] uppercase tracking-[0.12em] text-[var(--gold)]">
+                                  Check
+                                </span>
+                              ) : null}
                             </th>
                             {(["distance", "par", "score"] as const).map((field) => (
                               <td key={field} className="px-2 py-2.5">

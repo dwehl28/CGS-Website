@@ -4,14 +4,17 @@ import Link from "next/link";
 import {
   ArrowRight,
   CalendarDays,
+  Camera,
   CheckCircle2,
   CircleDollarSign,
   Clock3,
   ExternalLink,
   Flag,
+  ImageDown,
   MapPin,
   Medal,
   Radio,
+  ScanLine,
   Target,
   Trophy,
   Users,
@@ -286,6 +289,50 @@ export default async function Home() {
               <strong>{stage.course}</strong>
             </article>
           ))}
+        </div>
+      </section>
+
+      <section id="scorecard-tool" className="par3-v2-scorecard-section">
+        <div className="par3-v2-scorecard-copy">
+          <span>Free club tool</span>
+          <h2>Turn the card into the post.</h2>
+          <p>
+            Upload a photo of a completed golf scorecard or enter it manually,
+            check the result, and download a polished CGS Instagram graphic.
+          </p>
+          <Link href="/scorecard" className="par3-v2-button is-primary">
+            Open scorecard studio <ArrowRight />
+          </Link>
+        </div>
+
+        <div className="par3-v2-scorecard-demo" aria-label="How the scorecard studio works">
+          <div className="par3-v2-scorecard-steps">
+            <article>
+              <Camera />
+              <b>01</b>
+              <strong>Photograph</strong>
+              <span>Take a clear photo of the full card.</span>
+            </article>
+            <article>
+              <ScanLine />
+              <b>02</b>
+              <strong>Review</strong>
+              <span>Scores, pars, and distances fill automatically.</span>
+            </article>
+            <article>
+              <ImageDown />
+              <b>03</b>
+              <strong>Download</strong>
+              <span>Export a 1080 x 1350 Instagram post.</span>
+            </article>
+          </div>
+          <div className="par3-v2-scorecard-strip">
+            <span>Any course</span>
+            <i />
+            <span>Any round length</span>
+            <i />
+            <span>Gross + nett</span>
+          </div>
         </div>
       </section>
 

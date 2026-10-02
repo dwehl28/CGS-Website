@@ -92,6 +92,7 @@ export const navigationLinks: NavLink[] = [
   { href: "/", label: "Home" },
   { href: "/events", label: "Events" },
   { href: "/scoreboard", label: "Scoreboard" },
+  { href: "/scorecard", label: "Scorecard Maker" },
   { href: "/stats", label: "Stats Lab" },
   { href: "/play", label: "Player App" },
   { href: "/membership", label: "Membership" },

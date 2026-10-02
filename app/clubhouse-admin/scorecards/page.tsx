@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   ...buildMetadata({
     title: "CGS Scorecard Studio",
     description:
-      "Private CGS admin tool for creating flexible-length branded team scorecards with hole-by-hole net results and scoring marks.",
+      "CGS tool for turning photographed or manually entered rounds into flexible-length branded team scorecards with hole-by-hole nett results.",
     path: "/clubhouse-admin/scorecards",
   }),
   robots: {
@@ -60,7 +60,7 @@ export default async function ScorecardStudioPage() {
     <AdminShell
       eyebrow="Social graphics"
       title="CGS Scorecard Studio"
-      description="Build a flexible team scorecard using only the holes played, with gross and net results, automatic handicap strokes, professional scoring marks, and rotating Instagram designs."
+      description="Photograph a completed card or enter it manually, then review the holes and build a flexible CGS graphic with gross and nett results, automatic handicap strokes, professional scoring marks, and rotating Instagram designs."
       actions={
         <>
           <Link href="/clubhouse-admin/fantasy-points" className="btn-secondary">
