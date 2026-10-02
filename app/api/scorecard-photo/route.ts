@@ -154,6 +154,19 @@ function getSafeAiErrorDiagnostics(error: unknown) {
   };
 }
 
+function isGatewayAccountVerificationError(error: unknown) {
+  const statusCode = getErrorField(error, "statusCode");
+  const message = cleanDiagnosticText(getErrorField(error, "message")) ?? "";
+  const cause = getErrorField(error, "cause");
+  const responseBody =
+    cleanDiagnosticText(getErrorField(cause, "responseBody")) ?? "";
+
+  return (
+    statusCode === 403 &&
+    `${message} ${responseBody}`.toLowerCase().includes("credit card on file")
+  );
+}
+
 export async function POST(request: Request) {
   if (!hasValidOrigin(request)) {
     return json({ error: "This upload must be started from the CGS website." }, 403);
@@ -225,8 +238,9 @@ Return holes 1-18 only when they are present on the photographed card. For each 
 The visitor's optional manual course entry is "${courseOverride || "not supplied"}". It is context only and must not make you invent course data. Add a concise warning for ambiguity, missing fields, handwriting uncertainty, multiple possible score rows, or values that should be checked. Confidence is per hole and must reflect the least certain value on that hole.`,
               },
               {
-                type: "image",
-                image: imageBytes,
+                type: "file",
+                data: imageBytes,
+                filename: image.name || "scorecard-photo.jpg",
                 mediaType: image.type,
               },
             ],
@@ -282,6 +296,18 @@ The visitor's optional manual course entry is "${courseOverride || "not supplied
     });
   } catch (error) {
     console.error("Scorecard photo reading failed", getSafeAiErrorDiagnostics(error));
+
+    if (isGatewayAccountVerificationError(error)) {
+      return json(
+        {
+          error:
+            "Photo reading is temporarily unavailable while the secure image service is activated. You can still enter the scorecard manually below.",
+          code: "PHOTO_READER_SETUP_REQUIRED",
+        },
+        503
+      );
+    }
+
     return json(
       {
         error:
