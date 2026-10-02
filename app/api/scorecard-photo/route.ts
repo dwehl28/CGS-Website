@@ -111,6 +111,49 @@ function cleanOptionalText(value: string | null, maxLength: number) {
   return cleanValue || null;
 }
 
+function cleanDiagnosticText(value: unknown) {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  return value
+    .replace(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/gi, "[image omitted]")
+    .replace(/[A-Za-z0-9+/]{200,}={0,2}/g, "[long data omitted]")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 700);
+}
+
+function getErrorField(error: unknown, field: string) {
+  if (typeof error !== "object" || error === null || !(field in error)) {
+    return undefined;
+  }
+
+  return (error as Record<string, unknown>)[field];
+}
+
+function getSafeAiErrorDiagnostics(error: unknown) {
+  const cause = getErrorField(error, "cause");
+
+  return {
+    name: cleanDiagnosticText(getErrorField(error, "name")),
+    message: cleanDiagnosticText(getErrorField(error, "message")),
+    statusCode: getErrorField(error, "statusCode"),
+    generationId: cleanDiagnosticText(getErrorField(error, "generationId")),
+    cause:
+      typeof cause === "object" && cause !== null
+        ? {
+            name: cleanDiagnosticText(getErrorField(cause, "name")),
+            message: cleanDiagnosticText(getErrorField(cause, "message")),
+            statusCode: getErrorField(cause, "statusCode"),
+            responseBody: cleanDiagnosticText(
+              getErrorField(cause, "responseBody")
+            ),
+          }
+        : cleanDiagnosticText(cause),
+  };
+}
+
 export async function POST(request: Request) {
   if (!hasValidOrigin(request)) {
     return json({ error: "This upload must be started from the CGS website." }, 403);
@@ -238,10 +281,7 @@ The visitor's optional manual course entry is "${courseOverride || "not supplied
       },
     });
   } catch (error) {
-    console.error(
-      "Scorecard photo reading failed",
-      error instanceof Error ? error.name : "UnknownError"
-    );
+    console.error("Scorecard photo reading failed", getSafeAiErrorDiagnostics(error));
     return json(
       {
         error:
