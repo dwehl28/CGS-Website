@@ -20,7 +20,11 @@ const requestLog = new Map<string, number[]>();
 
 const scorecardPhotoSchema = z.object({
   courseName: z.string().max(160).nullable(),
-  roundDate: z.string().max(20).nullable(),
+  roundDate: z
+    .string()
+    .max(20)
+    .nullable()
+    .describe("Round date formatted as YYYY-MM-DD when visible"),
   roundLabel: z.string().max(120).nullable(),
   handicap: z.number().min(0).max(72).nullable(),
   grossScore: z.number().min(1).max(500).nullable(),
@@ -109,6 +113,86 @@ function readShortText(value: FormDataEntryValue | null, maxLength: number) {
 function cleanOptionalText(value: string | null, maxLength: number) {
   const cleanValue = value?.replace(/\s+/g, " ").trim().slice(0, maxLength);
   return cleanValue || null;
+}
+
+function formatRoundDate(year: number, month: number, day: number) {
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return `${year.toString().padStart(4, "0")}-${month
+    .toString()
+    .padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+}
+
+function normaliseRoundDate(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const cleanValue = value.replace(/[,.]/g, " ").replace(/\s+/g, " ").trim();
+  const isoMatch = cleanValue.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+
+  if (isoMatch) {
+    return formatRoundDate(
+      Number(isoMatch[1]),
+      Number(isoMatch[2]),
+      Number(isoMatch[3])
+    );
+  }
+
+  const numericMatch = cleanValue.match(
+    /^(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})$/
+  );
+
+  if (numericMatch) {
+    const rawYear = Number(numericMatch[3]);
+    const year = rawYear < 100 ? 2000 + rawYear : rawYear;
+    return formatRoundDate(year, Number(numericMatch[2]), Number(numericMatch[1]));
+  }
+
+  const monthNumbers: Record<string, number> = {
+    jan: 1,
+    january: 1,
+    feb: 2,
+    february: 2,
+    mar: 3,
+    march: 3,
+    apr: 4,
+    april: 4,
+    may: 5,
+    jun: 6,
+    june: 6,
+    jul: 7,
+    july: 7,
+    aug: 8,
+    august: 8,
+    sep: 9,
+    sept: 9,
+    september: 9,
+    oct: 10,
+    october: 10,
+    nov: 11,
+    november: 11,
+    dec: 12,
+    december: 12,
+  };
+  const namedMatch = cleanValue.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/);
+
+  if (!namedMatch) {
+    return null;
+  }
+
+  const month = monthNumbers[namedMatch[2].toLowerCase()];
+  return month
+    ? formatRoundDate(Number(namedMatch[3]), month, Number(namedMatch[1]))
+    : null;
 }
 
 function cleanDiagnosticText(value: unknown) {
@@ -233,9 +317,9 @@ export async function POST(request: Request) {
                 type: "text",
                 text: `Read this golf scorecard for the player or team named "${targetName}".
 
-Return holes 1-18 only when they are present on the photographed card. For each hole, read the selected tee distance, par, and the score for the target player/team. Use the row that most closely matches the supplied name; if the card is a team card, prefer a clearly marked team or total score row. Distinguish OUT/IN totals from actual hole scores. Determine whether distances are metres (m) or yards (yd) from labels or context. Read the handicap, gross total, nett total, date, round/competition, and printed course name when visible.
+Return holes 1-18 only when they are present on the photographed card. For each hole, read the selected tee distance, par, and the score for the target player/team. Use the row that most closely matches the supplied name; if the card is a team card, prefer a clearly marked team or total score row. Distinguish OUT/IN totals from actual hole scores. Determine whether distances are metres (m) or yards (yd) from labels or context. Read the handicap, gross total, nett total, date, round/competition, and printed course name when visible. Return a visible round date as YYYY-MM-DD.
 
-The visitor's optional manual course entry is "${courseOverride || "not supplied"}". It is context only and must not make you invent course data. Add a concise warning for ambiguity, missing fields, handwriting uncertainty, multiple possible score rows, or values that should be checked. Confidence is per hole and must reflect the least certain value on that hole.`,
+The visitor's optional manual course entry is "${courseOverride || "not supplied"}". It is context only and must not make you invent course data. Add a concise warning for ambiguity, missing fields, handwriting uncertainty, multiple possible score rows, or values that should be checked. Do not add a warning merely to confirm that extraction succeeded. Confidence is per hole and must reflect the least certain value on that hole.`,
               },
               {
                 type: "file",
@@ -274,6 +358,24 @@ The visitor's optional manual course entry is "${courseOverride || "not supplied
       .filter(Boolean)
       .slice(0, 12);
 
+    const scoredHoles = holes.filter((hole) => hole.score !== null);
+    if (
+      result.output.grossScore !== null &&
+      scoredHoles.length > 0 &&
+      scoredHoles.length === holes.length
+    ) {
+      const importedGross = scoredHoles.reduce(
+        (total, hole) => total + (hole.score ?? 0),
+        0
+      );
+
+      if (importedGross !== result.output.grossScore) {
+        warnings.unshift(
+          `The printed gross total (${result.output.grossScore}) does not match the imported hole scores (${importedGross}). Review the card before publishing.`
+        );
+      }
+    }
+
     if (holes.length === 0) {
       warnings.unshift(
         "No hole-by-hole scores were read. Try a brighter, straighter photo showing the full card."
@@ -284,14 +386,10 @@ The visitor's optional manual course entry is "${courseOverride || "not supplied
       data: {
         ...result.output,
         courseName: cleanOptionalText(result.output.courseName, 160),
-        roundDate:
-          result.output.roundDate &&
-          /^\d{4}-\d{2}-\d{2}$/.test(result.output.roundDate)
-            ? result.output.roundDate
-            : null,
+        roundDate: normaliseRoundDate(result.output.roundDate),
         roundLabel: cleanOptionalText(result.output.roundLabel, 120),
         holes,
-        warnings,
+        warnings: warnings.slice(0, 12),
       },
     });
   } catch (error) {
