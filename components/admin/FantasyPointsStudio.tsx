@@ -285,7 +285,11 @@ function deriveDraftFromScorecard(
   };
   const handicapAllocation = getScorecardHandicapAllocation(
     snapshot.holes,
-    snapshot.handicap
+    snapshot.handicap,
+    {
+      mode: snapshot.handicapMode,
+      allowancePercent: snapshot.handicapAllowance,
+    }
   );
   const completedHoles = snapshot.holes
     .map((hole, index) => ({
@@ -351,9 +355,7 @@ function hasUsableScorecardData(snapshot: ScorecardDraftSnapshot) {
   return Boolean(
     snapshot.teamName.trim() ||
       snapshot.courseName.trim() ||
-      snapshot.holes.some(
-        (hole) => hole.par.trim() || hole.score.trim() || hole.distance.trim()
-      )
+      snapshot.holes.some((hole) => hole.score.trim())
   );
 }
 

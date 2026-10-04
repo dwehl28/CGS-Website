@@ -6,8 +6,17 @@ export type ScorecardHoleSnapshot = {
   score: string;
 };
 
+export type ScorecardHandicapMode = "standard" | "ambrose" | "playing";
+export type ScorecardAmbroseTeamSize = "2" | "3" | "4" | "custom";
+
+export type ScorecardHandicapOptions = {
+  mode?: ScorecardHandicapMode;
+  allowancePercent?: string | number;
+};
+
 export type ScorecardHandicapAllocation = {
   playingHandicap: number | null;
+  allocatedStrokes: number | null;
   strokes: Array<number | null>;
   netScores: Array<number | null>;
 };
@@ -16,6 +25,9 @@ export type ScorecardDraftSnapshot = {
   teamName: string;
   courseName: string;
   handicap: string;
+  handicapMode: ScorecardHandicapMode;
+  handicapAllowance: string;
+  ambroseTeamSize: ScorecardAmbroseTeamSize;
   grossScore: string;
   netScore: string;
   roundDate: string;
@@ -37,28 +49,66 @@ function toNumber(value: string): number | null {
   return Number.isFinite(number) ? number : null;
 }
 
+function roundToTwo(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function readHandicapMode(value: unknown): ScorecardHandicapMode {
+  return value === "ambrose" || value === "playing" ? value : "standard";
+}
+
+function readAmbroseTeamSize(value: unknown): ScorecardAmbroseTeamSize {
+  return value === "2" || value === "3" || value === "custom" ? value : "4";
+}
+
 export function getScorecardHandicapAllocation(
   holes: ScorecardHoleSnapshot[],
-  handicapValue: string
+  handicapValue: string,
+  options: ScorecardHandicapOptions = {}
 ): ScorecardHandicapAllocation {
   const handicap = toNumber(handicapValue);
   const activeHoles = holes
     .map((hole, index) => ({ hole, index }))
-    .filter(({ hole }) =>
-      Boolean(hole.distance.trim() || hole.par.trim() || hole.score.trim())
-    );
-  const playingHandicap =
-    handicap === null || activeHoles.length === 0
-      ? null
-      : Math.max(0, Math.round((handicap * activeHoles.length) / 18));
+    .filter(({ hole }) => Boolean(hole.score.trim()));
+  const mode = options.mode ?? "standard";
+  const allowancePercent =
+    typeof options.allowancePercent === "number"
+      ? options.allowancePercent
+      : toNumber(options.allowancePercent ?? "");
+  let playingHandicap: number | null = null;
+
+  if (handicap !== null && activeHoles.length > 0) {
+    if (mode === "playing") {
+      playingHandicap = Math.max(0, roundToTwo(handicap));
+    } else if (mode === "ambrose") {
+      playingHandicap = Math.max(
+        0,
+        roundToTwo(
+          handicap *
+            Math.max(0, allowancePercent ?? 0) /
+            100 *
+            activeHoles.length /
+            18
+        )
+      );
+    } else {
+      playingHandicap = Math.max(
+        0,
+        Math.round((handicap * activeHoles.length) / 18)
+      );
+    }
+  }
 
   if (playingHandicap === null) {
     return {
       playingHandicap: null,
+      allocatedStrokes: null,
       strokes: holes.map(() => null),
       netScores: holes.map(() => null),
     };
   }
+
+  const allocatedStrokes = Math.max(0, Math.round(playingHandicap));
 
   const difficultyOrder = activeHoles
     .map(({ hole, index }) => ({
@@ -78,8 +128,8 @@ export function getScorecardHandicapAllocation(
       return left.index - right.index;
     });
 
-  const baseStrokes = Math.floor(playingHandicap / activeHoles.length);
-  const extraStrokes = playingHandicap % activeHoles.length;
+  const baseStrokes = Math.floor(allocatedStrokes / activeHoles.length);
+  const extraStrokes = allocatedStrokes % activeHoles.length;
   const strokes: Array<number | null> = holes.map(() => null);
 
   activeHoles.forEach(({ index }) => {
@@ -92,6 +142,7 @@ export function getScorecardHandicapAllocation(
 
   return {
     playingHandicap,
+    allocatedStrokes,
     strokes,
     netScores: holes.map((hole, index) => {
       const grossScore = toNumber(hole.score);
@@ -117,6 +168,9 @@ export function parseScorecardDraftSnapshot(
       teamName: readString(parsed.teamName),
       courseName: readString(parsed.courseName),
       handicap: readString(parsed.handicap),
+      handicapMode: readHandicapMode(parsed.handicapMode),
+      handicapAllowance: readString(parsed.handicapAllowance) || "12.5",
+      ambroseTeamSize: readAmbroseTeamSize(parsed.ambroseTeamSize),
       grossScore: readString(parsed.grossScore),
       netScore: readString(parsed.netScore),
       roundDate: readString(parsed.roundDate),

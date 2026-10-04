@@ -317,7 +317,7 @@ export async function POST(request: Request) {
                 type: "text",
                 text: `Read this golf scorecard for the player or team named "${targetName}".
 
-Return holes 1-18 only when they are present on the photographed card. For each hole, read the selected tee distance, par, and the score for the target player/team. Use the row that most closely matches the supplied name; if the card is a team card, prefer a clearly marked team or total score row. Distinguish OUT/IN totals from actual hole scores. Determine whether distances are metres (m) or yards (yd) from labels or context. Read the handicap, gross total, nett total, date, round/competition, and printed course name when visible. Return a visible round date as YYYY-MM-DD.
+Return a hole only when the target player/team has an actual score visibly posted for that hole. A printed hole number, distance, par, or stroke index does not mean the hole was played. Omit every hole whose target score cell is blank, crossed out without a replacement, or otherwise has no posted score. For each scored hole, read the selected tee distance, par, and target score. Use the row that most closely matches the supplied name; if the card is a team card, prefer a clearly marked team or total score row. Distinguish OUT/IN totals from actual hole scores. Determine whether distances are metres (m) or yards (yd) from labels or context. Read the handicap, gross total, nett total, date, round/competition, and printed course name when visible. Return a visible round date as YYYY-MM-DD.
 
 The visitor's optional manual course entry is "${courseOverride || "not supplied"}". It is context only and must not make you invent course data. Add a concise warning for ambiguity, missing fields, handwriting uncertainty, multiple possible score rows, or values that should be checked. Do not add a warning merely to confirm that extraction succeeded. Confidence is per hole and must reflect the least certain value on that hole.`,
               },
@@ -352,19 +352,27 @@ The visitor's optional manual course entry is "${courseOverride || "not supplied
       }
     }
 
-    const holes = [...uniqueHoles.values()].sort((a, b) => a.hole - b.hole);
+    const extractedHoles = [...uniqueHoles.values()].sort(
+      (a, b) => a.hole - b.hole
+    );
+    const holes = extractedHoles.filter((hole) => hole.score !== null);
     const warnings = result.output.warnings
       .map((warning) => warning.replace(/\s+/g, " ").trim())
       .filter(Boolean)
       .slice(0, 12);
 
-    const scoredHoles = holes.filter((hole) => hole.score !== null);
+    const ignoredHoleCount = extractedHoles.length - holes.length;
+    if (ignoredHoleCount > 0) {
+      warnings.unshift(
+        `${ignoredHoleCount} unscored hole${ignoredHoleCount === 1 ? " was" : "s were"} excluded from this round.`
+      );
+    }
+
     if (
       result.output.grossScore !== null &&
-      scoredHoles.length > 0 &&
-      scoredHoles.length === holes.length
+      holes.length > 0
     ) {
-      const importedGross = scoredHoles.reduce(
+      const importedGross = holes.reduce(
         (total, hole) => total + (hole.score ?? 0),
         0
       );

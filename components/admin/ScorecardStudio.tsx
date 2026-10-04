@@ -5,7 +5,9 @@ import { type ChangeEvent, useEffect, useRef, useState } from "react";
 import {
   getScorecardHandicapAllocation,
   SCORECARD_DRAFT_STORAGE_KEY,
+  type ScorecardAmbroseTeamSize,
   type ScorecardHandicapAllocation,
+  type ScorecardHandicapMode,
 } from "@/lib/scorecard-storage";
 
 type DistanceUnit = "m" | "yd";
@@ -44,6 +46,9 @@ type ScorecardDraft = {
   teamName: string;
   courseName: string;
   handicap: string;
+  handicapMode: ScorecardHandicapMode;
+  handicapAllowance: string;
+  ambroseTeamSize: ScorecardAmbroseTeamSize;
   grossScore: string;
   netScore: string;
   roundDate: string;
@@ -85,6 +90,14 @@ type ScorecardPhotoResponse = {
 
 const CANVAS_WIDTH = 1080;
 const CANVAS_HEIGHT = 1350;
+const AMBROSE_ALLOWANCE_PRESETS: Record<
+  Exclude<ScorecardAmbroseTeamSize, "custom">,
+  string
+> = {
+  "2": "25",
+  "3": "16.67",
+  "4": "12.5",
+};
 const SCORECARD_DESIGNS: ScorecardDesign[] = [
   {
     name: "Sky Strike",
@@ -187,6 +200,9 @@ function createBlankDraft(): ScorecardDraft {
     teamName: "",
     courseName: "",
     handicap: "",
+    handicapMode: "standard",
+    handicapAllowance: AMBROSE_ALLOWANCE_PRESETS["4"],
+    ambroseTeamSize: "4",
     grossScore: "",
     netScore: "",
     roundDate: "",
@@ -210,6 +226,20 @@ function restoreDraft(rawValue: string): ScorecardDraft | null {
       courseName:
         typeof parsed.courseName === "string" ? parsed.courseName : "",
       handicap: typeof parsed.handicap === "string" ? parsed.handicap : "",
+      handicapMode:
+        parsed.handicapMode === "ambrose" || parsed.handicapMode === "playing"
+          ? parsed.handicapMode
+          : "standard",
+      handicapAllowance:
+        typeof parsed.handicapAllowance === "string"
+          ? parsed.handicapAllowance
+          : AMBROSE_ALLOWANCE_PRESETS["4"],
+      ambroseTeamSize:
+        parsed.ambroseTeamSize === "2" ||
+        parsed.ambroseTeamSize === "3" ||
+        parsed.ambroseTeamSize === "custom"
+          ? parsed.ambroseTeamSize
+          : "4",
       grossScore:
         typeof parsed.grossScore === "string" ? parsed.grossScore : "",
       netScore: typeof parsed.netScore === "string" ? parsed.netScore : "",
@@ -265,12 +295,6 @@ function sumNumbers(values: Array<number | null>): number | null {
   return numbers.reduce((total, value) => total + value, 0);
 }
 
-function hasAnyHoleValue(hole: ScorecardHole) {
-  return Boolean(
-    hole.distance.trim() || hole.par.trim() || hole.score.trim()
-  );
-}
-
 function isCompleteHole(hole: ScorecardHole) {
   return Boolean(
     hole.distance.trim() && hole.par.trim() && hole.score.trim()
@@ -280,7 +304,22 @@ function isCompleteHole(hole: ScorecardHole) {
 function getActiveHoles(holes: ScorecardHole[]): ActiveScorecardHole[] {
   return holes
     .map((hole, index) => ({ hole, index }))
-    .filter(({ hole }) => hasAnyHoleValue(hole));
+    .filter(({ hole }) => Boolean(hole.score.trim()));
+}
+
+function getHandicapAllocation(draft: ScorecardDraft) {
+  return getScorecardHandicapAllocation(draft.holes, draft.handicap, {
+    mode: draft.handicapMode,
+    allowancePercent: draft.handicapAllowance,
+  });
+}
+
+function getHandicapMethodLabel(mode: ScorecardHandicapMode) {
+  if (mode === "ambrose") {
+    return "AMBROSE";
+  }
+
+  return mode === "playing" ? "FINAL" : "SCALED";
 }
 
 function getHoleRangeLabel(holes: ActiveScorecardHole[]) {
@@ -925,10 +964,7 @@ function drawScorecard(
   const secondTableHoles = previewHoles.slice(firstTableCount);
   const activeHoleCount = activeHoles.length;
   const activeHoleRows = activeHoles.map(({ hole }) => hole);
-  const handicapAllocation = getScorecardHandicapAllocation(
-    draft.holes,
-    draft.handicap
-  );
+  const handicapAllocation = getHandicapAllocation(draft);
 
   canvas.width = CANVAS_WIDTH;
   canvas.height = CANVAS_HEIGHT;
@@ -1191,7 +1227,7 @@ function drawScorecard(
     summaryY,
     summaryWidth,
     "PLAYING HANDICAP",
-    `${formatNumber(playingHandicap, 0)} / PAR 5S FIRST`,
+    `${formatNumber(playingHandicap, 2)} / ${getHandicapMethodLabel(draft.handicapMode)}`,
     design,
     "primary"
   );
@@ -1203,7 +1239,7 @@ function drawScorecard(
   const metrics = [
     ["TOTAL PAR", formatNumber(totalPar, 0)],
     ["GROSS", formatNumber(grossScore, 0)],
-    ["PLAY H'CAP", formatNumber(playingHandicap, 0)],
+    ["PLAY H'CAP", formatNumber(playingHandicap, 2)],
     ["NETT SCORE", formatNumber(netScore)],
     ["NETT TO PAR", formatRelative(toPar)],
   ] as const;
@@ -1306,7 +1342,7 @@ function drawScorecard(
     context.textAlign = "left";
     context.font = '850 15px "Aptos", "Bahnschrift", sans-serif';
     context.fillText(
-      `GROSS ${formatNumber(grossScore, 0)}  /  H'CAP ${formatNumber(playingHandicap, 0)}  /  PAR ${formatNumber(totalPar, 0)}`,
+      `GROSS ${formatNumber(grossScore, 0)}  /  H'CAP ${formatNumber(playingHandicap, 2)}  /  PAR ${formatNumber(totalPar, 0)}`,
       82,
       resultY + 166
     );
@@ -1333,10 +1369,17 @@ function drawScorecard(
 }
 
 function getValidationMessage(draft: ScorecardDraft): string | null {
+  const ambroseAllowance = toNumber(draft.handicapAllowance);
   const missingDetails = [
     !draft.teamName.trim() ? "team name" : null,
     !draft.courseName.trim() ? "course name" : null,
     !draft.handicap.trim() ? "handicap" : null,
+    draft.handicapMode === "ambrose" &&
+    (ambroseAllowance === null ||
+      ambroseAllowance <= 0 ||
+      ambroseAllowance > 100)
+      ? "Ambrose allowance above 0 and up to 100%"
+      : null,
   ].filter(Boolean);
   const activeHoles = getActiveHoles(draft.holes);
   const incompleteHoles = activeHoles.filter(
@@ -1347,9 +1390,6 @@ function getValidationMessage(draft: ScorecardDraft): string | null {
   ).length;
   const missingPars = incompleteHoles.filter(
     ({ hole }) => !hole.par.trim()
-  ).length;
-  const missingScores = incompleteHoles.filter(
-    ({ hole }) => !hole.score.trim()
   ).length;
   const messages: string[] = [];
 
@@ -1369,12 +1409,8 @@ function getValidationMessage(draft: ScorecardDraft): string | null {
     messages.push(`${missingPars} par value${missingPars === 1 ? "" : "s"}`);
   }
 
-  if (missingScores > 0) {
-    messages.push(`${missingScores} score${missingScores === 1 ? "" : "s"}`);
-  }
-
   return messages.length > 0
-    ? `Complete ${messages.join(", ")} before generating the finished card. Completely blank holes will be left out.`
+    ? `Complete ${messages.join(", ")} before generating the finished card. Any hole without a score is excluded.`
     : null;
 }
 
@@ -1557,6 +1593,18 @@ export default function ScorecardStudio() {
     setNotice(null);
   }
 
+  function updateAmbroseTeamSize(value: ScorecardAmbroseTeamSize) {
+    setDraft((currentDraft) => ({
+      ...currentDraft,
+      ambroseTeamSize: value,
+      handicapAllowance:
+        value === "custom"
+          ? currentDraft.handicapAllowance
+          : AMBROSE_ALLOWANCE_PRESETS[value],
+    }));
+    setNotice(null);
+  }
+
   function updateHole(index: number, key: keyof ScorecardHole, value: string) {
     setDraft((currentDraft) => ({
       ...currentDraft,
@@ -1667,6 +1715,10 @@ export default function ScorecardStudio() {
       const result = payload.data;
       const importedHoles = createBlankHoles();
       const importedConfidence: Record<number, ScanConfidence> = {};
+      const importedGross = result.holes.reduce(
+        (total, hole) => total + (hole.score ?? 0),
+        0
+      );
 
       for (const hole of result.holes) {
         const index = hole.hole - 1;
@@ -1691,8 +1743,14 @@ export default function ScorecardStudio() {
           result.handicap === null
             ? currentDraft.handicap
             : String(result.handicap),
+        handicapMode:
+          result.handicap === null ? currentDraft.handicapMode : "playing",
         grossScore:
-          result.grossScore === null ? "" : String(result.grossScore),
+          result.holes.length === 0
+            ? result.grossScore === null
+              ? ""
+              : String(result.grossScore)
+            : String(importedGross),
         netScore: result.netScore === null ? "" : String(result.netScore),
         roundDate: currentDraft.roundDate || result.roundDate || "",
         roundLabel: currentDraft.roundLabel || result.roundLabel || "",
@@ -1705,6 +1763,12 @@ export default function ScorecardStudio() {
         .filter((hole) => hole.confidence === "low")
         .map((hole) => hole.hole);
       const warnings = [...result.warnings];
+
+      if (result.handicap !== null) {
+        warnings.unshift(
+          "The imported handicap is being used as the final competition handicap. Change the handicap method below only if the card shows a full 18-hole or combined Ambrose handicap."
+        );
+      }
 
       if (lowConfidenceHoles.length > 0) {
         warnings.unshift(
@@ -1833,11 +1897,9 @@ export default function ScorecardStudio() {
     par: getHoleTotal(activeHoleRows, "par"),
     score: getHoleTotal(activeHoleRows, "score"),
   };
-  const handicapAllocation = getScorecardHandicapAllocation(
-    draft.holes,
-    draft.handicap
-  );
+  const handicapAllocation = getHandicapAllocation(draft);
   const playingHandicap = handicapAllocation.playingHandicap;
+  const allocatedStrokes = handicapAllocation.allocatedStrokes;
   const gross = toNumber(draft.grossScore) ?? totals.score;
   const calculatedNet =
     gross !== null && playingHandicap !== null
@@ -1847,6 +1909,22 @@ export default function ScorecardStudio() {
     toNumber(draft.netScore) ?? calculatedNet;
   const toPar = net !== null && totals.par !== null ? net - totals.par : null;
   const currentDesign = getDesign(draft.designIndex);
+  const handicapInputLabel =
+    draft.handicapMode === "ambrose"
+      ? "Combined team handicap"
+      : draft.handicapMode === "playing"
+        ? "Final playing handicap"
+        : "Full 18-hole handicap";
+  const handicapHint =
+    draft.handicapMode === "playing"
+      ? "Use the exact handicap awarded for this scorecard. It will not be scaled again."
+      : draft.handicapMode === "ambrose"
+        ? activeHoleCount > 0
+          ? `${draft.handicapAllowance || "0"}% of the combined handicap, scaled to ${activeHoleCount} scored hole${activeHoleCount === 1 ? "" : "s"}, gives a playing handicap of ${formatNumber(playingHandicap, 2)}.`
+          : "Enter the combined 18-hole team handicap and the event allowance. Only holes with a score will count."
+        : activeHoleCount > 0
+          ? `The full handicap is scaled to ${activeHoleCount} scored hole${activeHoleCount === 1 ? "" : "s"}, giving a playing handicap of ${formatNumber(playingHandicap, 0)}.`
+          : "Enter the full 18-hole handicap. Only holes with a score will count when it is scaled.";
   const noticeClasses = {
     info: "border-sky-300/20 bg-sky-300/8 text-sky-100",
     success: "border-emerald-300/20 bg-emerald-300/8 text-emerald-100",
@@ -2051,8 +2129,33 @@ export default function ScorecardStudio() {
             </div>
 
             <div>
+              <label className="field-label" htmlFor="scorecard-handicap-mode">
+                Handicap method
+              </label>
+              <select
+                id="scorecard-handicap-mode"
+                className="field-control"
+                value={draft.handicapMode}
+                onChange={(event) =>
+                  updateField(
+                    "handicapMode",
+                    event.target.value as ScorecardHandicapMode
+                  )
+                }
+              >
+                <option value="standard">Standard - scale full handicap</option>
+                <option value="ambrose">Ambrose - apply team allowance</option>
+                <option value="playing">Final handicap - use exact number</option>
+              </select>
+              <p className="field-hint">
+                Choose how the competition turns the entered number into the
+                handicap used for this card.
+              </p>
+            </div>
+
+            <div>
               <label className="field-label" htmlFor="scorecard-handicap">
-                Team handicap
+                {handicapInputLabel}
               </label>
               <input
                 id="scorecard-handicap"
@@ -2065,12 +2168,73 @@ export default function ScorecardStudio() {
                 placeholder="e.g. 6.4"
                 aria-invalid={showValidation && !draft.handicap.trim()}
               />
-              <p className="field-hint">
-                {activeHoleCount > 0
-                  ? `Enter the 18-hole handicap. For ${activeHoleCount} holes, the playing handicap is ${formatNumber(playingHandicap, 0)}.`
-                  : "Enter the 18-hole handicap. It will scale to the number of holes filled in."}
-              </p>
+              <p className="field-hint">{handicapHint}</p>
             </div>
+
+            {draft.handicapMode === "ambrose" ? (
+              <div className="md:col-span-2 rounded-[1.35rem] border border-[var(--gold)]/20 bg-[var(--gold)]/6 p-4 md:p-5">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label
+                      className="field-label text-[var(--gold)]"
+                      htmlFor="scorecard-ambrose-team-size"
+                    >
+                      Team size / allowance preset
+                    </label>
+                    <select
+                      id="scorecard-ambrose-team-size"
+                      className="field-control"
+                      value={draft.ambroseTeamSize}
+                      onChange={(event) =>
+                        updateAmbroseTeamSize(
+                          event.target.value as ScorecardAmbroseTeamSize
+                        )
+                      }
+                    >
+                      <option value="2">2 players - 1/4 combined</option>
+                      <option value="3">3 players - 1/6 combined</option>
+                      <option value="4">4 players - 1/8 combined</option>
+                      <option value="custom">Custom event allowance</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label
+                      className="field-label text-[var(--gold)]"
+                      htmlFor="scorecard-handicap-allowance"
+                    >
+                      Allowance of combined handicap
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="scorecard-handicap-allowance"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        className="field-control pr-12"
+                        value={draft.handicapAllowance}
+                        onChange={(event) =>
+                          updateField("handicapAllowance", event.target.value)
+                        }
+                        aria-invalid={
+                          showValidation && !draft.handicapAllowance.trim()
+                        }
+                      />
+                      <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center font-black text-[var(--gold)]">
+                        %
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs leading-5 text-amber-100/75">
+                  The presets use the common Australian Ambrose fractions. If
+                  this event publishes a different allowance, choose Custom and
+                  enter it here, or use Final handicap above when the official
+                  team handicap is already known.
+                </p>
+              </div>
+            ) : null}
 
             <div>
               <label className="field-label" htmlFor="scorecard-distance-unit">
@@ -2136,8 +2300,9 @@ export default function ScorecardStudio() {
               </p>
               <h2 className="mt-2 text-3xl text-white">Complete the scorecard</h2>
               <p className="mt-2 text-sm leading-7 text-zinc-400">
-                Fill only the holes played. Blank holes are excluded; any hole you
-                start must include distance, par, and score.
+                A hole counts only when it has a score. Printed distance or par
+                values without a score are ignored; every scored hole also needs
+                its distance and par.
               </p>
             </div>
 
@@ -2162,7 +2327,7 @@ export default function ScorecardStudio() {
               <span className="font-black text-white">Nett strokes:</span>{" "}
               {playingHandicap === null
                 ? "enter a handicap and at least one hole to calculate each nett score."
-                : `${playingHandicap} shot${playingHandicap === 1 ? "" : "s"} for ${activeHoleCount} hole${activeHoleCount === 1 ? "" : "s"}, allocated with par 5s first, then longer par 4s and par 3s.`}
+                : `${formatNumber(playingHandicap, 2)} official handicap shot${playingHandicap === 1 ? "" : "s"} for ${activeHoleCount} hole${activeHoleCount === 1 ? "" : "s"}. ${allocatedStrokes} whole shot${allocatedStrokes === 1 ? "" : "s"} ${allocatedStrokes === 1 ? "is" : "are"} shown hole by hole, prioritising par 5s and then longer holes; the exact handicap is used for the official nett total.`}
             </div>
             <div className="rounded-[1.2rem] border border-[var(--gold)]/20 bg-[var(--gold)]/7 px-4 py-3 text-sm leading-6 text-amber-100">
               <span className="font-black text-white">Gross score key:</span>{" "}
@@ -2244,7 +2409,7 @@ export default function ScorecardStudio() {
                                   }
                                   aria-invalid={
                                     showValidation &&
-                                    hasAnyHoleValue(hole) &&
+                                    Boolean(hole.score.trim()) &&
                                     !hole[field].trim()
                                   }
                                   placeholder="-"
@@ -2291,7 +2456,7 @@ export default function ScorecardStudio() {
             </div>
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Playing handicap</p>
-              <p className="mt-1 text-lg font-black text-[var(--sky)]">{formatNumber(playingHandicap, 0)}</p>
+              <p className="mt-1 text-lg font-black text-[var(--sky)]">{formatNumber(playingHandicap, 2)}</p>
             </div>
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Gross score</p>
