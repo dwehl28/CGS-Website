@@ -6,9 +6,10 @@ import { startTransition, useEffect, useEffectEvent, useState } from "react";
 import SolosMotionBackground from "@/components/scoreboard/SolosMotionBackground";
 import TeeLoungeLogo from "@/components/scoreboard/TeeLoungeLogo";
 import type { ScoreboardDisplayTheme } from "@/lib/scoreboard-display-theme";
-import type {
-  CompetitionScoreboard,
-  CompetitionScoreEntry,
+import {
+  getBestTeamAwardLabel,
+  type CompetitionScoreboard,
+  type CompetitionScoreEntry,
 } from "@/lib/scoreboards";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
@@ -79,6 +80,20 @@ export default function StreamScoreboardBanner({
   const secondaryTitle =
     competition.roundLabel ?? competition.formatLabel ?? competition.statusLabel;
   const isTeeLounge = theme === "tee-lounge";
+  const golfBallAwards = [
+    {
+      label: "Longest Drive",
+      value: competition.longestDriveLeader ?? "TBC",
+    },
+    {
+      label: "Bunker Boi",
+      value: competition.bunkerBoiLeader ?? "TBC",
+    },
+    {
+      label: "Best Team",
+      value: getBestTeamAwardLabel(competition),
+    },
+  ];
 
   async function refreshCompetition(slug: string) {
     try {
@@ -243,18 +258,34 @@ export default function StreamScoreboardBanner({
           </div>
         </div>
 
-        <aside className="survivor-ticker-leader">
-          <span>
-            <i aria-hidden="true" /> Current leader
-          </span>
-          <strong>{leaderEntry ? leaderEntry.scoreLabel : "--"}</strong>
-          <p>
-            {leaderEntry ? `Leader: ${leaderEntry.playerName}` : "Waiting for scores"}
-          </p>
-          <small>
-            {getSyncLabel(syncState)} | {formatBannerTime(competition.updatedAt)}
-          </small>
-        </aside>
+        {isTeeLounge ? (
+          <aside className="survivor-ticker-leader">
+            <span>
+              <i aria-hidden="true" /> Current leader
+            </span>
+            <strong>{leaderEntry ? leaderEntry.scoreLabel : "--"}</strong>
+            <p>
+              {leaderEntry ? `Leader: ${leaderEntry.playerName}` : "Waiting for scores"}
+            </p>
+            <small>
+              {getSyncLabel(syncState)} | {formatBannerTime(competition.updatedAt)}
+            </small>
+          </aside>
+        ) : (
+          <aside
+            className="survivor-ticker-awards"
+            aria-label={`Golf ball leaders. ${getSyncLabel(syncState)} at ${formatBannerTime(
+              competition.updatedAt
+            )}`}
+          >
+            {golfBallAwards.map((award) => (
+              <div className="survivor-ticker-award" key={award.label}>
+                <span>{award.label}</span>
+                <strong>{award.value}</strong>
+              </div>
+            ))}
+          </aside>
+        )}
       </div>
     </section>
   );

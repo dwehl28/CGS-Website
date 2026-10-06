@@ -10,7 +10,10 @@ import TeeLoungeLogo from "@/components/scoreboard/TeeLoungeLogo";
 import { useAnimatedRankOrder } from "@/components/scoreboard/useAnimatedRankOrder";
 import { useScoreChangeSpotlight } from "@/components/scoreboard/useScoreChangeSpotlight";
 import type { ScoreboardDisplayTheme } from "@/lib/scoreboard-display-theme";
-import type { CompetitionScoreboard } from "@/lib/scoreboards";
+import {
+  getBestTeamAwardLabel,
+  type CompetitionScoreboard,
+} from "@/lib/scoreboards";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 type StreamScoreboardOverlayProps = {
@@ -82,6 +85,20 @@ export default function StreamScoreboardOverlay({
         (entry) => entry.scoreValue === leaderEntry.scoreValue
       ).length
     : 0;
+  const golfBallAwards = [
+    {
+      label: "Longest Drive",
+      value: competition.longestDriveLeader ?? "TBC",
+    },
+    {
+      label: "Bunker Boi",
+      value: competition.bunkerBoiLeader ?? "TBC",
+    },
+    {
+      label: "Best Team",
+      value: getBestTeamAwardLabel(competition),
+    },
+  ];
   const secondaryTitle =
     competition.roundLabel ?? competition.formatLabel ?? competition.statusLabel;
   const registerRankRow = useAnimatedRankOrder(
@@ -247,19 +264,34 @@ export default function StreamScoreboardOverlay({
             <strong>{competition.location ?? "The Tee Lounge"}</strong>
           </div>
 
-          <div className="solos-ladder-facts">
-            <div>
-              <span>Field</span>
-              <strong>{competition.entries.length}</strong>
-            </div>
-            <div>
-              <span>Lead score</span>
-              <strong>{leaderEntry?.scoreLabel ?? "--"}</strong>
-            </div>
-            <div>
-              <span>Leaders</span>
-              <strong>{leaderCount || "--"}</strong>
-            </div>
+          <div
+            className={`solos-ladder-facts ${
+              isTeeLounge ? "" : "is-golf-ball-awards"
+            }`}
+          >
+            {isTeeLounge ? (
+              <>
+                <div>
+                  <span>Field</span>
+                  <strong>{competition.entries.length}</strong>
+                </div>
+                <div>
+                  <span>Lead score</span>
+                  <strong>{leaderEntry?.scoreLabel ?? "--"}</strong>
+                </div>
+                <div>
+                  <span>Leaders</span>
+                  <strong>{leaderCount || "--"}</strong>
+                </div>
+              </>
+            ) : (
+              golfBallAwards.map((award) => (
+                <div key={award.label}>
+                  <span>{award.label}</span>
+                  <strong>{award.value}</strong>
+                </div>
+              ))
+            )}
           </div>
 
           <div className="solos-ladder-table-head" aria-hidden="true">

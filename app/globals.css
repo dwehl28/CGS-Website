@@ -5984,6 +5984,151 @@ main.text-white {
   gap: 0.75rem;
 }
 
+.stream-award-control {
+  display: grid;
+  grid-template-columns: minmax(14rem, 1.15fr) repeat(2, minmax(10rem, 0.9fr)) minmax(10rem, 0.8fr) auto;
+  align-items: stretch;
+  gap: 0.8rem;
+  margin-top: 1.25rem;
+  border: 2px solid rgba(8, 21, 35, 0.56);
+  border-radius: 1.4rem;
+  background:
+    radial-gradient(circle at 92% 10%, rgba(101, 215, 255, 0.24), transparent 26%),
+    rgba(255, 255, 255, 0.72);
+  box-shadow: 6px 6px 0 rgba(8, 21, 35, 0.12);
+  padding: 0.9rem;
+}
+
+.stream-award-control-copy,
+.stream-award-field,
+.stream-award-auto {
+  min-width: 0;
+}
+
+.stream-award-control-copy {
+  align-self: center;
+  padding-inline: 0.35rem;
+}
+
+.stream-award-control-copy > span,
+.stream-award-field > span,
+.stream-award-auto > span {
+  display: block;
+  color: #047fa7;
+  font-size: 0.68rem;
+  font-weight: 1000;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.stream-award-control-copy > strong {
+  display: block;
+  margin-top: 0.3rem;
+  color: var(--ink);
+  font-size: 1.05rem;
+  font-weight: 1000;
+  line-height: 1.05;
+}
+
+.stream-award-control-copy > p {
+  margin-top: 0.35rem;
+  color: rgba(8, 21, 35, 0.66);
+  font-size: 0.75rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.stream-award-field,
+.stream-award-auto {
+  display: grid;
+  align-content: center;
+  border: 1px solid rgba(8, 21, 35, 0.22);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.86);
+  padding: 0.7rem;
+}
+
+.stream-award-field input {
+  width: 100%;
+  min-height: 2.75rem;
+  margin-top: 0.45rem;
+  border: 2px solid rgba(8, 21, 35, 0.76);
+  border-radius: 0.8rem;
+  background: white;
+  color: var(--ink);
+  padding: 0.55rem 0.7rem;
+  font-size: 0.95rem;
+  font-weight: 850;
+}
+
+.stream-award-field input:focus-visible {
+  outline: 3px solid rgba(101, 215, 255, 0.72);
+  outline-offset: 2px;
+}
+
+.stream-award-auto {
+  background:
+    linear-gradient(135deg, rgba(101, 215, 255, 0.2), rgba(255, 190, 24, 0.18)),
+    white;
+}
+
+.stream-award-auto > strong {
+  margin-top: 0.45rem;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 1.15rem;
+  font-weight: 1000;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stream-award-save {
+  align-self: stretch;
+  min-width: 9rem;
+  border: 2px solid var(--ink);
+  border-radius: 1rem;
+  background: var(--sun);
+  box-shadow: 4px 4px 0 var(--ink);
+  color: var(--ink);
+  padding: 0.7rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 1000;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.stream-award-save:hover {
+  transform: translateY(-2px);
+}
+
+@media (max-width: 1180px) {
+  .stream-award-control {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stream-award-control-copy,
+  .stream-award-save {
+    grid-column: 1 / -1;
+  }
+
+  .stream-award-auto {
+    grid-column: 1;
+  }
+}
+
+@media (max-width: 680px) {
+  .stream-award-control {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .stream-award-control-copy,
+  .stream-award-auto,
+  .stream-award-save {
+    grid-column: 1;
+  }
+}
+
 .quick-score-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -15548,6 +15693,62 @@ main.text-white {
   border-right-color: rgba(88, 220, 255, 0.22);
 }
 
+.solos-ladder-board.is-cgs .solos-ladder-facts.is-golf-ball-awards > div {
+  position: relative;
+  align-content: center;
+  overflow: hidden;
+  background: linear-gradient(145deg, rgba(5, 43, 66, 0.82), rgba(2, 18, 30, 0.68));
+  padding: 10px 9px;
+}
+
+.solos-ladder-board.is-cgs .solos-ladder-facts.is-golf-ball-awards > div::before,
+.survivor-ticker-shell.is-cgs .survivor-ticker-award::before {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(3, 24, 39, 0.42) 0 2px, transparent 2.7px) 1px 2px / 14px 14px,
+    radial-gradient(circle, rgba(3, 24, 39, 0.3) 0 1.7px, transparent 2.5px) 7px 8px / 17px 17px,
+    radial-gradient(circle at 30% 24%, #ffffff 0, #dbe4e9 48%, #879ba8 100%);
+  box-shadow:
+    inset -8px -9px 15px rgba(3, 24, 39, 0.3),
+    0 0 24px rgba(88, 220, 255, 0.22);
+  opacity: 0.19;
+  pointer-events: none;
+}
+
+.solos-ladder-board.is-cgs .solos-ladder-facts.is-golf-ball-awards > div::before {
+  top: 7px;
+  right: -17px;
+  width: 72px;
+  height: 72px;
+}
+
+.solos-ladder-board.is-cgs .solos-ladder-facts.is-golf-ball-awards span,
+.solos-ladder-board.is-cgs .solos-ladder-facts.is-golf-ball-awards strong {
+  position: relative;
+  z-index: 1;
+}
+
+.solos-ladder-board.is-cgs .solos-ladder-facts.is-golf-ball-awards span {
+  color: rgba(255, 250, 240, 0.78);
+  font-size: 7px;
+  letter-spacing: 0.07em;
+}
+
+.solos-ladder-board.is-cgs .solos-ladder-facts.is-golf-ball-awards strong {
+  display: -webkit-box;
+  margin-top: 7px;
+  overflow: hidden;
+  color: var(--top-dog-cyan);
+  font-size: 14px;
+  line-height: 1.04;
+  text-wrap: balance;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .solos-ladder-board.is-cgs .solos-ladder-facts span,
 .solos-ladder-board.is-cgs .solos-ladder-table-head {
   color: rgba(255, 250, 240, 0.62);
@@ -15758,7 +15959,7 @@ main.text-white {
 }
 
 .survivor-ticker-shell.is-cgs {
-  grid-template-columns: 470px minmax(0, 1fr) 315px;
+  grid-template-columns: 470px minmax(0, 1fr) 390px;
   border-color: var(--top-dog-cyan);
   background: var(--top-dog-navy);
   box-shadow:
@@ -15862,6 +16063,64 @@ main.text-white {
 
 .survivor-ticker-shell.is-cgs .survivor-ticker-thru {
   color: rgba(255, 250, 240, 0.64);
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-awards {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  min-width: 0;
+  border-left: 2px solid rgba(88, 220, 255, 0.72);
+  background: linear-gradient(108deg, rgba(3, 24, 39, 0.98), rgba(5, 43, 66, 0.95));
+  padding: 7px 10px;
+  box-shadow: inset 10px 0 24px rgba(1, 12, 20, 0.32);
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-award {
+  position: relative;
+  display: grid;
+  align-content: center;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(88, 220, 255, 0.32);
+  border-radius: 9px;
+  background: linear-gradient(100deg, rgba(2, 18, 30, 0.9), rgba(8, 63, 91, 0.68));
+  padding: 7px 74px 7px 14px;
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-award::before {
+  top: -11px;
+  right: -7px;
+  width: 68px;
+  height: 68px;
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-award span,
+.survivor-ticker-shell.is-cgs .survivor-ticker-award strong {
+  position: relative;
+  z-index: 1;
+  display: block;
+  overflow: hidden;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-award span {
+  color: rgba(255, 250, 240, 0.7);
+  font-size: 8px;
+  font-weight: 1000;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-award strong {
+  margin-top: 5px;
+  color: var(--top-dog-cyan);
+  font-size: 18px;
+  font-weight: 1000;
 }
 
 .survivor-ticker-shell.is-cgs .survivor-ticker-leader {

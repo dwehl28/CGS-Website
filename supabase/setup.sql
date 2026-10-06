@@ -83,6 +83,8 @@ create table if not exists public.competition_scoreboards (
   round_label text,
   cta_label text,
   cta_href text,
+  longest_drive_leader text,
+  bunker_boi_leader text,
   starts_at timestamptz,
   ends_at timestamptz,
   is_live boolean not null default false,
@@ -125,6 +127,12 @@ alter table public.competition_scoreboards
 
 alter table public.competition_scoreboards
   add column if not exists archived_at timestamptz;
+
+alter table public.competition_scoreboards
+  add column if not exists longest_drive_leader text;
+
+alter table public.competition_scoreboards
+  add column if not exists bunker_boi_leader text;
 
 alter table public.membership_interest
   add column if not exists status text not null default 'new';

@@ -263,6 +263,16 @@ export default async function ScoreboardAdminPage() {
                 className="mt-8 grid gap-5 rounded-[1.6rem] border border-white/8 bg-black/18 p-5"
               >
                 <input type="hidden" name="id" value={competition.id} />
+                <input
+                  type="hidden"
+                  name="longest_drive_leader"
+                  value={competition.longestDriveLeader ?? ""}
+                />
+                <input
+                  type="hidden"
+                  name="bunker_boi_leader"
+                  value={competition.bunkerBoiLeader ?? ""}
+                />
 
                 <div className="grid gap-5 xl:grid-cols-2">
                   <div>

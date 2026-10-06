@@ -15,6 +15,7 @@ import {
   updateCompetitionScoreEntryScore,
   updateCompetitionScoreEntryThrough,
   updateCompetitionScoreboard,
+  updateCompetitionScoreboardGolfBallLeaders,
 } from "@/lib/scoreboards";
 
 export type ScoreboardAdminActionState = {
@@ -128,6 +129,14 @@ export async function createCompetitionScoreboardAction(
   const roundLabel = normalizeString(formData.get("round_label"), 80);
   const ctaLabel = normalizeString(formData.get("cta_label"), 40);
   const ctaHref = normalizeString(formData.get("cta_href"), 240);
+  const longestDriveLeader = normalizeString(
+    formData.get("longest_drive_leader"),
+    120
+  );
+  const bunkerBoiLeader = normalizeString(
+    formData.get("bunker_boi_leader"),
+    120
+  );
   const startsAt = parseOptionalDate(normalizeString(formData.get("starts_at"), 40));
   const endsAt = parseOptionalDate(normalizeString(formData.get("ends_at"), 40));
   const isLive = formData.get("is_live") === "on";
@@ -163,6 +172,8 @@ export async function createCompetitionScoreboardAction(
       roundLabel,
       ctaLabel,
       ctaHref,
+      longestDriveLeader,
+      bunkerBoiLeader,
       startsAt,
       endsAt,
       isLive,
@@ -199,6 +210,14 @@ export async function updateCompetitionScoreboardAction(formData: FormData) {
   const roundLabel = normalizeString(formData.get("round_label"), 80);
   const ctaLabel = normalizeString(formData.get("cta_label"), 40);
   const ctaHref = normalizeString(formData.get("cta_href"), 240);
+  const longestDriveLeader = normalizeString(
+    formData.get("longest_drive_leader"),
+    120
+  );
+  const bunkerBoiLeader = normalizeString(
+    formData.get("bunker_boi_leader"),
+    120
+  );
   const startsAt = parseOptionalDate(normalizeString(formData.get("starts_at"), 40));
   const endsAt = parseOptionalDate(normalizeString(formData.get("ends_at"), 40));
   const isLive = formData.get("is_live") === "on";
@@ -232,6 +251,8 @@ export async function updateCompetitionScoreboardAction(formData: FormData) {
       roundLabel,
       ctaLabel,
       ctaHref,
+      longestDriveLeader,
+      bunkerBoiLeader,
       startsAt,
       endsAt,
       isLive,
@@ -242,6 +263,38 @@ export async function updateCompetitionScoreboardAction(formData: FormData) {
   }
 
   revalidateScoreboardPaths(slug);
+  redirect(getScoreboardAdminAnchor(id));
+}
+
+export async function updateCompetitionGolfBallLeadersAction(formData: FormData) {
+  await requireAdminAuthenticated();
+
+  const id = Number(formData.get("competition_id"));
+  const competitionSlug = normalizeString(formData.get("competition_slug"), 120);
+  const longestDriveLeader = normalizeString(
+    formData.get("longest_drive_leader"),
+    120
+  );
+  const bunkerBoiLeader = normalizeString(
+    formData.get("bunker_boi_leader"),
+    120
+  );
+
+  if (!Number.isFinite(id) || !competitionSlug) {
+    redirect("/clubhouse-admin/scoreboard");
+  }
+
+  try {
+    await updateCompetitionScoreboardGolfBallLeaders(
+      id,
+      longestDriveLeader,
+      bunkerBoiLeader
+    );
+  } catch (error) {
+    console.error("Update scoreboard golf ball leaders action error:", error);
+  }
+
+  revalidateScoreboardPaths(competitionSlug);
   redirect(getScoreboardAdminAnchor(id));
 }
 

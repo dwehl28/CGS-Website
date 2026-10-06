@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import {
   adjustCompetitionScoreEntryAction,
+  updateCompetitionGolfBallLeadersAction,
   updateCompetitionScoreEntryAction,
   updateCompetitionScoreEntryThroughAction,
 } from "@/app/clubhouse-admin/scoreboard/actions";
@@ -9,7 +10,11 @@ import type {
   CompetitionScoreEntry,
   CompetitionScoreboard,
 } from "@/lib/scoreboards";
-import { getRankingDescription, getScoreNoun } from "@/lib/scoreboards";
+import {
+  getBestTeamAwardLabel,
+  getRankingDescription,
+  getScoreNoun,
+} from "@/lib/scoreboards";
 
 type StreamScoreQuickControlsProps = {
   competition: CompetitionScoreboard;
@@ -244,6 +249,58 @@ export default function StreamScoreQuickControls({
           </Link>
         </div>
       </div>
+
+      <form
+        action={updateCompetitionGolfBallLeadersAction}
+        className="stream-award-control"
+      >
+        <input type="hidden" name="competition_id" value={competition.id} />
+        <input
+          type="hidden"
+          name="competition_slug"
+          value={competition.slug}
+        />
+
+        <div className="stream-award-control-copy">
+          <span>Golf ball leaders</span>
+          <strong>Set the two on-course awards</strong>
+          <p>
+            These names update live on the CGS portrait and banner. Best Team
+            follows the leaderboard automatically.
+          </p>
+        </div>
+
+        <label className="stream-award-field">
+          <span>Longest Drive</span>
+          <input
+            type="text"
+            name="longest_drive_leader"
+            defaultValue={competition.longestDriveLeader ?? ""}
+            placeholder="Player name"
+            maxLength={120}
+          />
+        </label>
+
+        <label className="stream-award-field">
+          <span>Bunker Boi</span>
+          <input
+            type="text"
+            name="bunker_boi_leader"
+            defaultValue={competition.bunkerBoiLeader ?? ""}
+            placeholder="Player name"
+            maxLength={120}
+          />
+        </label>
+
+        <div className="stream-award-auto" aria-label="Automatic Best Team leader">
+          <span>Best Team | Automatic</span>
+          <strong>{getBestTeamAwardLabel(competition)}</strong>
+        </div>
+
+        <button type="submit" className="stream-award-save">
+          Update golf ball leaders
+        </button>
+      </form>
 
       {streamEntries.length > 0 ? (
         <div className="quick-score-grid">

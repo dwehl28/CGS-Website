@@ -30,6 +30,8 @@ export type CompetitionScoreboard = {
   roundLabel: string | null;
   ctaLabel: string | null;
   ctaHref: string | null;
+  longestDriveLeader: string | null;
+  bunkerBoiLeader: string | null;
   startsAt: string | null;
   endsAt: string | null;
   isLive: boolean;
@@ -56,6 +58,8 @@ type CompetitionScoreboardInput = {
   roundLabel: string;
   ctaLabel: string;
   ctaHref: string;
+  longestDriveLeader: string;
+  bunkerBoiLeader: string;
   startsAt: string | null;
   endsAt: string | null;
   isLive: boolean;
@@ -91,6 +95,23 @@ export function getScoreNoun(leaderboardMode: LeaderboardMode) {
 
 export function getRankingDescription(leaderboardMode: LeaderboardMode) {
   return leaderboardMode === "points" ? "highest Stableford points" : "score";
+}
+
+export function getBestTeamAwardLabel(competition: CompetitionScoreboard) {
+  const leaderEntry = competition.entries.find(
+    (entry) => entry.scoreValue !== null
+  );
+
+  if (!leaderEntry) {
+    return "TBC";
+  }
+
+  const tiedLeaderCount = competition.entries.filter(
+    (entry) =>
+      entry.scoreValue !== null && entry.scoreValue === leaderEntry.scoreValue
+  ).length;
+
+  return tiedLeaderCount > 1 ? "Tied" : leaderEntry.playerName;
 }
 
 function isMissingScoreboardTableError(error: unknown) {
@@ -165,6 +186,14 @@ function mapRowToCompetition(row: Record<string, unknown>): CompetitionScoreboar
       typeof row.cta_label === "string" && row.cta_label.trim() ? row.cta_label : null,
     ctaHref:
       typeof row.cta_href === "string" && row.cta_href.trim() ? row.cta_href : null,
+    longestDriveLeader:
+      typeof row.longest_drive_leader === "string" && row.longest_drive_leader.trim()
+        ? row.longest_drive_leader
+        : null,
+    bunkerBoiLeader:
+      typeof row.bunker_boi_leader === "string" && row.bunker_boi_leader.trim()
+        ? row.bunker_boi_leader
+        : null,
     startsAt:
       typeof row.starts_at === "string" && row.starts_at.trim() ? row.starts_at : null,
     endsAt:
@@ -489,6 +518,8 @@ export async function createCompetitionScoreboard(input: CompetitionScoreboardIn
       round_label: input.roundLabel || null,
       cta_label: input.ctaLabel || null,
       cta_href: input.ctaHref || null,
+      longest_drive_leader: input.longestDriveLeader || null,
+      bunker_boi_leader: input.bunkerBoiLeader || null,
       starts_at: input.startsAt,
       ends_at: input.endsAt,
       is_live: input.isLive,
@@ -521,10 +552,33 @@ export async function updateCompetitionScoreboard(
       round_label: input.roundLabel || null,
       cta_label: input.ctaLabel || null,
       cta_href: input.ctaHref || null,
+      longest_drive_leader: input.longestDriveLeader || null,
+      bunker_boi_leader: input.bunkerBoiLeader || null,
       starts_at: input.startsAt,
       ends_at: input.endsAt,
       is_live: input.isLive,
       is_published: input.isPublished,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function updateCompetitionScoreboardGolfBallLeaders(
+  id: number,
+  longestDriveLeader: string,
+  bunkerBoiLeader: string
+) {
+  const supabaseAdmin = getSupabaseAdmin();
+
+  const { error } = await supabaseAdmin
+    .from("competition_scoreboards")
+    .update({
+      longest_drive_leader: longestDriveLeader || null,
+      bunker_boi_leader: bunkerBoiLeader || null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id);
