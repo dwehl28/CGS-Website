@@ -351,7 +351,7 @@ function LadderRow({ standing }: { standing: TopDogStanding }) {
       <span>{standing.position}</span>
       <div>
         <i style={{ background: standing.team.accentColor }} />
-        <strong>{standing.team.name}</strong>
+        <strong>{standing.team.name}{standing.pointsAdjustment !== 0 ? "*" : ""}</strong>
         {standing.movement !== 0 ? (
           <em className={standing.movement > 0 ? "is-up" : "is-down"}>
             {standing.movement > 0 ? <ArrowUp /> : <ArrowDown />}
@@ -396,7 +396,12 @@ function LadderGraphic({ snapshot, visible }: { snapshot: TopDogSnapshot; visibl
       <footer>
         <span><i /> Top 4 direct finals</span>
         <span><i className="is-gold" /> 5-6 wildcard</span>
-        <strong>{projected ? "Live scores included" : "Final results only"}</strong>
+        <strong>
+          {projected ? "Live scores included" : "Final results only"}
+          {standings.some((standing) => standing.pointsAdjustment !== 0)
+            ? " | * Bye points included"
+            : ""}
+        </strong>
       </footer>
     </section>
   );

@@ -1,6 +1,7 @@
 import { withTimeout } from "@/lib/async-timeout";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import {
+  getTopDogScoreMargin,
   normalizeTopDogSlug,
   type CgsTeam,
   type TopDogCentralOverlay,
@@ -637,7 +638,7 @@ function calculateTeamStats(core: TopDogSnapshot): TopDogTeamSeasonStat[] {
       let wins = 0;
       let draws = 0;
       let losses = 0;
-      let differential = 0;
+      let differential = membership.differentialAdjustment;
       let biggestWin = 0;
       const results: string[] = [];
 
@@ -651,7 +652,7 @@ function calculateTeamStats(core: TopDogSnapshot): TopDogTeamSeasonStat[] {
 
         const scored = isHome ? fixture.homeScore : fixture.awayScore;
         const conceded = isHome ? fixture.awayScore : fixture.homeScore;
-        const margin = scored - conceded;
+        const margin = getTopDogScoreMargin(core.season, scored, conceded);
         differential += margin;
 
         if (margin > 0) {
@@ -728,8 +729,10 @@ function calculatePlayerStats(
       player,
       appearances: teamFixtures.length,
       wins: teamFixtures.filter((fixture) => {
-        const homeWon = fixture.homeScore > fixture.awayScore;
-        const awayWon = fixture.awayScore > fixture.homeScore;
+        const homeWon =
+          getTopDogScoreMargin(core.season, fixture.homeScore, fixture.awayScore) > 0;
+        const awayWon =
+          getTopDogScoreMargin(core.season, fixture.awayScore, fixture.homeScore) > 0;
         return (
           (homeWon && fixture.homeTeam.id === player.teamId) ||
           (awayWon && fixture.awayTeam.id === player.teamId)

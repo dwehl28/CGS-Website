@@ -3,6 +3,8 @@ import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 export type TopDogMatchStatus = "waiting" | "live" | "final";
 
+export type TopDogScoreDirection = "higher_wins" | "lower_wins";
+
 export type TopDogCentralOverlay =
   | "none"
   | "match"
@@ -57,6 +59,7 @@ export type TopDogSeason = {
   winPoints: number;
   drawPoints: number;
   lossPoints: number;
+  scoreDirection: TopDogScoreDirection;
   isActive: boolean;
   isPublished: boolean;
   integrationConfig: Record<string, unknown>;
@@ -68,6 +71,9 @@ export type TopDogSeasonTeam = {
   seasonId: number;
   displayOrder: number;
   isActive: boolean;
+  pointsAdjustment: number;
+  differentialAdjustment: number;
+  adjustmentNote: string;
   team: CgsTeam;
 };
 
@@ -118,6 +124,8 @@ export type TopDogStanding = {
   losses: number;
   differential: number;
   points: number;
+  pointsAdjustment: number;
+  adjustmentNote: string;
   qualification: "direct-finals" | "wildcard" | "outside";
 };
 
@@ -250,6 +258,7 @@ function mapSeason(row: Record<string, unknown>): TopDogSeason {
     winPoints: parseNumber(row.win_points, 3),
     drawPoints: parseNumber(row.draw_points, 1),
     lossPoints: parseNumber(row.loss_points, 0),
+    scoreDirection: row.score_direction === "lower_wins" ? "lower_wins" : "higher_wins",
     isActive: Boolean(row.is_active),
     isPublished: Boolean(row.is_published),
     integrationConfig: parseObject(row.integration_config),
@@ -357,6 +366,16 @@ function getQualification(position: number): TopDogStanding["qualification"] {
   return "outside";
 }
 
+export function getTopDogScoreMargin(
+  season: Pick<TopDogSeason, "scoreDirection">,
+  score: number,
+  opponentScore: number
+) {
+  return season.scoreDirection === "lower_wins"
+    ? opponentScore - score
+    : score - opponentScore;
+}
+
 function calculateLadder(
   season: TopDogSeason,
   seasonTeams: TopDogSeasonTeam[],
@@ -375,8 +394,10 @@ function calculateLadder(
         wins: 0,
         draws: 0,
         losses: 0,
-        differential: 0,
-        points: 0,
+        differential: membership.differentialAdjustment,
+        points: membership.pointsAdjustment,
+        pointsAdjustment: membership.pointsAdjustment,
+        adjustmentNote: membership.adjustmentNote,
       });
     });
 
@@ -392,15 +413,20 @@ function calculateLadder(
 
       home.played += 1;
       away.played += 1;
-      home.differential += fixture.homeScore - fixture.awayScore;
-      away.differential += fixture.awayScore - fixture.homeScore;
+      const homeMargin = getTopDogScoreMargin(
+        season,
+        fixture.homeScore,
+        fixture.awayScore
+      );
+      home.differential += homeMargin;
+      away.differential -= homeMargin;
 
-      if (fixture.homeScore > fixture.awayScore) {
+      if (homeMargin > 0) {
         home.wins += 1;
         home.points += season.winPoints;
         away.losses += 1;
         away.points += season.lossPoints;
-      } else if (fixture.awayScore > fixture.homeScore) {
+      } else if (homeMargin < 0) {
         away.wins += 1;
         away.points += season.winPoints;
         home.losses += 1;
@@ -584,6 +610,9 @@ async function loadTopDogSnapshot(input: {
         seasonId: season.id,
         displayOrder: parseNumber(row.display_order, 99),
         isActive: row.is_active !== false,
+        pointsAdjustment: parseNumber(row.points_adjustment),
+        differentialAdjustment: parseNumber(row.differential_adjustment),
+        adjustmentNote: String(row.adjustment_note ?? ""),
         team,
       };
     })
@@ -746,6 +775,10 @@ export async function createTopDogSeason(input: {
       slug: input.slug,
       season_label: input.seasonLabel,
       default_holes: input.defaultHoles,
+      win_points: 3,
+      draw_points: 2,
+      loss_points: 1,
+      score_direction: "lower_wins",
       is_active: true,
       is_published: input.isPublished,
       updated_at: now,

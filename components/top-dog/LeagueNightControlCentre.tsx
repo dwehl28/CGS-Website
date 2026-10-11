@@ -181,11 +181,12 @@ function LadderTable({
           <div
             key={standing.team.id}
             className={`top-dog-ladder-row is-${standing.qualification}`}
+            title={standing.adjustmentNote || undefined}
           >
             <span className="top-dog-ladder-position">{standing.position}</span>
             <span className="top-dog-ladder-team">
               <i style={{ background: standing.team.accentColor }} />
-              <b>{standing.team.name}</b>
+              <b>{standing.team.name}{standing.pointsAdjustment !== 0 ? "*" : ""}</b>
               {projected && standing.movement !== 0 ? (
                 <em className={standing.movement > 0 ? "is-up" : "is-down"}>
                   {standing.movement > 0 ? (
@@ -214,6 +215,9 @@ function LadderTable({
       <footer>
         <span><i className="is-finals" /> Top 4 direct finals</span>
         <span><i className="is-wildcard" /> 5-6 wildcard</span>
+        {standings.some((standing) => standing.pointsAdjustment !== 0) ? (
+          <span>* Includes bye or competition adjustment points</span>
+        ) : null}
       </footer>
     </section>
   );
