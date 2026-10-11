@@ -9,7 +9,7 @@ import {
   updateTopDogStreamState,
 } from "@/lib/top-dog";
 
-const QUERY_TIMEOUT_MS = 5000;
+const QUERY_TIMEOUT_MS = 15000;
 
 export const TOP_DOG_PRIZE_CATEGORIES = [
   "best_team",

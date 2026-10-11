@@ -177,7 +177,7 @@ export type TopDogFixtureCommand =
   | "match_of_night"
   | "undo";
 
-const TOP_DOG_QUERY_TIMEOUT_MS = 5000;
+const TOP_DOG_QUERY_TIMEOUT_MS = 15000;
 const validTickerCategories = new Set<TopDogTickerCategory>([
   "scores",
   "ladder",
