@@ -138,6 +138,11 @@ export default async function ClubhouseAdminPage() {
 
           <div className="mt-6 grid gap-4">
             <AdminQuickLink
+              href="/clubhouse-admin/top-dog/live"
+              label="Run Top Dog League Night"
+              detail="Control fixtures, live scores, ladder implications, and OBS graphics from one screen."
+            />
+            <AdminQuickLink
               href="/clubhouse-admin/par3"
               label="Run the Par 3 Championship"
               detail="Manage entrants, pool results, finals, and OBS assets."

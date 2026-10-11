@@ -16,7 +16,8 @@ function isStreamAssetPath(pathname: string) {
     /^\/stream\/ambrose\/[^/]+\/leaderboard\/?$/.test(pathname) ||
     /^\/stream\/ambrose\/[^/]+\/player\/[^/]+\/?$/.test(pathname) ||
     /^\/stream\/brackets\/[^/]+\/?$/.test(pathname) ||
-    /^\/stream\/par3-showdown\/?$/.test(pathname)
+    /^\/stream\/par3-showdown\/?$/.test(pathname) ||
+    /^\/stream\/top-dog\/[^/]+\/[^/]+\/?$/.test(pathname)
   );
 }
 
