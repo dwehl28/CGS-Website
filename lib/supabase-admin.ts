@@ -1,6 +1,14 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+const SUPABASE_REQUEST_TIMEOUT_MS = 12000;
 let cachedClient: SupabaseClient | null = null;
+
+const fetchSupabase = (input: RequestInfo | URL, init?: RequestInit) => {
+  return globalThis.fetch(input, {
+    ...init,
+    cache: "no-store",
+  });
+};
 
 export function getSupabaseAdmin() {
   if (cachedClient) {
@@ -16,6 +24,19 @@ export function getSupabaseAdmin() {
     );
   }
 
-  cachedClient = createClient(supabaseUrl, supabaseServiceRoleKey);
+  cachedClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      persistSession: false,
+    },
+    db: {
+      timeout: SUPABASE_REQUEST_TIMEOUT_MS,
+    },
+    global: {
+      fetch: fetchSupabase,
+    },
+  });
+
   return cachedClient;
 }
