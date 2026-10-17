@@ -86,6 +86,8 @@ export type TopDogRound = {
   scheduledAt: string | null;
   venue: string;
   courseName: string;
+  scoreDirection: TopDogScoreDirection | null;
+  differentialDivisor: number;
   status: TopDogMatchStatus;
   isCurrent: boolean;
   updatedAt: string;
@@ -102,6 +104,8 @@ export type TopDogFixture = {
   awayTeam: CgsTeam;
   homeScore: number;
   awayScore: number;
+  homeScoreConfirmed: boolean;
+  awayScoreConfirmed: boolean;
   currentHole: number;
   holesTotal: number;
   holesRemaining: number;
@@ -278,6 +282,11 @@ function mapRound(row: Record<string, unknown>): TopDogRound {
     scheduledAt: row.scheduled_at ? String(row.scheduled_at) : null,
     venue: String(row.venue ?? "The Tee Lounge"),
     courseName: String(row.course_name ?? ""),
+    scoreDirection:
+      row.score_direction === "higher_wins" || row.score_direction === "lower_wins"
+        ? row.score_direction
+        : null,
+    differentialDivisor: Math.max(parseNumber(row.differential_divisor, 1), 0.01),
     status: status === "live" || status === "final" ? status : "waiting",
     isCurrent: Boolean(row.is_current),
     updatedAt: String(row.updated_at ?? ""),
@@ -337,6 +346,8 @@ function mapFixture(
     awayTeam,
     homeScore: parseNumber(row.home_score),
     awayScore: parseNumber(row.away_score),
+    homeScoreConfirmed: Boolean(row.home_score_confirmed),
+    awayScoreConfirmed: Boolean(row.away_score_confirmed),
     currentHole,
     holesTotal,
     holesRemaining: Math.max(holesTotal - currentHole, 0),
@@ -376,14 +387,32 @@ export function getTopDogScoreMargin(
     : score - opponentScore;
 }
 
+export function getTopDogRoundScoreMargin(
+  season: Pick<TopDogSeason, "scoreDirection">,
+  round: Pick<TopDogRound, "scoreDirection" | "differentialDivisor"> | null,
+  score: number,
+  opponentScore: number
+) {
+  const rawMargin = getTopDogScoreMargin(
+    { scoreDirection: round?.scoreDirection ?? season.scoreDirection },
+    score,
+    opponentScore
+  );
+  const divisor = Math.max(round?.differentialDivisor ?? 1, 0.01);
+
+  return Math.sign(rawMargin) * Math.ceil(Math.abs(rawMargin) / divisor);
+}
+
 function calculateLadder(
   season: TopDogSeason,
   seasonTeams: TopDogSeasonTeam[],
+  rounds: TopDogRound[],
   fixtures: TopDogFixture[],
   includeLive: boolean,
   previousPositions?: Map<number, number>
 ) {
   const rows = new Map<number, LadderAccumulator>();
+  const roundsById = new Map(rounds.map((round) => [round.id, round]));
 
   seasonTeams
     .filter((membership) => membership.isActive)
@@ -402,7 +431,12 @@ function calculateLadder(
     });
 
   fixtures
-    .filter((fixture) => fixture.status === "final" || (includeLive && fixture.status === "live"))
+    .filter(
+      (fixture) =>
+        fixture.homeScoreConfirmed &&
+        fixture.awayScoreConfirmed &&
+        (fixture.status === "final" || (includeLive && fixture.status === "live"))
+    )
     .forEach((fixture) => {
       const home = rows.get(fixture.homeTeam.id);
       const away = rows.get(fixture.awayTeam.id);
@@ -413,8 +447,9 @@ function calculateLadder(
 
       home.played += 1;
       away.played += 1;
-      const homeMargin = getTopDogScoreMargin(
+      const homeMargin = getTopDogRoundScoreMargin(
         season,
+        roundsById.get(fixture.roundId) ?? null,
         fixture.homeScore,
         fixture.awayScore
       );
@@ -640,8 +675,9 @@ async function loadTopDogSnapshot(input: {
     ? await withTimeout(
         supabaseAdmin
           .from("top_dog_fixture_history")
-          .select("fixture_id")
-          .in("fixture_id", fixtureIds),
+          .select("id, fixture_id, action")
+          .in("fixture_id", fixtureIds)
+          .order("id", { ascending: false }),
         TOP_DOG_QUERY_TIMEOUT_MS,
         "Top Dog fixture undo query"
       )
@@ -651,10 +687,20 @@ async function loadTopDogSnapshot(input: {
     throw historyResult.error;
   }
 
+  const latestHistoryActionByFixture = new Map<number, string>();
+
+  ((historyResult.data ?? []) as Record<string, unknown>[]).forEach((row) => {
+    const fixtureId = parseNumber(row.fixture_id);
+
+    if (!latestHistoryActionByFixture.has(fixtureId)) {
+      latestHistoryActionByFixture.set(fixtureId, String(row.action ?? ""));
+    }
+  });
+
   const undoFixtureIds = new Set(
-    ((historyResult.data ?? []) as Record<string, unknown>[]).map((row) =>
-      parseNumber(row.fixture_id)
-    )
+    [...latestHistoryActionByFixture.entries()]
+      .filter(([, action]) => action !== "official_import_boundary")
+      .map(([fixtureId]) => fixtureId)
   );
   const allFixtures = fixtureRows
     .map((row) => mapFixture(row, teamsById, undoFixtureIds))
@@ -670,13 +716,20 @@ async function loadTopDogSnapshot(input: {
   const fixtures = selectedRound
     ? allFixtures.filter((fixture) => fixture.roundId === selectedRound.id)
     : [];
-  const officialLadder = calculateLadder(season, seasonTeams, allFixtures, false);
+  const officialLadder = calculateLadder(
+    season,
+    seasonTeams,
+    rounds,
+    allFixtures,
+    false
+  );
   const officialPositions = new Map(
     officialLadder.map((standing) => [standing.team.id, standing.position])
   );
   const projectedLadder = calculateLadder(
     season,
     seasonTeams,
+    rounds,
     allFixtures,
     true,
     officialPositions
@@ -867,6 +920,8 @@ export async function createTopDogRound(input: {
   scheduledAt: string | null;
   venue: string;
   courseName: string;
+  scoreDirection: TopDogScoreDirection | null;
+  differentialDivisor: number;
   isCurrent: boolean;
 }) {
   const supabaseAdmin = getSupabaseAdmin();
@@ -893,6 +948,8 @@ export async function createTopDogRound(input: {
       scheduled_at: input.scheduledAt,
       venue: input.venue,
       course_name: input.courseName,
+      score_direction: input.scoreDirection,
+      differential_divisor: input.differentialDivisor,
       status: "waiting",
       is_current: input.isCurrent,
       updated_at: now,
@@ -932,6 +989,20 @@ export async function createTopDogFixture(input: {
   }
 
   const supabaseAdmin = getSupabaseAdmin();
+  const { data: round, error: roundError } = await supabaseAdmin
+    .from("top_dog_rounds")
+    .select("season_id")
+    .eq("id", input.roundId)
+    .single();
+
+  if (roundError) {
+    throw roundError;
+  }
+
+  if (parseNumber(round.season_id) !== input.seasonId) {
+    throw new Error("The selected round does not belong to this season.");
+  }
+
   const { data: memberships, error: membershipError } = await supabaseAdmin
     .from("top_dog_season_teams")
     .select("team_id")
@@ -973,12 +1044,181 @@ export async function createTopDogFixture(input: {
   }
 }
 
+export async function updateTopDogFixture(input: {
+  fixtureId: number;
+  seasonId: number;
+  roundId: number;
+  homeTeamId: number;
+  awayTeamId: number;
+  scheduledAt: string | null;
+  simulatorBay: string;
+  holesTotal: number;
+  displayOrder: number;
+}) {
+  if (input.homeTeamId === input.awayTeamId) {
+    throw new Error("A team cannot play itself.");
+  }
+
+  const supabaseAdmin = getSupabaseAdmin();
+  const [fixtureResult, roundResult, membershipResult] = await Promise.all([
+    supabaseAdmin
+      .from("top_dog_fixtures")
+      .select("*")
+      .eq("id", input.fixtureId)
+      .single(),
+    supabaseAdmin
+      .from("top_dog_rounds")
+      .select("season_id")
+      .eq("id", input.roundId)
+      .single(),
+    supabaseAdmin
+      .from("top_dog_season_teams")
+      .select("team_id")
+      .eq("season_id", input.seasonId)
+      .in("team_id", [input.homeTeamId, input.awayTeamId]),
+  ]);
+
+  if (fixtureResult.error) {
+    throw fixtureResult.error;
+  }
+
+  if (roundResult.error) {
+    throw roundResult.error;
+  }
+
+  if (membershipResult.error) {
+    throw membershipResult.error;
+  }
+
+  if (parseNumber(roundResult.data.season_id) !== input.seasonId) {
+    throw new Error("The selected round does not belong to this season.");
+  }
+
+  if ((membershipResult.data ?? []).length !== 2) {
+    throw new Error("Both fixture teams must belong to the selected season.");
+  }
+
+  const currentFixture = fixtureResult.data as Record<string, unknown>;
+  const currentRoundId = parseNumber(currentFixture.round_id);
+  const { data: currentRound, error: currentRoundError } = await supabaseAdmin
+    .from("top_dog_rounds")
+    .select("season_id")
+    .eq("id", currentRoundId)
+    .single();
+
+  if (currentRoundError) {
+    throw currentRoundError;
+  }
+
+  if (parseNumber(currentRound.season_id) !== input.seasonId) {
+    throw new Error("The fixture does not belong to this season.");
+  }
+
+  const historyResult = await supabaseAdmin
+    .from("top_dog_fixture_history")
+    .insert({
+      fixture_id: input.fixtureId,
+      action: "edit_fixture",
+      snapshot: currentFixture,
+    })
+    .select("id")
+    .single();
+
+  if (historyResult.error) {
+    throw historyResult.error;
+  }
+
+  const now = new Date().toISOString();
+  const { error } = await supabaseAdmin
+    .from("top_dog_fixtures")
+    .update({
+      round_id: input.roundId,
+      home_team_id: input.homeTeamId,
+      away_team_id: input.awayTeamId,
+      display_order: input.displayOrder,
+      scheduled_at: input.scheduledAt,
+      simulator_bay: input.simulatorBay,
+      holes_total: input.holesTotal,
+      current_hole: Math.min(parseNumber(currentFixture.current_hole), input.holesTotal),
+      is_match_of_night:
+        currentRoundId === input.roundId && Boolean(currentFixture.is_match_of_night),
+      updated_at: now,
+    })
+    .eq("id", input.fixtureId);
+
+  if (error) {
+    await supabaseAdmin
+      .from("top_dog_fixture_history")
+      .delete()
+      .eq("id", historyResult.data.id);
+    throw error;
+  }
+}
+
+export async function deleteTopDogFixture(input: {
+  fixtureId: number;
+  seasonId: number;
+}) {
+  const supabaseAdmin = getSupabaseAdmin();
+  const { data: fixture, error: fixtureError } = await supabaseAdmin
+    .from("top_dog_fixtures")
+    .select("round_id")
+    .eq("id", input.fixtureId)
+    .single();
+
+  if (fixtureError) {
+    throw fixtureError;
+  }
+
+  const { data: round, error: roundError } = await supabaseAdmin
+    .from("top_dog_rounds")
+    .select("season_id")
+    .eq("id", parseNumber(fixture.round_id))
+    .single();
+
+  if (roundError) {
+    throw roundError;
+  }
+
+  if (parseNumber(round.season_id) !== input.seasonId) {
+    throw new Error("The fixture does not belong to this season.");
+  }
+
+  const { error } = await supabaseAdmin
+    .from("top_dog_fixtures")
+    .delete()
+    .eq("id", input.fixtureId);
+
+  if (error) {
+    throw error;
+  }
+}
+
 export async function applyTopDogFixtureCommand(input: {
   fixtureId: number;
   command: TopDogFixtureCommand;
   payload?: Record<string, unknown>;
 }) {
   const supabaseAdmin = getSupabaseAdmin();
+
+  if (input.command === "undo") {
+    const { data: latestHistory, error: historyError } = await supabaseAdmin
+      .from("top_dog_fixture_history")
+      .select("action")
+      .eq("fixture_id", input.fixtureId)
+      .order("id", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (historyError) {
+      throw historyError;
+    }
+
+    if (latestHistory?.action === "official_import_boundary") {
+      return;
+    }
+  }
+
   const { data, error } = await supabaseAdmin.rpc("apply_top_dog_fixture_command", {
     p_fixture_id: input.fixtureId,
     p_command: input.command,

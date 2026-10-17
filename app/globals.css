@@ -20971,3 +20971,710 @@ main.text-white {
     justify-self: start;
   }
 }
+
+/* Top Dog asset library and fixture management */
+.top-dog-asset-library {
+  overflow: hidden;
+  border: 1px solid rgba(124, 223, 255, 0.22);
+  background:
+    radial-gradient(circle at 92% 0, rgba(255, 189, 24, 0.12), transparent 28%),
+    linear-gradient(135deg, #061c2b, #03111d 72%);
+  box-shadow: 0 26px 70px rgba(3, 17, 29, 0.16);
+}
+
+.top-dog-asset-library > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 1px solid rgba(124, 223, 255, 0.16);
+  padding: 24px 26px;
+}
+
+.top-dog-asset-library > header span {
+  color: var(--td-cyan);
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+}
+
+.top-dog-asset-library > header h2 {
+  margin-top: 4px;
+  color: white;
+  font-size: clamp(26px, 2.5vw, 36px);
+  font-weight: 1000;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.top-dog-asset-library > header p {
+  max-width: 780px;
+  margin-top: 9px;
+  color: var(--td-muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.top-dog-asset-library > header > svg {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 auto;
+  color: var(--td-gold);
+}
+
+.top-dog-asset-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: rgba(124, 223, 255, 0.13);
+}
+
+.top-dog-asset-grid article {
+  display: grid;
+  min-height: 190px;
+  grid-template-rows: 1fr auto;
+  gap: 18px;
+  background: rgba(4, 23, 36, 0.98);
+  padding: 20px;
+}
+
+.top-dog-asset-grid article > div > span {
+  display: inline-flex;
+  border: 1px solid rgba(255, 189, 24, 0.35);
+  background: rgba(255, 189, 24, 0.08);
+  padding: 5px 7px;
+  color: var(--td-gold);
+  font-size: 9px;
+  font-weight: 1000;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.top-dog-asset-grid h3 {
+  margin-top: 12px;
+  color: white;
+  font-size: 19px;
+  font-weight: 1000;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+
+.top-dog-asset-grid p {
+  margin-top: 7px;
+  color: #91a9b8;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.top-dog-asset-grid footer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.top-dog-asset-grid footer a,
+.top-dog-asset-grid footer button,
+.top-dog-fixture-header-actions > button,
+.top-dog-fixture-editor > button {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid rgba(124, 223, 255, 0.24);
+  background: rgba(32, 200, 255, 0.07);
+  color: #d7edf6;
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.top-dog-asset-grid footer a:first-child {
+  border-color: var(--td-cyan);
+  background: var(--td-cyan);
+  color: #03111d;
+}
+
+.top-dog-asset-grid footer svg,
+.top-dog-fixture-header-actions > button svg,
+.top-dog-fixture-editor > button svg {
+  width: 14px;
+}
+
+.top-dog-fixture-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.top-dog-fixture-header-actions > button {
+  min-height: 30px;
+  padding: 5px 8px;
+  font-size: 9px;
+}
+
+.top-dog-fixture-header-actions > button.is-active {
+  border-color: var(--td-gold);
+  color: var(--td-gold);
+}
+
+.top-dog-fixture-header-actions > button.is-delete {
+  border-color: rgba(255, 111, 97, 0.42);
+  color: #ffafa6;
+}
+
+.top-dog-fixture-editor {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1fr 1.15fr 0.8fr 0.45fr 0.5fr auto;
+  gap: 9px;
+  align-items: end;
+  border-bottom: 1px solid rgba(124, 223, 255, 0.14);
+  background: rgba(32, 200, 255, 0.055);
+  padding: 14px 16px 16px 20px;
+}
+
+.top-dog-fixture-editor label {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  color: #91a9b8;
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.top-dog-fixture-editor input,
+.top-dog-fixture-editor select {
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  border: 1px solid rgba(124, 223, 255, 0.2);
+  background: rgba(1, 12, 20, 0.82);
+  padding: 7px 8px;
+  color: white;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.top-dog-fixture-editor option {
+  background: #03111d;
+}
+
+.top-dog-fixture-editor > button {
+  border-color: var(--td-cyan);
+  background: var(--td-cyan);
+  color: #03111d;
+  white-space: nowrap;
+}
+
+.top-dog-score-control > b.is-tbc {
+  color: var(--td-cyan-soft);
+  font-size: 17px;
+}
+
+.top-dog-exact-score > label {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+
+.top-dog-exact-score > label > input[type="number"] {
+  width: 68px;
+}
+
+.top-dog-exact-score small {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #91a9b8;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.top-dog-exact-score small input {
+  width: 14px;
+  height: 14px;
+  min-height: 14px;
+  accent-color: var(--td-cyan);
+}
+
+.top-dog-setup-grid > form:nth-child(3) {
+  order: -1;
+  box-shadow: inset 0 4px 0 var(--td-cyan);
+}
+
+@media (max-width: 1180px) {
+  .top-dog-asset-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .top-dog-fixture-editor {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 780px) {
+  .top-dog-asset-grid,
+  .top-dog-fixture-editor {
+    grid-template-columns: 1fr;
+  }
+
+  .top-dog-asset-library > header,
+  .top-dog-fixture-card > header,
+  .top-dog-fixture-header-actions {
+    align-items: flex-start;
+  }
+
+  .top-dog-fixture-card > header,
+  .top-dog-fixture-header-actions {
+    flex-direction: column;
+  }
+
+  .top-dog-fixture-header-actions {
+    width: 100%;
+  }
+}
+
+/* Readable score spacing for legacy CGS and Tee Lounge banners */
+.survivor-ticker-entry {
+  grid-template-columns: 54px minmax(170px, 1fr) 118px;
+  width: 372px;
+  min-width: 372px;
+  padding-right: 22px;
+}
+
+.survivor-ticker-player {
+  font-size: 19px;
+}
+
+.survivor-ticker-thru {
+  font-size: 11px;
+}
+
+.survivor-ticker-score {
+  width: 112px;
+  max-width: 112px;
+  justify-self: end;
+  padding-right: 5px;
+  font-size: 30px;
+}
+
+.survivor-ticker-rail-label span {
+  font-size: 12px;
+}
+
+.survivor-ticker-rail-label strong {
+  font-size: 30px;
+}
+
+.survivor-ticker-rail-label small {
+  font-size: 10px;
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-award span {
+  font-size: 10px;
+}
+
+.survivor-ticker-shell.is-cgs .survivor-ticker-award strong {
+  font-size: 20px;
+}
+
+/* Top Dog rotating 1920 x 180 league banner */
+.td-league-banner-canvas,
+.td-league-banner-canvas * {
+  box-sizing: border-box;
+}
+
+.td-league-banner-canvas {
+  width: 1920px;
+  height: 180px;
+  overflow: hidden;
+  background: transparent;
+  color: #f7fbfd;
+  font-family: var(--font-space-grotesk);
+}
+
+.td-league-banner-shell {
+  position: relative;
+  display: grid;
+  grid-template-columns: 430px minmax(0, 1fr) 164px;
+  width: 1920px;
+  height: 180px;
+  overflow: hidden;
+  border-block: 3px solid #20c8ff;
+  background:
+    linear-gradient(90deg, rgba(2, 17, 29, 0.98), rgba(4, 31, 48, 0.94)),
+    url("/scoreboard/top-dog-season-4-wide.webp") center 58% / cover no-repeat,
+    #03111d;
+  box-shadow: inset 0 0 42px rgba(32, 200, 255, 0.1);
+}
+
+.td-league-banner-shell::after {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    repeating-linear-gradient(116deg, transparent 0 48px, rgba(88, 220, 255, 0.055) 49px 51px, transparent 52px 96px),
+    linear-gradient(90deg, transparent 68%, rgba(255, 189, 24, 0.08));
+  content: "";
+  pointer-events: none;
+}
+
+.td-league-banner-brand,
+.td-league-banner-content,
+.td-league-banner-status {
+  position: relative;
+  z-index: 1;
+}
+
+.td-league-banner-brand {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 16px;
+  border-right: 2px solid rgba(32, 200, 255, 0.72);
+  background: linear-gradient(105deg, rgba(2, 17, 29, 0.99), rgba(5, 43, 66, 0.94));
+  padding: 15px 22px;
+}
+
+.td-league-banner-brand img {
+  width: 92px;
+  height: 92px;
+  flex: 0 0 auto;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.55));
+}
+
+.td-league-banner-brand div {
+  min-width: 0;
+}
+
+.td-league-banner-brand span,
+.td-league-banner-brand strong,
+.td-league-banner-brand small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.td-league-banner-brand span {
+  color: #20c8ff;
+  font-size: 13px;
+  font-weight: 1000;
+  letter-spacing: 0.13em;
+}
+
+.td-league-banner-brand strong {
+  margin-top: 7px;
+  color: #e2ba91;
+  font-size: 33px;
+  font-weight: 1000;
+  letter-spacing: -0.05em;
+  line-height: 0.95;
+}
+
+.td-league-banner-brand small {
+  margin-top: 10px;
+  color: rgba(247, 251, 253, 0.7);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.td-league-banner-content {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 225px minmax(0, 1fr);
+  align-items: stretch;
+  animation: tdLeagueBannerReveal 520ms cubic-bezier(0.2, 0.85, 0.25, 1) both;
+}
+
+.td-league-banner-title {
+  display: grid;
+  min-width: 0;
+  align-content: center;
+  border-right: 1px solid rgba(32, 200, 255, 0.28);
+  background: rgba(2, 17, 29, 0.84);
+  padding: 18px;
+}
+
+.td-league-banner-title span,
+.td-league-banner-title strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+}
+
+.td-league-banner-title span {
+  color: #ffbd18;
+  font-size: 11px;
+  font-weight: 1000;
+  line-height: 1.25;
+}
+
+.td-league-banner-title strong {
+  margin-top: 8px;
+  color: white;
+  font-size: 27px;
+  font-weight: 1000;
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+}
+
+.td-league-banner-fixtures {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  align-items: center;
+  padding: 15px;
+}
+
+.td-league-banner-fixtures article {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 128px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 1fr 1fr;
+  align-items: stretch;
+  gap: 3px;
+  overflow: hidden;
+  border: 1px solid rgba(32, 200, 255, 0.35);
+  background: linear-gradient(110deg, rgba(5, 43, 66, 0.94), rgba(2, 17, 29, 0.94));
+  padding: 10px 15px 28px 18px;
+}
+
+.td-league-banner-fixtures article::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #20c8ff;
+  content: "";
+}
+
+.td-league-banner-fixtures article > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+}
+
+.td-league-banner-fixtures article > div.is-away {
+  border-top: 1px solid rgba(32, 200, 255, 0.15);
+  text-align: left;
+}
+
+.td-league-banner-fixtures article span {
+  min-width: 0;
+  overflow: hidden;
+  color: white;
+  font-size: 18px;
+  font-weight: 1000;
+  line-height: 1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.td-league-banner-fixtures article strong {
+  flex: 0 0 auto;
+  color: #ffbd18;
+  font-size: 32px;
+  font-weight: 1000;
+  line-height: 1;
+}
+
+.td-league-banner-fixtures article > i {
+  display: none;
+}
+
+.td-league-banner-fixtures article > small {
+  position: absolute;
+  right: 14px;
+  bottom: 10px;
+  left: 18px;
+  overflow: hidden;
+  color: rgba(247, 251, 253, 0.7);
+  font-size: 11px;
+  font-weight: 900;
+  text-align: center;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.td-league-banner-ladder {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  align-items: center;
+  padding: 15px;
+}
+
+.td-league-banner-ladder article {
+  display: grid;
+  min-width: 0;
+  min-height: 128px;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border-top: 3px solid #20c8ff;
+  background: rgba(2, 17, 29, 0.9);
+  padding: 10px;
+}
+
+.td-league-banner-ladder article.is-wildcard {
+  border-top-color: #ffbd18;
+}
+
+.td-league-banner-ladder article > b {
+  color: #20c8ff;
+  font-size: 31px;
+  font-weight: 1000;
+}
+
+.td-league-banner-ladder article.is-wildcard > b {
+  color: #ffbd18;
+}
+
+.td-league-banner-ladder article > div {
+  min-width: 0;
+}
+
+.td-league-banner-ladder article strong,
+.td-league-banner-ladder article span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.td-league-banner-ladder article strong {
+  color: white;
+  font-size: 19px;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.td-league-banner-ladder article span {
+  margin-top: 7px;
+  color: rgba(247, 251, 253, 0.64);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.td-league-banner-ladder article em {
+  color: #ffbd18;
+  font-size: 28px;
+  font-style: normal;
+  font-weight: 1000;
+  text-align: right;
+}
+
+.td-league-banner-ladder article em small {
+  display: block;
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.td-league-banner-empty {
+  display: grid;
+  place-content: center;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.td-league-banner-empty strong {
+  color: white;
+  font-size: 27px;
+  font-weight: 1000;
+}
+
+.td-league-banner-empty span {
+  margin-top: 7px;
+  color: #9feaff;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.td-league-banner-status {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  border-left: 2px solid rgba(255, 189, 24, 0.68);
+  background: linear-gradient(135deg, rgba(5, 43, 66, 0.98), rgba(2, 17, 29, 0.99));
+  text-align: center;
+}
+
+.td-league-banner-status > svg:first-child {
+  width: 29px;
+  height: 29px;
+  color: #ffbd18;
+}
+
+.td-league-banner-status > span {
+  margin-top: 6px;
+  color: #9feaff;
+  font-size: 10px;
+  font-weight: 1000;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.td-league-banner-status > strong {
+  margin-top: 3px;
+  color: white;
+  font-size: 22px;
+  font-weight: 1000;
+}
+
+.td-league-banner-status > div {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  color: #ffbd18;
+}
+
+.td-league-banner-status > div.is-connected {
+  color: #60d394;
+}
+
+.td-league-banner-status > div svg {
+  width: 12px;
+}
+
+.td-league-banner-status > div small {
+  font-size: 8px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.td-league-banner-live-dot {
+  position: absolute;
+  right: 10px;
+  bottom: 9px;
+  width: 9px;
+  color: #20c8ff;
+  animation: tdLiveDot 1.4s ease-in-out infinite;
+}
+
+@keyframes tdLeagueBannerReveal {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}

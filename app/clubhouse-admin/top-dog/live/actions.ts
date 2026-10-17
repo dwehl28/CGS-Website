@@ -93,6 +93,15 @@ export async function createTopDogRoundAction(formData: FormData) {
   const name = normalizeString(formData.get("name"), 100) || `Round ${roundNumber}`;
   const venue = normalizeString(formData.get("venue"), 100) || "The Tee Lounge";
   const courseName = normalizeString(formData.get("course_name"), 120);
+  const scoreDirectionValue = normalizeString(formData.get("score_direction"), 20);
+  const scoreDirection =
+    scoreDirectionValue === "higher_wins" || scoreDirectionValue === "lower_wins"
+      ? scoreDirectionValue
+      : null;
+  const differentialDivisor = Math.min(
+    Math.max(Number(formData.get("differential_divisor")) || 1, 0.01),
+    100
+  );
   const scheduledAt = parseBrisbaneDateTime(
     normalizeString(formData.get("scheduled_at"), 40)
   );
@@ -114,6 +123,8 @@ export async function createTopDogRoundAction(formData: FormData) {
       scheduledAt,
       venue,
       courseName,
+      scoreDirection,
+      differentialDivisor,
       isCurrent: formData.get("is_current") === "on",
     });
   } catch (error) {

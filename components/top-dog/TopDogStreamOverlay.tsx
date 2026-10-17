@@ -93,6 +93,13 @@ function getCentralLabel(overlay: TopDogCentralOverlay) {
 }
 
 function getFixtureStatus(fixture: TopDogFixture) {
+  if (
+    fixture.homeScoreConfirmed !== fixture.awayScoreConfirmed &&
+    fixture.status !== "final"
+  ) {
+    return "Result pending";
+  }
+
   if (fixture.status === "final") {
     return "Final";
   }
@@ -110,6 +117,14 @@ function getFixtureStatus(fixture: TopDogFixture) {
         minute: "2-digit",
       }).format(new Date(fixture.scheduledAt))
     : "Waiting";
+}
+
+function formatFixtureScore(fixture: TopDogFixture, side: "home" | "away") {
+  const confirmed =
+    side === "home" ? fixture.homeScoreConfirmed : fixture.awayScoreConfirmed;
+  const score = side === "home" ? fixture.homeScore : fixture.awayScore;
+
+  return confirmed ? String(score) : "TBC";
 }
 
 function TeamMark({ name, color }: { name: string; color: string }) {
@@ -153,14 +168,14 @@ function Scorebug({ fixture, visible }: { fixture: TopDogFixture | null; visible
             <TeamMark name={fixture.homeTeam.name} color={fixture.homeTeam.accentColor} />
             <span>{fixture.homeTeam.name}</span>
             <strong key={`home-${fixture.homeScore}-${fixture.updatedAt}`}>
-              {fixture.homeScore}
+              {formatFixtureScore(fixture, "home")}
             </strong>
           </div>
           <div className="td-scorebug-row is-away">
             <TeamMark name={fixture.awayTeam.name} color={fixture.awayTeam.accentColor} />
             <span>{fixture.awayTeam.name}</span>
             <strong key={`away-${fixture.awayScore}-${fixture.updatedAt}`}>
-              {fixture.awayScore}
+              {formatFixtureScore(fixture, "away")}
             </strong>
           </div>
           <footer>
@@ -321,7 +336,7 @@ function MatchCard({
               <span>Team A</span>
               <strong>{fixture.homeTeam.name}</strong>
               <b key={`central-home-${fixture.homeScore}-${fixture.updatedAt}`}>
-                {fixture.homeScore}
+                {formatFixtureScore(fixture, "home")}
               </b>
             </div>
             <i>vs</i>
@@ -330,7 +345,7 @@ function MatchCard({
               <span>Team B</span>
               <strong>{fixture.awayTeam.name}</strong>
               <b key={`central-away-${fixture.awayScore}-${fixture.updatedAt}`}>
-                {fixture.awayScore}
+                {formatFixtureScore(fixture, "away")}
               </b>
             </div>
           </div>
@@ -418,10 +433,15 @@ function buildTickerItems(snapshot: TopDogSnapshot) {
 
   if (categories.has("scores")) {
     snapshot.fixtures
-      .filter((fixture) => fixture.status !== "waiting")
+      .filter(
+        (fixture) =>
+          fixture.status !== "waiting" ||
+          fixture.homeScoreConfirmed ||
+          fixture.awayScoreConfirmed
+      )
       .forEach((fixture) => {
         items.push(
-          `${fixture.homeTeam.name} ${fixture.homeScore}-${fixture.awayScore} ${fixture.awayTeam.name} | ${getFixtureStatus(fixture)}`
+          `${fixture.homeTeam.name} ${formatFixtureScore(fixture, "home")}-${formatFixtureScore(fixture, "away")} ${fixture.awayTeam.name} | ${getFixtureStatus(fixture)}`
         );
       });
   }

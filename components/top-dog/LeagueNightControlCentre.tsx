@@ -18,20 +18,25 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
+  Copy,
   Eye,
   EyeOff,
+  ExternalLink,
   Flag,
   Gauge,
+  LibraryBig,
   Medal,
   Minus,
   MonitorPlay,
   Pause,
+  Pencil,
   Play,
   Plus,
   Radio,
   RotateCcw,
   Settings2,
   Shield,
+  Trash2,
   Trophy,
   Wifi,
   WifiOff,
@@ -49,6 +54,8 @@ import type {
   TopDogFeed,
   TopDogFixture,
   TopDogFixtureCommand,
+  TopDogRound,
+  TopDogSeasonTeam,
   TopDogSnapshot,
   TopDogStanding,
 } from "@/lib/top-dog";
@@ -57,6 +64,16 @@ type SyncState = "connecting" | "connected" | "reconnecting" | "unavailable";
 
 type LeagueNightControlCentreProps = {
   initialSnapshot: TopDogSnapshot;
+};
+
+type FixtureEditPayload = {
+  roundId: number;
+  homeTeamId: number;
+  awayTeamId: number;
+  scheduledAt: string | null;
+  simulatorBay: string;
+  holesTotal: number;
+  displayOrder: number;
 };
 
 const directorButtons: Array<{
@@ -116,16 +133,143 @@ function formatTime(value: string | null) {
   }).format(date);
 }
 
-function getStatusLabel(status: TopDogFixture["status"]) {
-  if (status === "live") {
+function getStatusLabel(fixture: TopDogFixture) {
+  if (!fixture.homeScoreConfirmed || !fixture.awayScoreConfirmed) {
+    if (fixture.homeScoreConfirmed || fixture.awayScoreConfirmed) {
+      return "Result pending";
+    }
+  }
+
+  if (fixture.status === "live") {
     return "Live";
   }
 
-  if (status === "final") {
+  if (fixture.status === "final") {
     return "Final";
   }
 
   return "Waiting";
+}
+
+function formatFixtureScore(fixture: TopDogFixture, side: "home" | "away") {
+  const confirmed =
+    side === "home" ? fixture.homeScoreConfirmed : fixture.awayScoreConfirmed;
+  const score = side === "home" ? fixture.homeScore : fixture.awayScore;
+
+  return confirmed ? String(score) : "TBC";
+}
+
+function formatBrisbaneDateTimeInput(value: string | null) {
+  if (!value) {
+    return "";
+  }
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Australia/Brisbane",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(value));
+  const getPart = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+
+  return `${getPart("year")}-${getPart("month")}-${getPart("day")}T${getPart("hour")}:${getPart("minute")}`;
+}
+
+function parseBrisbaneDateTimeInput(value: FormDataEntryValue | null) {
+  const text = String(value ?? "").trim();
+
+  if (!text) {
+    return null;
+  }
+
+  const date = new Date(`${text}:00+10:00`);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function BroadcastAssetLibrary({ seasonSlug }: { seasonSlug: string }) {
+  const [copiedPath, setCopiedPath] = useState("");
+  const assets = [
+    {
+      name: "Rotating League Banner",
+      path: `/stream/top-dog/${seasonSlug}/banner`,
+      size: "1920 x 180",
+      purpose: "Auto-rotates current fixtures, the official ladder, and last round results.",
+    },
+    {
+      name: "Live Scorebug",
+      path: `/stream/top-dog/${seasonSlug}/scorebug`,
+      size: "1920 x 1080",
+      purpose: "Compact corner score graphic for the fixture selected as Scorebug.",
+    },
+    {
+      name: "Central Graphics",
+      path: `/stream/top-dog/${seasonSlug}/match`,
+      size: "1920 x 1080",
+      purpose: "One URL for Match, prizes, sponsors, interviews, results, and wrap-up slides.",
+    },
+    {
+      name: "Live Ladder",
+      path: `/stream/top-dog/${seasonSlug}/ladder`,
+      size: "1920 x 1080",
+      purpose: "Shows Live Ladder or If Results Hold when triggered in Stream Director.",
+    },
+    {
+      name: "Lower Ticker",
+      path: `/stream/top-dog/${seasonSlug}/ticker`,
+      size: "1920 x 1080",
+      purpose: "Persistent lower-third rotation controlled by the ticker settings.",
+    },
+    {
+      name: "One-Putt Jackpot",
+      path: `/stream/top-dog/${seasonSlug}/jackpot`,
+      size: "1920 x 1080",
+      purpose: "Dedicated browser source for the recurring jackpot segment.",
+    },
+  ];
+
+  async function copyAssetUrl(path: string) {
+    const url = new URL(path, window.location.origin).toString();
+    await navigator.clipboard.writeText(url);
+    setCopiedPath(path);
+    window.setTimeout(() => setCopiedPath(""), 1800);
+  }
+
+  return (
+    <section className="top-dog-asset-library" id="broadcast-assets">
+      <header>
+        <div>
+          <span>OBS-ready browser sources</span>
+          <h2>Broadcast Asset Library</h2>
+          <p>Every graphic has a clear name, purpose, and source size. Open to preview or copy the full URL into OBS.</p>
+        </div>
+        <LibraryBig aria-hidden="true" />
+      </header>
+      <div className="top-dog-asset-grid">
+        {assets.map((asset) => (
+          <article key={asset.path}>
+            <div>
+              <span>{asset.size}</span>
+              <h3>{asset.name}</h3>
+              <p>{asset.purpose}</p>
+            </div>
+            <footer>
+              <Link href={asset.path} target="_blank">
+                <ExternalLink aria-hidden="true" /> Preview
+              </Link>
+              <button type="button" onClick={() => void copyAssetUrl(asset.path)}>
+                {copiedPath === asset.path ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+                {copiedPath === asset.path ? "Copied" : "Copy URL"}
+              </button>
+            </footer>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
 }
 
 function getSyncLabel(syncState: SyncState) {
@@ -247,21 +391,31 @@ function ScoreButton({
 
 function FixtureControlCard({
   fixture,
+  rounds,
+  seasonTeams,
   pending,
   onCommand,
+  onEdit,
+  onDelete,
   onSelectForScorebug,
   scorebugSelected,
 }: {
   fixture: TopDogFixture;
+  rounds: TopDogRound[];
+  seasonTeams: TopDogSeasonTeam[];
   pending: boolean;
   onCommand: (
     fixtureId: number,
     command: TopDogFixtureCommand,
-    payload?: Record<string, number>
+    payload?: Record<string, unknown>
   ) => Promise<void>;
+  onEdit: (fixtureId: number, payload: FixtureEditPayload) => Promise<boolean>;
+  onDelete: (fixture: TopDogFixture) => Promise<void>;
   onSelectForScorebug: (fixtureId: number) => Promise<void>;
   scorebugSelected: boolean;
 }) {
+  const [editing, setEditing] = useState(false);
+
   async function handleSetScore(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
@@ -275,7 +429,40 @@ function FixtureControlCard({
     await onCommand(fixture.id, "set_score", {
       home_score: homeScore,
       away_score: awayScore,
+      home_score_confirmed: formData.get("home_score_confirmed") === "on",
+      away_score_confirmed: formData.get("away_score_confirmed") === "on",
     });
+  }
+
+  async function handleEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const payload: FixtureEditPayload = {
+      roundId: Number(formData.get("round_id")),
+      homeTeamId: Number(formData.get("home_team_id")),
+      awayTeamId: Number(formData.get("away_team_id")),
+      scheduledAt: parseBrisbaneDateTimeInput(formData.get("scheduled_at")),
+      simulatorBay: String(formData.get("simulator_bay") ?? "").trim(),
+      holesTotal: Number(formData.get("holes_total")),
+      displayOrder: Number(formData.get("display_order")),
+    };
+
+    if (
+      !Number.isInteger(payload.roundId) ||
+      !Number.isInteger(payload.homeTeamId) ||
+      !Number.isInteger(payload.awayTeamId) ||
+      payload.homeTeamId === payload.awayTeamId ||
+      !Number.isInteger(payload.holesTotal) ||
+      !Number.isInteger(payload.displayOrder)
+    ) {
+      return;
+    }
+
+    const saved = await onEdit(fixture.id, payload);
+
+    if (saved) {
+      setEditing(false);
+    }
   }
 
   return (
@@ -286,14 +473,82 @@ function FixtureControlCard({
     >
       <header>
         <div className="top-dog-fixture-status">
-          <span>{getStatusLabel(fixture.status)}</span>
+          <span>{getStatusLabel(fixture)}</span>
           {fixture.isMatchOfNight ? <b>Match of the Night</b> : null}
         </div>
-        <div className="top-dog-fixture-meta">
-          <span><Clock3 aria-hidden="true" /> {formatTime(fixture.scheduledAt)}</span>
-          <span><MonitorPlay aria-hidden="true" /> {fixture.simulatorBay || "Bay TBC"}</span>
+        <div className="top-dog-fixture-header-actions">
+          <div className="top-dog-fixture-meta">
+            <span><Clock3 aria-hidden="true" /> {formatTime(fixture.scheduledAt)}</span>
+            <span><MonitorPlay aria-hidden="true" /> {fixture.simulatorBay || "Bay TBC"}</span>
+          </div>
+          <button
+            type="button"
+            className={editing ? "is-active" : ""}
+            onClick={() => setEditing((current) => !current)}
+            disabled={pending}
+          >
+            <Pencil aria-hidden="true" /> {editing ? "Close" : "Edit"}
+          </button>
+          <button
+            type="button"
+            className="is-delete"
+            onClick={() => void onDelete(fixture)}
+            disabled={pending}
+          >
+            <Trash2 aria-hidden="true" /> Remove
+          </button>
         </div>
       </header>
+
+      {editing ? (
+        <form className="top-dog-fixture-editor" onSubmit={handleEdit}>
+          <label>
+            Round
+            <select name="round_id" defaultValue={fixture.roundId} required>
+              {rounds.map((round) => (
+                <option key={round.id} value={round.id}>Round {round.roundNumber} - {round.name}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Team A
+            <select name="home_team_id" defaultValue={fixture.homeTeam.id} required>
+              {seasonTeams.filter((item) => item.isActive).map((item) => (
+                <option key={item.team.id} value={item.team.id}>{item.team.name}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Team B
+            <select name="away_team_id" defaultValue={fixture.awayTeam.id} required>
+              {seasonTeams.filter((item) => item.isActive).map((item) => (
+                <option key={item.team.id} value={item.team.id}>{item.team.name}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Start time (Brisbane)
+            <input
+              type="datetime-local"
+              name="scheduled_at"
+              defaultValue={formatBrisbaneDateTimeInput(fixture.scheduledAt)}
+            />
+          </label>
+          <label>
+            Simulator / location
+            <input type="text" name="simulator_bay" defaultValue={fixture.simulatorBay} maxLength={40} />
+          </label>
+          <label>
+            Holes
+            <input type="number" name="holes_total" min="1" max="36" defaultValue={fixture.holesTotal} required />
+          </label>
+          <label>
+            Display order
+            <input type="number" name="display_order" min="1" max="999" defaultValue={fixture.displayOrder} required />
+          </label>
+          <button type="submit" disabled={pending}><Check aria-hidden="true" /> Save fixture</button>
+        </form>
+      ) : null}
 
       <div className="top-dog-matchup">
         <div className="top-dog-team-side">
@@ -308,7 +563,9 @@ function FixtureControlCard({
               }
               disabled={pending}
             />
-            <b>{fixture.homeScore}</b>
+            <b className={!fixture.homeScoreConfirmed ? "is-tbc" : ""}>
+              {formatFixtureScore(fixture, "home")}
+            </b>
             <ScoreButton
               label={`${fixture.homeTeam.name} plus one`}
               onClick={() =>
@@ -336,7 +593,9 @@ function FixtureControlCard({
               }
               disabled={pending}
             />
-            <b>{fixture.awayScore}</b>
+            <b className={!fixture.awayScoreConfirmed ? "is-tbc" : ""}>
+              {formatFixtureScore(fixture, "away")}
+            </b>
             <ScoreButton
               label={`${fixture.awayTeam.name} plus one`}
               onClick={() =>
@@ -377,25 +636,47 @@ function FixtureControlCard({
 
       <form className="top-dog-exact-score" onSubmit={handleSetScore}>
         <span>Exact score</span>
-        <input
-          key={`home-${fixture.id}-${fixture.homeScore}`}
-          type="number"
-          name="home_score"
-          min="-99"
-          max="99"
-          defaultValue={fixture.homeScore}
-          aria-label={`${fixture.homeTeam.name} exact score`}
-        />
+        <label>
+          <input
+            key={`home-${fixture.id}-${fixture.homeScore}`}
+            type="number"
+            name="home_score"
+            min="-99"
+            max="99"
+            defaultValue={fixture.homeScore}
+            aria-label={`${fixture.homeTeam.name} exact score`}
+          />
+          <small>
+            <input
+              key={`home-confirmed-${fixture.id}-${fixture.homeScoreConfirmed}`}
+              type="checkbox"
+              name="home_score_confirmed"
+              defaultChecked={fixture.homeScoreConfirmed}
+            />
+            {fixture.homeTeam.shortName || "Team A"} confirmed
+          </small>
+        </label>
         <i>-</i>
-        <input
-          key={`away-${fixture.id}-${fixture.awayScore}`}
-          type="number"
-          name="away_score"
-          min="-99"
-          max="99"
-          defaultValue={fixture.awayScore}
-          aria-label={`${fixture.awayTeam.name} exact score`}
-        />
+        <label>
+          <input
+            key={`away-${fixture.id}-${fixture.awayScore}`}
+            type="number"
+            name="away_score"
+            min="-99"
+            max="99"
+            defaultValue={fixture.awayScore}
+            aria-label={`${fixture.awayTeam.name} exact score`}
+          />
+          <small>
+            <input
+              key={`away-confirmed-${fixture.id}-${fixture.awayScoreConfirmed}`}
+              type="checkbox"
+              name="away_score_confirmed"
+              defaultChecked={fixture.awayScoreConfirmed}
+            />
+            {fixture.awayTeam.shortName || "Team B"} confirmed
+          </small>
+        </label>
         <button type="submit" disabled={pending}>Update score</button>
       </form>
 
@@ -415,7 +696,14 @@ function FixtureControlCard({
             type="button"
             className="is-finish"
             onClick={() => void onCommand(fixture.id, "finish")}
-            disabled={pending}
+            disabled={
+              pending || !fixture.homeScoreConfirmed || !fixture.awayScoreConfirmed
+            }
+            title={
+              fixture.homeScoreConfirmed && fixture.awayScoreConfirmed
+                ? undefined
+                : "Confirm both team scores before finishing this fixture."
+            }
           >
             <Check aria-hidden="true" /> Finish match
           </button>
@@ -596,7 +884,7 @@ export default function LeagueNightControlCentre({
   async function runFixtureCommand(
     fixtureId: number,
     command: TopDogFixtureCommand,
-    payload?: Record<string, number>
+    payload?: Record<string, unknown>
   ) {
     setPendingFixtureIds((current) => new Set(current).add(fixtureId));
     setErrorMessage("");
@@ -626,6 +914,83 @@ export default function LeagueNightControlCentre({
       setPendingFixtureIds((current) => {
         const next = new Set(current);
         next.delete(fixtureId);
+        return next;
+      });
+    }
+  }
+
+  async function editFixture(fixtureId: number, payload: FixtureEditPayload) {
+    setPendingFixtureIds((current) => new Set(current).add(fixtureId));
+    setErrorMessage("");
+
+    try {
+      const response = await fetch(`/api/admin/top-dog/fixtures/${fixtureId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...payload,
+          seasonId: snapshot.season.id,
+          seasonSlug: snapshot.season.slug,
+          selectedRoundId,
+        }),
+      });
+      const feed = (await response.json()) as TopDogFeed & { message?: string };
+
+      if (!response.ok) {
+        throw new Error(feed.message ?? "The fixture details could not be saved.");
+      }
+
+      applyFeed(feed);
+      return true;
+    } catch (error) {
+      console.error("Top Dog fixture edit error:", error);
+      setErrorMessage(error instanceof Error ? error.message : "The fixture edit failed.");
+      return false;
+    } finally {
+      setPendingFixtureIds((current) => {
+        const next = new Set(current);
+        next.delete(fixtureId);
+        return next;
+      });
+    }
+  }
+
+  async function removeFixture(fixture: TopDogFixture) {
+    const confirmed = window.confirm(
+      `Remove ${fixture.homeTeam.name} vs ${fixture.awayTeam.name}? This cannot be undone.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setPendingFixtureIds((current) => new Set(current).add(fixture.id));
+    setErrorMessage("");
+
+    try {
+      const response = await fetch(`/api/admin/top-dog/fixtures/${fixture.id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          seasonId: snapshot.season.id,
+          seasonSlug: snapshot.season.slug,
+          selectedRoundId,
+        }),
+      });
+      const feed = (await response.json()) as TopDogFeed & { message?: string };
+
+      if (!response.ok) {
+        throw new Error(feed.message ?? "The fixture could not be removed.");
+      }
+
+      applyFeed(feed);
+    } catch (error) {
+      console.error("Top Dog fixture removal error:", error);
+      setErrorMessage(error instanceof Error ? error.message : "The fixture removal failed.");
+    } finally {
+      setPendingFixtureIds((current) => {
+        const next = new Set(current);
+        next.delete(fixture.id);
         return next;
       });
     }
@@ -833,6 +1198,8 @@ export default function LeagueNightControlCentre({
         </div>
       ) : null}
 
+      <BroadcastAssetLibrary seasonSlug={snapshot.season.slug} />
+
       <section className="top-dog-operations-grid">
         <div className="top-dog-fixtures-column">
           <header className="top-dog-section-heading">
@@ -853,8 +1220,12 @@ export default function LeagueNightControlCentre({
               <FixtureControlCard
                 key={fixture.id}
                 fixture={fixture}
+                rounds={snapshot.rounds}
+                seasonTeams={snapshot.seasonTeams}
                 pending={pendingFixtureIds.has(fixture.id)}
                 onCommand={runFixtureCommand}
+                onEdit={editFixture}
+                onDelete={removeFixture}
                 onSelectForScorebug={(fixtureId) =>
                   updateStreamState({ scorebugFixtureId: fixtureId, scorebugVisible: true })
                 }
@@ -1025,21 +1396,6 @@ export default function LeagueNightControlCentre({
             </form>
           </div>
 
-          <div className="top-dog-obs-links">
-            <span>OBS browser sources</span>
-            <Link href={`/stream/top-dog/${snapshot.season.slug}/scorebug`} target="_blank">
-              Scorebug
-            </Link>
-            <Link href={`/stream/top-dog/${snapshot.season.slug}/match`} target="_blank">
-              Match card
-            </Link>
-            <Link href={`/stream/top-dog/${snapshot.season.slug}/ladder`} target="_blank">
-              Ladder
-            </Link>
-            <Link href={`/stream/top-dog/${snapshot.season.slug}/ticker`} target="_blank">
-              Ticker
-            </Link>
-          </div>
         </aside>
       </section>
 
@@ -1057,12 +1413,12 @@ export default function LeagueNightControlCentre({
         />
       </section>
 
-      <details className="top-dog-setup-panel">
+      <details className="top-dog-setup-panel" id="fixture-manager" open>
         <summary>
           <Settings2 aria-hidden="true" />
           <span>
-            <strong>League operations setup</strong>
-            Add teams, rounds, and verified fixtures outside the live controls.
+            <strong>Fixture Manager</strong>
+            Add matches here. Use Edit or Remove on any match card above to change the draw.
           </span>
           <b>{snapshot.seasonTeams.length} teams | {snapshot.rounds.length} rounds</b>
         </summary>
@@ -1070,7 +1426,7 @@ export default function LeagueNightControlCentre({
         <div className="top-dog-setup-grid">
           <form action={createTopDogTeamAction}>
             <input type="hidden" name="season_id" value={snapshot.season.id} />
-            <span>1 / Team directory</span>
+            <span>2 / Team directory</span>
             <h3>Add a team</h3>
             <label>
               Team name
@@ -1091,7 +1447,7 @@ export default function LeagueNightControlCentre({
 
           <form action={createTopDogRoundAction}>
             <input type="hidden" name="season_id" value={snapshot.season.id} />
-            <span>2 / League calendar</span>
+            <span>3 / League calendar</span>
             <h3>Create a round</h3>
             <div className="top-dog-form-split">
               <label>
@@ -1117,6 +1473,26 @@ export default function LeagueNightControlCentre({
                 <input type="text" name="course_name" placeholder="GSPro course" />
               </label>
             </div>
+            <div className="top-dog-form-split">
+              <label>
+                Winner rule
+                <select name="score_direction" defaultValue={snapshot.season.scoreDirection}>
+                  <option value="lower_wins">Lowest score wins</option>
+                  <option value="higher_wins">Highest score wins</option>
+                </select>
+              </label>
+              <label>
+                Ladder margin divisor
+                <input
+                  type="number"
+                  name="differential_divisor"
+                  min="0.01"
+                  max="100"
+                  step="0.01"
+                  defaultValue="1"
+                />
+              </label>
+            </div>
             <label className="top-dog-check-field">
               <input type="checkbox" name="is_current" defaultChecked />
               Make this the current league night
@@ -1126,7 +1502,7 @@ export default function LeagueNightControlCentre({
 
           <form action={createTopDogFixtureAction}>
             <input type="hidden" name="season_id" value={snapshot.season.id} />
-            <span>3 / Match draw</span>
+            <span>1 / Match draw</span>
             <h3>Add a fixture</h3>
             <label>
               Round

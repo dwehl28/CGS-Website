@@ -1,7 +1,7 @@
 import { withTimeout } from "@/lib/async-timeout";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import {
-  getTopDogScoreMargin,
+  getTopDogRoundScoreMargin,
   normalizeTopDogSlug,
   type CgsTeam,
   type TopDogCentralOverlay,
@@ -624,6 +624,7 @@ async function loadProfileDirectory(teamIds: number[]) {
 function calculateTeamStats(core: TopDogSnapshot): TopDogTeamSeasonStat[] {
   const pointsByTeam = new Map(core.officialLadder.map((row) => [row.team.id, row.points]));
   const roundOrder = new Map(core.rounds.map((round) => [round.id, round.roundNumber]));
+  const roundsById = new Map(core.rounds.map((round) => [round.id, round]));
   const finalFixtures = core.allFixtures
     .filter((fixture) => fixture.status === "final")
     .sort((left, right) => {
@@ -652,7 +653,12 @@ function calculateTeamStats(core: TopDogSnapshot): TopDogTeamSeasonStat[] {
 
         const scored = isHome ? fixture.homeScore : fixture.awayScore;
         const conceded = isHome ? fixture.awayScore : fixture.homeScore;
-        const margin = getTopDogScoreMargin(core.season, scored, conceded);
+        const margin = getTopDogRoundScoreMargin(
+          core.season,
+          roundsById.get(fixture.roundId) ?? null,
+          scored,
+          conceded
+        );
         differential += margin;
 
         if (margin > 0) {
@@ -708,6 +714,8 @@ function calculatePlayerStats(
   prizes: TopDogPrize[],
   attempts: TopDogJackpotAttempt[]
 ): TopDogPlayerSeasonStat[] {
+  const roundsById = new Map(core.rounds.map((round) => [round.id, round]));
+
   return players.map((player) => {
     const teamFixtures = core.allFixtures.filter(
       (fixture) =>
@@ -730,9 +738,19 @@ function calculatePlayerStats(
       appearances: teamFixtures.length,
       wins: teamFixtures.filter((fixture) => {
         const homeWon =
-          getTopDogScoreMargin(core.season, fixture.homeScore, fixture.awayScore) > 0;
+          getTopDogRoundScoreMargin(
+            core.season,
+            roundsById.get(fixture.roundId) ?? null,
+            fixture.homeScore,
+            fixture.awayScore
+          ) > 0;
         const awayWon =
-          getTopDogScoreMargin(core.season, fixture.awayScore, fixture.homeScore) > 0;
+          getTopDogRoundScoreMargin(
+            core.season,
+            roundsById.get(fixture.roundId) ?? null,
+            fixture.awayScore,
+            fixture.homeScore
+          ) > 0;
         return (
           (homeWon && fixture.homeTeam.id === player.teamId) ||
           (awayWon && fixture.awayTeam.id === player.teamId)

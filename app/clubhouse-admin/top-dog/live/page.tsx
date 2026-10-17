@@ -63,13 +63,14 @@ export default async function TopDogLivePage({ searchParams }: TopDogLivePagePro
       actions={
         <>
           {feed.snapshot ? (
-            <Link
-              href={`/stream/top-dog/${feed.snapshot.season.slug}/scorebug`}
-              target="_blank"
-              className="btn-secondary"
-            >
-              Open OBS scorebug
-            </Link>
+            <>
+              <Link href="#broadcast-assets" className="btn-secondary">
+                All broadcast assets
+              </Link>
+              <Link href="#fixture-manager" className="btn-secondary">
+                Manage fixtures
+              </Link>
+            </>
           ) : null}
           <Link href="/clubhouse-admin/scoreboard" className="btn-secondary">
             Existing scoreboards
