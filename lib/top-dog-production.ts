@@ -1,4 +1,7 @@
+import { randomUUID } from "node:crypto";
+
 import { withTimeout } from "@/lib/async-timeout";
+import { deleteCgsPlayerPhotoDirectory } from "@/lib/player-photo-storage";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import {
   getTopDogRoundScoreMargin,
@@ -79,9 +82,14 @@ export type TopDogPlayerOption = {
 export type TopDogProfileDirectoryItem = {
   profileId: string;
   displayName: string;
+  nickname: string;
+  handle: string;
   avatarUrl: string;
+  handicap: number | null;
   teamId: number | null;
   teamName: string;
+  roleLabel: string;
+  managedByAdmin: boolean;
 };
 
 export type TopDogPrize = {
@@ -585,12 +593,12 @@ async function loadProfileDirectory(teamIds: number[]) {
   const [profileResult, memberResult] = await Promise.all([
     supabaseAdmin
       .from("cgs_profiles")
-      .select("id, display_name, nickname, handle, avatar_url")
+      .select("id, display_name, nickname, handle, avatar_url, handicap, managed_by_admin")
       .order("display_name", { ascending: true }),
     teamIds.length > 0
       ? supabaseAdmin
           .from("cgs_team_members")
-          .select("team_id, profile_id")
+          .select("team_id, profile_id, role_label")
           .in("team_id", teamIds)
           .eq("is_active", true)
       : Promise.resolve({ data: [], error: null }),
@@ -604,21 +612,76 @@ async function loadProfileDirectory(teamIds: number[]) {
     throw memberResult.error;
   }
 
-  const teamByProfile = new Map(
-    (memberResult.data ?? []).map((member) => [String(member.profile_id), numberValue(member.team_id)])
+  const membershipByProfile = new Map(
+    (memberResult.data ?? []).map((member) => [
+      String(member.profile_id),
+      {
+        teamId: numberValue(member.team_id),
+        roleLabel: String(member.role_label ?? "Player"),
+      },
+    ])
   );
 
-  return (profileResult.data ?? []).map((profile): TopDogProfileDirectoryItem => ({
-    profileId: String(profile.id),
-    displayName:
-      String(profile.display_name ?? "").trim() ||
-      String(profile.nickname ?? "").trim() ||
-      String(profile.handle ?? "").trim() ||
-      "CGS player",
-    avatarUrl: String(profile.avatar_url ?? ""),
-    teamId: teamByProfile.get(String(profile.id)) ?? null,
-    teamName: "",
-  }));
+  return (profileResult.data ?? []).map((profile): TopDogProfileDirectoryItem => {
+    const membership = membershipByProfile.get(String(profile.id));
+    return {
+      profileId: String(profile.id),
+      displayName:
+        String(profile.display_name ?? "").trim() ||
+        String(profile.nickname ?? "").trim() ||
+        String(profile.handle ?? "").trim() ||
+        "CGS player",
+      nickname: String(profile.nickname ?? ""),
+      handle: String(profile.handle ?? ""),
+      avatarUrl: String(profile.avatar_url ?? ""),
+      handicap: nullableNumber(profile.handicap),
+      teamId: membership?.teamId ?? null,
+      teamName: "",
+      roleLabel: membership?.roleLabel || "Player",
+      managedByAdmin: Boolean(profile.managed_by_admin),
+    };
+  });
+}
+
+async function loadBroadcastProfile(profileId: string | null, teamId: number | null) {
+  const supabaseAdmin = getSupabaseAdmin();
+  let avatarUrl = "";
+  let profileName = "";
+  let teamName = "";
+
+  if (profileId) {
+    const profileResult = await supabaseAdmin
+      .from("cgs_profiles")
+      .select("display_name, nickname, handle, avatar_url")
+      .eq("id", profileId)
+      .maybeSingle();
+
+    if (profileResult.error) {
+      throw profileResult.error;
+    }
+
+    avatarUrl = String(profileResult.data?.avatar_url ?? "");
+    profileName =
+      String(profileResult.data?.display_name ?? "").trim() ||
+      String(profileResult.data?.nickname ?? "").trim() ||
+      String(profileResult.data?.handle ?? "").trim();
+  }
+
+  if (teamId) {
+    const teamResult = await supabaseAdmin
+      .from("cgs_teams")
+      .select("name")
+      .eq("id", teamId)
+      .maybeSingle();
+
+    if (teamResult.error) {
+      throw teamResult.error;
+    }
+
+    teamName = String(teamResult.data?.name ?? "");
+  }
+
+  return { avatarUrl, profileName, teamName };
 }
 
 function calculateTeamStats(core: TopDogSnapshot): TopDogTeamSeasonStat[] {
@@ -943,6 +1006,49 @@ export async function getAdminTopDogProductionFeed(
   }
 }
 
+async function loadTopDogSeasonTeamIds(seasonId: number) {
+  const supabaseAdmin = getSupabaseAdmin();
+  const membershipResult = await supabaseAdmin
+    .from("top_dog_season_teams")
+    .select("team_id")
+    .eq("season_id", seasonId);
+
+  if (membershipResult.error) {
+    throw membershipResult.error;
+  }
+
+  return (membershipResult.data ?? []).map((item) => numberValue(item.team_id));
+}
+
+async function assertTopDogProfileHandleAvailable(handle: string, profileId?: string) {
+  const supabaseAdmin = getSupabaseAdmin();
+  let query = supabaseAdmin.from("cgs_profiles").select("id").eq("handle", handle);
+
+  if (profileId) {
+    query = query.neq("id", profileId);
+  }
+
+  const { data, error } = await query.limit(1).maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (data) {
+    throw new Error(`The handle @${handle} is already in use. Choose another one.`);
+  }
+}
+
+function normalizeTopDogProfileHandle(handle: string, displayName: string) {
+  const normalized = normalizeTopDogSlug(handle || displayName);
+
+  if (!normalized) {
+    throw new Error("Enter a player name or handle.");
+  }
+
+  return normalized;
+}
+
 export async function assignTopDogTeamMember(input: {
   seasonId: number;
   roundId: number;
@@ -951,16 +1057,7 @@ export async function assignTopDogTeamMember(input: {
   roleLabel: string;
 }) {
   const supabaseAdmin = getSupabaseAdmin();
-  const membershipResult = await supabaseAdmin
-    .from("top_dog_season_teams")
-    .select("team_id")
-    .eq("season_id", input.seasonId);
-
-  if (membershipResult.error) {
-    throw membershipResult.error;
-  }
-
-  const seasonTeamIds = (membershipResult.data ?? []).map((item) => numberValue(item.team_id));
+  const seasonTeamIds = await loadTopDogSeasonTeamIds(input.seasonId);
 
   if (!seasonTeamIds.includes(input.teamId)) {
     throw new Error("The selected team does not belong to this Top Dog season.");
@@ -1000,6 +1097,229 @@ export async function assignTopDogTeamMember(input: {
     entityType: "profile",
     entityId: input.profileId,
     details: { teamId: input.teamId, roleLabel: input.roleLabel },
+  });
+}
+
+export async function unassignTopDogTeamMember(input: {
+  seasonId: number;
+  roundId: number;
+  profileId: string;
+}) {
+  const seasonTeamIds = await loadTopDogSeasonTeamIds(input.seasonId);
+
+  if (seasonTeamIds.length === 0) {
+    return;
+  }
+
+  const supabaseAdmin = getSupabaseAdmin();
+  const { error } = await supabaseAdmin
+    .from("cgs_team_members")
+    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .eq("profile_id", input.profileId)
+    .in("team_id", seasonTeamIds);
+
+  if (error) {
+    throw error;
+  }
+
+  await logOperation({
+    seasonId: input.seasonId,
+    roundId: input.roundId,
+    action: "team_member_unassigned",
+    entityType: "profile",
+    entityId: input.profileId,
+  });
+}
+
+export async function createTopDogManagedProfile(input: {
+  seasonId: number;
+  roundId: number;
+  displayName: string;
+  nickname: string;
+  handle: string;
+  avatarUrl: string;
+  handicap: number | null;
+  teamId: number | null;
+  roleLabel: string;
+}) {
+  await assertRoundBelongsToSeason(input.seasonId, input.roundId);
+  const handle = normalizeTopDogProfileHandle(input.handle, input.displayName);
+  await assertTopDogProfileHandleAvailable(handle);
+
+  const profileId = randomUUID();
+  const supabaseAdmin = getSupabaseAdmin();
+  const { error } = await supabaseAdmin.from("cgs_profiles").insert({
+    id: profileId,
+    email: "",
+    handle,
+    display_name: input.displayName.trim(),
+    nickname: input.nickname.trim(),
+    avatar_url: input.avatarUrl.trim(),
+    handicap: input.handicap,
+    role: "player",
+    is_public: true,
+    managed_by_admin: true,
+    updated_at: new Date().toISOString(),
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  if (input.teamId) {
+    try {
+      await assignTopDogTeamMember({ ...input, profileId, teamId: input.teamId });
+    } catch (assignmentError) {
+      const cleanupResult = await supabaseAdmin
+        .from("cgs_profiles")
+        .delete()
+        .eq("id", profileId)
+        .eq("managed_by_admin", true);
+
+      if (cleanupResult.error) {
+        console.error("Top Dog profile rollback error:", cleanupResult.error);
+      }
+
+      throw assignmentError;
+    }
+  }
+
+  await logOperation({
+    seasonId: input.seasonId,
+    roundId: input.roundId,
+    action: "profile_created",
+    entityType: "profile",
+    entityId: profileId,
+    details: { handle, teamId: input.teamId },
+  });
+
+  return profileId;
+}
+
+export async function updateTopDogProfile(input: {
+  seasonId: number;
+  roundId: number;
+  profileId: string;
+  displayName: string;
+  nickname: string;
+  handle: string;
+  avatarUrl: string;
+  handicap: number | null;
+  teamId: number | null;
+  roleLabel: string;
+}) {
+  await assertRoundBelongsToSeason(input.seasonId, input.roundId);
+  const handle = normalizeTopDogProfileHandle(input.handle, input.displayName);
+  await assertTopDogProfileHandleAvailable(handle, input.profileId);
+
+  if (input.teamId) {
+    const seasonTeamIds = await loadTopDogSeasonTeamIds(input.seasonId);
+    if (!seasonTeamIds.includes(input.teamId)) {
+      throw new Error("The selected team does not belong to this Top Dog season.");
+    }
+  }
+
+  const supabaseAdmin = getSupabaseAdmin();
+  const { data, error } = await supabaseAdmin
+    .from("cgs_profiles")
+    .update({
+      handle,
+      display_name: input.displayName.trim(),
+      nickname: input.nickname.trim(),
+      avatar_url: input.avatarUrl.trim(),
+      handicap: input.handicap,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.profileId)
+    .select("id")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data) {
+    throw new Error("That CGS player profile no longer exists.");
+  }
+
+  if (input.teamId) {
+    await assignTopDogTeamMember({ ...input, teamId: input.teamId });
+  } else {
+    await unassignTopDogTeamMember(input);
+  }
+
+  await logOperation({
+    seasonId: input.seasonId,
+    roundId: input.roundId,
+    action: "profile_updated",
+    entityType: "profile",
+    entityId: input.profileId,
+    details: { handle, teamId: input.teamId },
+  });
+}
+
+export async function updateTopDogProfileAvatar(profileId: string, avatarUrl: string) {
+  const supabaseAdmin = getSupabaseAdmin();
+  const { error } = await supabaseAdmin
+    .from("cgs_profiles")
+    .update({ avatar_url: avatarUrl.trim(), updated_at: new Date().toISOString() })
+    .eq("id", profileId);
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function deleteTopDogManagedProfile(input: {
+  seasonId: number;
+  roundId: number;
+  profileId: string;
+}) {
+  await assertRoundBelongsToSeason(input.seasonId, input.roundId);
+  const supabaseAdmin = getSupabaseAdmin();
+  const { data, error } = await supabaseAdmin
+    .from("cgs_profiles")
+    .select("managed_by_admin, handle")
+    .eq("id", input.profileId)
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data.managed_by_admin) {
+    throw new Error("Login-backed profiles cannot be deleted here. They can still be edited or removed from a team.");
+  }
+
+  const { data: deletedProfile, error: deleteError } = await supabaseAdmin
+    .from("cgs_profiles")
+    .delete()
+    .eq("id", input.profileId)
+    .eq("managed_by_admin", true)
+    .select("id")
+    .maybeSingle();
+
+  if (deleteError) {
+    throw deleteError;
+  }
+
+  if (!deletedProfile) {
+    throw new Error("That manually managed player profile no longer exists.");
+  }
+
+  try {
+    await deleteCgsPlayerPhotoDirectory(`top-dog/profiles/${input.profileId}`);
+  } catch (cleanupError) {
+    console.error("Top Dog deleted profile photo cleanup error:", cleanupError);
+  }
+
+  await logOperation({
+    seasonId: input.seasonId,
+    roundId: input.roundId,
+    action: "profile_deleted",
+    entityType: "profile",
+    entityId: input.profileId,
+    details: { handle: String(data.handle ?? "") },
   });
 }
 
@@ -1184,6 +1504,7 @@ export async function showTopDogPrize(input: {
 
   const prize = mapPrize(data as DatabaseRow);
   let sponsorName = "";
+  const broadcastProfile = await loadBroadcastProfile(prize.profileId, prize.teamId);
 
   if (prize.sponsorId) {
     const sponsorResult = await supabaseAdmin
@@ -1214,11 +1535,14 @@ export async function showTopDogPrize(input: {
     payload: {
       ...tickerPatch,
       title: categoryLabel,
-      primary: prize.displayName,
+      primary: prize.displayName || broadcastProfile.profileName,
       value: prize.resultValue,
       prize: prize.prize,
       sponsor: sponsorName,
       status: prize.winnerStatus,
+      profileId: prize.profileId,
+      avatarUrl: broadcastProfile.avatarUrl,
+      team: broadcastProfile.teamName,
     },
   });
 }
@@ -1428,6 +1752,10 @@ export async function runTopDogJackpotCommand(input: {
   }
 
   if (["reveal", "start", "success", "miss", "rollover"].includes(input.command)) {
+    const broadcastProfile = await loadBroadcastProfile(
+      updated.selectedProfileId,
+      updated.selectedTeamId
+    );
     const titles: Record<string, string> = {
       reveal: "Player Selected",
       start: `$${updated.currentAmount.toFixed(0)} One-Putt Challenge`,
@@ -1445,6 +1773,9 @@ export async function runTopDogJackpotCommand(input: {
         value: `$${updated.currentAmount.toFixed(0)}`,
         jackpotStatus: updated.status,
         jackpot: `ONE-PUTT JACKPOT: $${updated.currentAmount.toFixed(0)}`,
+        profileId: updated.selectedProfileId,
+        avatarUrl: broadcastProfile.avatarUrl,
+        team: broadcastProfile.teamName,
       },
     });
   }
@@ -1547,6 +1878,10 @@ export async function setTopDogInterviewStatus(input: {
   const interview = mapInterview(data as DatabaseRow);
 
   if (input.status === "live") {
+    const broadcastProfile = await loadBroadcastProfile(
+      interview.profileId,
+      interview.teamId
+    );
     await mergeBroadcastPayload({
       seasonId: input.seasonId,
       roundId: input.roundId,
@@ -1554,8 +1889,11 @@ export async function setTopDogInterviewStatus(input: {
       payload: {
         title: interview.interviewType.replaceAll("_", " ").toUpperCase(),
         primary: interview.playerName,
-        value: interview.teamLabel,
+        value: interview.teamLabel || broadcastProfile.teamName,
         interviewType: interview.interviewType,
+        profileId: interview.profileId,
+        avatarUrl: broadcastProfile.avatarUrl,
+        team: interview.teamLabel || broadcastProfile.teamName,
       },
     });
   } else if (input.status === "complete") {

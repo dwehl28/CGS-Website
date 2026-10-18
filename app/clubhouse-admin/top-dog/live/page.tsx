@@ -12,6 +12,7 @@ import { getAdminTopDogSnapshot } from "@/lib/top-dog";
 type TopDogLivePageProps = {
   searchParams: Promise<{
     round?: string | string[];
+    panel?: string | string[];
     success?: string | string[];
     error?: string | string[];
   }>;
@@ -48,6 +49,7 @@ export default async function TopDogLivePage({ searchParams }: TopDogLivePagePro
   const query = await searchParams;
   const requestedRoundId = Number(firstValue(query.round));
   const roundId = Number.isInteger(requestedRoundId) ? requestedRoundId : null;
+  const initialProductionTab = firstValue(query.panel) === "people" ? "people" : "live";
   const feed = await getAdminTopDogSnapshot({ roundId });
   const productionFeed = feed.snapshot
     ? await getAdminTopDogProductionFeed(feed.snapshot)
@@ -69,6 +71,12 @@ export default async function TopDogLivePage({ searchParams }: TopDogLivePagePro
               </Link>
               <Link href="#fixture-manager" className="btn-secondary">
                 Manage fixtures
+              </Link>
+              <Link
+                href={`/clubhouse-admin/top-dog/live?round=${feed.snapshot.selectedRound?.id ?? ""}&panel=people#player-rosters`}
+                className="btn-secondary"
+              >
+                Players & rosters
               </Link>
             </>
           ) : null}
@@ -96,8 +104,10 @@ export default async function TopDogLivePage({ searchParams }: TopDogLivePagePro
           <LeagueNightControlCentre initialSnapshot={feed.snapshot} />
           {productionFeed.snapshot ? (
             <TopDogProductionDesk
+              key={`${feed.snapshot.selectedRound?.id ?? "no-round"}-${initialProductionTab}`}
               core={feed.snapshot}
               initialProduction={productionFeed.snapshot}
+              initialTab={initialProductionTab}
             />
           ) : null}
         </>

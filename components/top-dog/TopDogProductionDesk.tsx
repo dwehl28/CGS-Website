@@ -27,7 +27,9 @@ import {
   Save,
   Sparkles,
   Target,
+  Trash2,
   Trophy,
+  UserPlus,
   Users,
   X,
   Zap,
@@ -48,6 +50,7 @@ type ProductionTab = "live" | "people" | "wrap";
 type TopDogProductionDeskProps = {
   core: TopDogSnapshot;
   initialProduction: TopDogProductionSnapshot;
+  initialTab?: ProductionTab;
 };
 
 const clipTags: Array<{ value: TopDogClipTag; label: string }> = [
@@ -130,6 +133,22 @@ function nullableString(value: FormDataEntryValue | null) {
   return text || null;
 }
 
+function getPlayerInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase() || "CG";
+}
+
+function getAvatarStyle(avatarUrl: string): React.CSSProperties | undefined {
+  return avatarUrl
+    ? { backgroundImage: `url(${JSON.stringify(avatarUrl)})` }
+    : undefined;
+}
+
 function PanelHeading({
   eyebrow,
   title,
@@ -193,9 +212,10 @@ function ChecklistColumn({
 export default function TopDogProductionDesk({
   core,
   initialProduction,
+  initialTab = "live",
 }: TopDogProductionDeskProps) {
   const [production, setProduction] = useState(initialProduction);
-  const [activeTab, setActiveTab] = useState<ProductionTab>("live");
+  const [activeTab, setActiveTab] = useState<ProductionTab>(initialTab);
   const [selectedClipTag, setSelectedClipTag] = useState<TopDogClipTag>("great_shot");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
@@ -283,6 +303,18 @@ export default function TopDogProductionDesk({
     const interval = window.setInterval(handleFallbackRefresh, 20000);
     return () => window.clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (initialTab !== "people") {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById("player-rosters")?.scrollIntoView({ block: "start" });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [initialTab]);
 
   async function handleMarkClip(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -416,27 +448,96 @@ export default function TopDogProductionDesk({
     }
   }
 
-  async function handleRosterAssignment(event: FormEvent<HTMLFormElement>) {
+  async function runProfileRequest(
+    method: "POST" | "PATCH" | "DELETE",
+    body: FormData | string,
+    successMessage: string
+  ) {
+    if (!roundId) {
+      setErrorMessage("Select a league night before managing player profiles.");
+      return false;
+    }
+
+    setPending(true);
+    setErrorMessage("");
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/admin/top-dog/profiles", {
+        method,
+        headers: typeof body === "string" ? { "Content-Type": "application/json" } : undefined,
+        body,
+      });
+      const feed = (await response.json()) as TopDogProductionFeed & { message?: string };
+
+      if (!response.ok || !feed.snapshot) {
+        throw new Error(feed.message ?? feed.warningMessage ?? "The player profile update failed.");
+      }
+
+      startTransition(() => setProduction(feed.snapshot!));
+      setMessage(successMessage);
+      window.setTimeout(() => setMessage(""), 3500);
+      return true;
+    } catch (error) {
+      console.error("Top Dog player profile error:", error);
+      setErrorMessage(error instanceof Error ? error.message : "The player profile update failed.");
+      return false;
+    } finally {
+      setPending(false);
+    }
+  }
+
+  function addProfileContext(formData: FormData) {
+    formData.set("season_id", String(core.season.id));
+    formData.set("season_slug", core.season.slug);
+    formData.set("round_id", String(roundId));
+    return formData;
+  }
+
+  async function handleProfileCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
-    const formData = new FormData(form);
-    const profileId = String(formData.get("profile_id") ?? "");
-    const teamId = Number(formData.get("team_id"));
-    const profile = production.profileDirectory.find((item) => item.profileId === profileId);
-    const team = core.seasonTeams.find((item) => item.team.id === teamId)?.team;
-    const saved = await runAction(
-      {
-        action: "assign_team_member",
-        profileId,
-        teamId,
-        roleLabel: String(formData.get("role_label") ?? "Player"),
-      },
-      `${profile?.displayName ?? "Player"} assigned to ${team?.name ?? "the selected team"}.`
+    const displayName = String(new FormData(form).get("display_name") ?? "Player");
+    const saved = await runProfileRequest(
+      "POST",
+      addProfileContext(new FormData(form)),
+      `${displayName} added to the CGS player directory.`
     );
 
     if (saved) {
       form.reset();
     }
+  }
+
+  async function handleProfileUpdate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const displayName = String(formData.get("display_name") ?? "Player");
+    await runProfileRequest(
+      "PATCH",
+      addProfileContext(formData),
+      `${displayName}'s profile and team link were updated.`
+    );
+  }
+
+  async function handleProfileDelete(profileId: string, displayName: string) {
+    if (!roundId || !window.confirm(
+      `Delete ${displayName}'s manually managed profile? This also removes their team link. This cannot be undone.`
+    )) {
+      return;
+    }
+
+    await runProfileRequest(
+      "DELETE",
+      JSON.stringify({
+        seasonId: core.season.id,
+        seasonSlug: core.season.slug,
+        roundId,
+        profileId,
+      }),
+      `${displayName}'s manually managed profile was deleted.`
+    );
   }
 
   async function handleSegment(event: FormEvent<HTMLFormElement>) {
@@ -1068,51 +1169,160 @@ export default function TopDogProductionDesk({
             </section>
           </div>
 
-          <section className="td-production-panel td-roster-panel">
+          <section className="td-production-panel td-roster-panel" id="player-rosters">
             <PanelHeading
-              eyebrow="Existing CGS profiles"
-              title="Top Dog Team Rosters"
-              description="Link existing member profiles to their league team once. Interviews, random jackpot selection, and player statistics will reuse the same relationship."
+              eyebrow="One player directory, every live graphic"
+              title="Players & Team Rosters"
+              description="Add real players, upload their photos, and connect them to a Top Dog team. The same profile is then available for interviews, prizes, the jackpot, content tags, statistics, and player-focused stream graphics."
               icon={<Users aria-hidden="true" />}
             />
-            <form className="td-production-form td-roster-form" onSubmit={handleRosterAssignment}>
-              <label>
-                CGS profile
-                <select name="profile_id" required defaultValue="">
-                  <option value="" disabled>Choose existing profile</option>
-                  {production.profileDirectory.map((profile) => (
-                    <option key={profile.profileId} value={profile.profileId}>
-                      {profile.displayName}{profile.teamName ? ` | ${profile.teamName}` : " | Unassigned"}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Top Dog team
-                <select name="team_id" required defaultValue="">
-                  <option value="" disabled>Choose team</option>
-                  {core.seasonTeams.filter((item) => item.isActive).map((item) => (
-                    <option key={item.team.id} value={item.team.id}>{item.team.name}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Role
-                <input name="role_label" maxLength={80} defaultValue="Player" />
-              </label>
-              <button type="submit" disabled={pending || production.profileDirectory.length === 0}>
-                <Save aria-hidden="true" /> Save roster link
+            <form className="td-production-form td-profile-create-form" onSubmit={handleProfileCreate}>
+              <div className="td-profile-create-heading">
+                <UserPlus aria-hidden="true" />
+                <div>
+                  <strong>Add a player</strong>
+                  <span>No website login is required. Leave the team blank if the player is not assigned yet.</span>
+                </div>
+              </div>
+              <div className="td-profile-form-grid">
+                <label>
+                  Full name
+                  <input name="display_name" maxLength={120} required placeholder="Tommy Smith" />
+                </label>
+                <label>
+                  Nickname
+                  <input name="nickname" maxLength={80} placeholder="Tommy" />
+                </label>
+                <label>
+                  Profile handle
+                  <input name="handle" maxLength={80} placeholder="Auto-created from name" />
+                </label>
+                <label>
+                  Handicap
+                  <input name="handicap" type="number" min={-10} max={80} step="0.1" placeholder="Optional" />
+                </label>
+                <label>
+                  Top Dog team
+                  <select name="team_id" defaultValue="">
+                    <option value="">Unassigned for now</option>
+                    {core.seasonTeams.filter((item) => item.isActive).map((item) => (
+                      <option key={item.team.id} value={item.team.id}>{item.team.name}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Team role
+                  <input name="role_label" maxLength={80} defaultValue="Player" />
+                </label>
+                <label>
+                  Player photo
+                  <input name="avatar_file" type="file" accept="image/jpeg,image/png,image/webp" />
+                </label>
+                <label>
+                  Or photo URL
+                  <input name="avatar_url" type="url" maxLength={2000} placeholder="https://..." />
+                </label>
+              </div>
+              <button type="submit" disabled={pending}>
+                <UserPlus aria-hidden="true" /> {pending ? "Saving..." : "Add player profile"}
               </button>
             </form>
+            <div className="td-roster-directory-heading">
+              <div>
+                <strong>Player directory</strong>
+                <span>{production.profileDirectory.length} profile{production.profileDirectory.length === 1 ? "" : "s"}</span>
+              </div>
+              <p>Select a player to edit details or change their team.</p>
+            </div>
             <div className="td-roster-grid">
               {production.profileDirectory.map((profile) => (
-                <article key={profile.profileId} className={profile.teamId ? "is-assigned" : ""}>
-                  <span>{profile.teamName || "Unassigned"}</span>
-                  <strong>{profile.displayName}</strong>
-                </article>
+                <details key={profile.profileId} className={profile.teamId ? "is-assigned" : ""}>
+                  <summary>
+                    <span
+                      className={`td-roster-avatar ${profile.avatarUrl ? "has-photo" : ""}`}
+                      style={getAvatarStyle(profile.avatarUrl)}
+                    >
+                      {!profile.avatarUrl ? getPlayerInitials(profile.displayName) : null}
+                    </span>
+                    <span className="td-roster-summary-copy">
+                      <b>{profile.teamName || "Unassigned"}</b>
+                      <strong>{profile.displayName}</strong>
+                      <small>
+                        @{profile.handle} | {profile.managedByAdmin ? "Admin managed" : "Website account"}
+                      </small>
+                    </span>
+                    <span className="td-roster-edit-label">Edit</span>
+                  </summary>
+                  <form className="td-production-form td-profile-edit-form" onSubmit={handleProfileUpdate}>
+                    <input type="hidden" name="profile_id" value={profile.profileId} />
+                    <div className="td-profile-form-grid">
+                      <label>
+                        Full name
+                        <input name="display_name" maxLength={120} required defaultValue={profile.displayName} />
+                      </label>
+                      <label>
+                        Nickname
+                        <input name="nickname" maxLength={80} defaultValue={profile.nickname} />
+                      </label>
+                      <label>
+                        Profile handle
+                        <input name="handle" maxLength={80} required defaultValue={profile.handle} />
+                      </label>
+                      <label>
+                        Handicap
+                        <input
+                          name="handicap"
+                          type="number"
+                          min={-10}
+                          max={80}
+                          step="0.1"
+                          defaultValue={profile.handicap ?? ""}
+                        />
+                      </label>
+                      <label>
+                        Top Dog team
+                        <select name="team_id" defaultValue={profile.teamId ?? ""}>
+                          <option value="">Unassigned</option>
+                          {core.seasonTeams.filter((item) => item.isActive).map((item) => (
+                            <option key={item.team.id} value={item.team.id}>{item.team.name}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Team role
+                        <input name="role_label" maxLength={80} defaultValue={profile.roleLabel || "Player"} />
+                      </label>
+                      <label>
+                        Replace player photo
+                        <input name="avatar_file" type="file" accept="image/jpeg,image/png,image/webp" />
+                      </label>
+                      <label>
+                        Photo URL
+                        <input name="avatar_url" type="url" maxLength={2000} defaultValue={profile.avatarUrl} />
+                      </label>
+                    </div>
+                    <div className="td-profile-actions">
+                      <button type="submit" disabled={pending}>
+                        <Save aria-hidden="true" /> Save player
+                      </button>
+                      {profile.managedByAdmin ? (
+                        <button
+                          type="button"
+                          className="is-danger"
+                          disabled={pending}
+                          onClick={() => void handleProfileDelete(profile.profileId, profile.displayName)}
+                        >
+                          <Trash2 aria-hidden="true" /> Delete profile
+                        </button>
+                      ) : (
+                        <span>Login-backed profile: editable here, but deletion remains protected.</span>
+                      )}
+                    </div>
+                  </form>
+                </details>
               ))}
               {production.profileDirectory.length === 0 ? (
-                <p>No CGS player profiles are available yet. Manual names still work everywhere in the live desk.</p>
+                <p>No player profiles yet. Use Add a player above to build the live roster.</p>
               ) : null}
             </div>
           </section>

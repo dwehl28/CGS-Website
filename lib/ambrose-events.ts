@@ -1224,6 +1224,7 @@ export async function ensureCgsProfileForAuthUser(user: AuthUserLike) {
     .from("cgs_profiles")
     .insert({
       id: user.id,
+      auth_user_id: user.id,
       email,
       handle,
       display_name: displayName,

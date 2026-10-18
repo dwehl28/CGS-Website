@@ -12663,6 +12663,47 @@ main.text-white {
   justify-content: start;
 }
 
+.td-segment-player-layout {
+  display: grid;
+  min-height: 294px;
+  align-items: stretch;
+}
+
+.td-segment-player-layout.has-photo {
+  grid-template-columns: 270px minmax(0, 1fr);
+}
+
+.td-broadcast-player-photo {
+  display: grid;
+  overflow: hidden;
+  place-items: center;
+  border: 2px solid rgba(140, 226, 255, 0.72);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.17), transparent 23%),
+    linear-gradient(145deg, rgba(32, 200, 255, 0.35), rgba(3, 17, 29, 0.96));
+  background-position: center;
+  background-size: cover;
+  box-shadow: 0 0 32px rgba(32, 200, 255, 0.2);
+  color: white;
+  font-size: 26px;
+  font-weight: 1000;
+  letter-spacing: -0.05em;
+}
+
+.td-segment-player-layout > .td-broadcast-player-photo {
+  width: 196px;
+  height: 196px;
+  align-self: center;
+  justify-self: end;
+}
+
+.td-segment-player-layout.has-photo .td-segment-copy {
+  justify-items: start;
+  padding-left: 36px;
+  text-align: left;
+}
+
 .td-segment-copy,
 .td-subscribe-copy {
   display: grid;
@@ -12697,6 +12738,15 @@ main.text-white {
   font-size: 14px;
   font-weight: 900;
   letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.td-segment-copy > small {
+  margin-top: 13px;
+  color: white;
+  font-size: 17px;
+  font-weight: 950;
+  letter-spacing: 0.11em;
   text-transform: uppercase;
 }
 
@@ -12803,6 +12853,29 @@ main.text-white {
   text-align: center;
 }
 
+.td-jackpot-broadcast-copy.has-photo {
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 34px;
+  justify-items: stretch;
+  text-align: left;
+}
+
+.td-jackpot-player-photo {
+  width: 218px;
+  height: 218px;
+  justify-self: end;
+}
+
+.td-jackpot-player-copy {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+}
+
+.td-jackpot-broadcast-copy.has-photo .td-jackpot-player-copy {
+  justify-items: start;
+}
+
 .td-jackpot-broadcast-copy span {
   color: var(--td-obs-cyan);
   font-size: 16px;
@@ -12828,6 +12901,15 @@ main.text-white {
   font-weight: 1000;
   letter-spacing: -0.045em;
   line-height: 1;
+  text-transform: uppercase;
+}
+
+.td-jackpot-broadcast-copy small {
+  margin-top: 11px;
+  color: var(--td-obs-cyan);
+  font-size: 15px;
+  font-weight: 950;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
@@ -12889,7 +12971,14 @@ main.text-white {
   justify-self: center;
 }
 
-.td-interview-broadcast > div {
+.td-interview-broadcast > .td-broadcast-player-photo {
+  width: 74px;
+  height: 74px;
+  justify-self: center;
+  font-size: 19px;
+}
+
+.td-interview-broadcast > div:not(.td-broadcast-player-photo) {
   min-width: 0;
   border-left: 1px solid rgba(140, 226, 255, 0.16);
   padding: 15px 22px;
@@ -20985,60 +21074,201 @@ main.text-white {
   padding: 15px 20px 20px;
 }
 
-.td-roster-form {
-  grid-template-columns: minmax(220px, 1.2fr) minmax(190px, 1fr) minmax(130px, 0.6fr) auto;
-  align-items: end;
+.td-profile-create-form {
+  border-bottom: 1px solid rgba(124, 223, 255, 0.13);
+  background: linear-gradient(120deg, rgba(32, 200, 255, 0.07), transparent 55%);
 }
 
-.td-roster-form > button {
-  justify-self: stretch;
+.td-profile-create-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.td-profile-create-heading > svg {
+  width: 30px;
+  height: 30px;
+  color: var(--td-gold);
+}
+
+.td-profile-create-heading strong,
+.td-roster-directory-heading strong {
+  display: block;
+  color: white;
+  font-size: 15px;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.td-profile-create-heading span,
+.td-roster-directory-heading span,
+.td-roster-directory-heading p {
+  display: block;
+  margin-top: 3px;
+  color: var(--td-muted);
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.td-profile-form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.td-roster-directory-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 17px 20px 0;
+}
+
+.td-roster-directory-heading p {
+  margin: 0;
+  text-align: right;
 }
 
 .td-roster-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 7px;
-  border-top: 1px solid rgba(124, 223, 255, 0.12);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
   padding: 15px 20px 20px;
 }
 
-.td-roster-grid article {
-  border-left: 3px solid #607381;
-  background: rgba(255, 255, 255, 0.04);
-  padding: 10px 11px;
+.td-roster-grid > details {
+  align-self: start;
+  overflow: hidden;
+  border: 1px solid rgba(124, 223, 255, 0.13);
+  border-left: 4px solid #607381;
+  background: rgba(255, 255, 255, 0.035);
 }
 
-.td-roster-grid article.is-assigned {
+.td-roster-grid > details.is-assigned {
   border-left-color: var(--td-cyan);
 }
 
-.td-roster-grid span {
+.td-roster-grid summary {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 80px;
+  padding: 12px 14px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.td-roster-grid summary::-webkit-details-marker {
+  display: none;
+}
+
+.td-roster-grid details[open] summary {
+  border-bottom: 1px solid rgba(124, 223, 255, 0.13);
+  background: rgba(32, 200, 255, 0.055);
+}
+
+.td-roster-avatar {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  overflow: hidden;
+  border: 2px solid rgba(124, 223, 255, 0.42);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 25%, rgba(255, 255, 255, 0.16), transparent 25%),
+    linear-gradient(145deg, rgba(32, 200, 255, 0.34), rgba(3, 17, 29, 0.95));
+  background-position: center;
+  background-size: cover;
+  color: white;
+  font-size: 15px;
+  font-weight: 1000;
+}
+
+.td-roster-avatar.has-photo {
+  border-color: var(--td-gold);
+}
+
+.td-roster-summary-copy {
+  min-width: 0;
+}
+
+.td-roster-summary-copy b,
+.td-roster-summary-copy strong,
+.td-roster-summary-copy small {
   display: block;
   overflow: hidden;
-  color: var(--td-cyan);
-  font-size: 8px;
-  font-weight: 950;
-  letter-spacing: 0.09em;
   text-overflow: ellipsis;
-  text-transform: uppercase;
   white-space: nowrap;
 }
 
-.td-roster-grid strong {
-  display: block;
-  margin-top: 4px;
-  overflow: hidden;
-  color: white;
-  font-size: 11px;
-  text-overflow: ellipsis;
+.td-roster-summary-copy b {
+  color: var(--td-cyan);
+  font-size: 8px;
+  font-weight: 1000;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  white-space: nowrap;
+}
+
+.td-roster-summary-copy strong {
+  margin-top: 3px;
+  color: white;
+  font-size: 14px;
+  text-transform: uppercase;
+}
+
+.td-roster-summary-copy small {
+  margin-top: 4px;
+  color: var(--td-muted);
+  font-size: 8px;
+}
+
+.td-roster-edit-label {
+  border: 1px solid rgba(124, 223, 255, 0.25);
+  padding: 6px 8px;
+  color: var(--td-cyan);
+  font-size: 8px;
+  font-weight: 1000;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.td-profile-edit-form {
+  background: rgba(0, 0, 0, 0.13);
+}
+
+.td-profile-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.td-profile-actions > button:first-child {
+  border-color: var(--td-cyan);
+  background: var(--td-cyan);
+  color: var(--td-ink);
+}
+
+.td-profile-actions > button.is-danger {
+  border-color: rgba(255, 111, 97, 0.55);
+  background: rgba(255, 111, 97, 0.1);
+  color: #ff9d93;
+}
+
+.td-profile-actions > span {
+  color: var(--td-muted);
+  font-size: 8px;
+  font-weight: 750;
 }
 
 .td-roster-grid > p {
   grid-column: 1 / -1;
+  border: 1px dashed rgba(124, 223, 255, 0.2);
+  padding: 25px;
   color: var(--td-muted);
   font-size: 11px;
+  text-align: center;
 }
 
 @media (max-width: 1180px) {
@@ -21059,7 +21289,7 @@ main.text-white {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .td-roster-form,
+  .td-profile-form-grid,
   .td-roster-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -21087,9 +21317,19 @@ main.text-white {
   .td-checklist-grid,
   .td-fulfilment-grid,
   .td-player-stats,
-  .td-roster-form,
+  .td-profile-form-grid,
   .td-roster-grid {
     grid-template-columns: 1fr;
+  }
+
+  .td-roster-directory-heading,
+  .td-profile-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .td-roster-directory-heading p {
+    text-align: left;
   }
 
   .td-production-heading {

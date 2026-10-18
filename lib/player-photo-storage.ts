@@ -97,3 +97,94 @@ export async function uploadCgsPlayerPhotoAsset(directory: string, file: File) {
 
   return data.publicUrl;
 }
+
+export async function deleteCgsPlayerPhotoDirectory(directory: string) {
+  const safeDirectory = directory
+    .replace(/[^a-zA-Z0-9/_-]/g, "")
+    .replace(/^\/+|\/+$/g, "");
+
+  if (!safeDirectory) {
+    return;
+  }
+
+  const supabaseAdmin = getSupabaseAdmin();
+  const { data: files, error: listError } = await supabaseAdmin.storage
+    .from(CGS_PLAYER_PHOTO_BUCKET)
+    .list(safeDirectory, { limit: 1000 });
+
+  if (listError) {
+    const message = listError.message.toLowerCase();
+    if (message.includes("bucket") && message.includes("not found")) {
+      return;
+    }
+    throw listError;
+  }
+
+  const paths = (files ?? [])
+    .filter((file) => file.name)
+    .map((file) => `${safeDirectory}/${file.name}`);
+
+  if (paths.length === 0) {
+    return;
+  }
+
+  const { error: removeError } = await supabaseAdmin.storage
+    .from(CGS_PLAYER_PHOTO_BUCKET)
+    .remove(paths);
+
+  if (removeError) {
+    throw removeError;
+  }
+}
+
+export async function pruneCgsPlayerPhotoDirectory(
+  directory: string,
+  keepPublicUrl: string
+) {
+  const safeDirectory = directory
+    .replace(/[^a-zA-Z0-9/_-]/g, "")
+    .replace(/^\/+|\/+$/g, "");
+
+  if (!safeDirectory) {
+    return;
+  }
+
+  let keepFileName = "";
+
+  try {
+    keepFileName = decodeURIComponent(
+      new URL(keepPublicUrl).pathname.split("/").at(-1) ?? ""
+    );
+  } catch {
+    // A blank or external replacement URL means no uploaded file needs preserving.
+  }
+
+  const supabaseAdmin = getSupabaseAdmin();
+  const { data: files, error: listError } = await supabaseAdmin.storage
+    .from(CGS_PLAYER_PHOTO_BUCKET)
+    .list(safeDirectory, { limit: 1000 });
+
+  if (listError) {
+    const message = listError.message.toLowerCase();
+    if (message.includes("bucket") && message.includes("not found")) {
+      return;
+    }
+    throw listError;
+  }
+
+  const stalePaths = (files ?? [])
+    .filter((file) => file.name && file.name !== keepFileName)
+    .map((file) => `${safeDirectory}/${file.name}`);
+
+  if (stalePaths.length === 0) {
+    return;
+  }
+
+  const { error: removeError } = await supabaseAdmin.storage
+    .from(CGS_PLAYER_PHOTO_BUCKET)
+    .remove(stalePaths);
+
+  if (removeError) {
+    throw removeError;
+  }
+}

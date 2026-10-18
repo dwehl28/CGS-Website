@@ -148,6 +148,35 @@ function TeamMark({ name, color }: { name: string; color: string }) {
   );
 }
 
+function BroadcastPlayerPortrait({
+  avatarUrl,
+  name,
+  className = "",
+}: {
+  avatarUrl: string;
+  name: string;
+  className?: string;
+}) {
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase() || "CG";
+
+  return (
+    <div
+      className={`td-broadcast-player-photo ${avatarUrl ? "has-photo" : ""} ${className}`.trim()}
+      style={avatarUrl ? { backgroundImage: `url(${JSON.stringify(avatarUrl)})` } : undefined}
+      role={avatarUrl ? "img" : undefined}
+      aria-label={avatarUrl ? `${name || "CGS player"} profile photo` : undefined}
+    >
+      {!avatarUrl ? initials : null}
+    </div>
+  );
+}
+
 function Scorebug({ fixture, visible }: { fixture: TopDogFixture | null; visible: boolean }) {
   return (
     <section
@@ -215,6 +244,8 @@ function MatchCard({
     const value = String(payload.value ?? payload.result ?? payload.prize ?? "");
     const sponsor = String(payload.sponsor ?? "");
     const title = String(payload.title ?? getCentralLabel(overlay));
+    const avatarUrl = String(payload.avatarUrl ?? "");
+    const team = String(payload.team ?? "");
 
     if (overlay === "one_putt_jackpot") {
       const jackpotStatus = String(payload.jackpotStatus ?? "idle");
@@ -229,10 +260,20 @@ function MatchCard({
               <h1>One-Putt Jackpot</h1>
             </div>
           </header>
-          <div className="td-jackpot-broadcast-copy">
-            <span>{title}</span>
-            <strong>{value || "$100"}</strong>
-            <b>{primary || "Player reveal incoming"}</b>
+          <div className={`td-jackpot-broadcast-copy ${avatarUrl ? "has-photo" : ""}`}>
+            {avatarUrl ? (
+              <BroadcastPlayerPortrait
+                avatarUrl={avatarUrl}
+                name={primary}
+                className="td-jackpot-player-photo"
+              />
+            ) : null}
+            <div className="td-jackpot-player-copy">
+              <span>{title}</span>
+              <strong>{value || "$100"}</strong>
+              <b>{primary || "Player reveal incoming"}</b>
+              {team ? <small>{team}</small> : null}
+            </div>
           </div>
           <footer>One putt. One chance. Take the money.</footer>
         </section>
@@ -242,7 +283,11 @@ function MatchCard({
     if (overlay === "player_interview") {
       return (
         <section className={`td-interview-broadcast ${visible ? "is-visible" : "is-hidden"}`}>
-          <Image src="/cgs-logo.png" alt="" width={72} height={72} priority />
+          {avatarUrl ? (
+            <BroadcastPlayerPortrait avatarUrl={avatarUrl} name={primary} />
+          ) : (
+            <Image src="/cgs-logo.png" alt="" width={72} height={72} priority />
+          )}
           <div>
             <span>{title || "Player Interview"}</span>
             <strong>{primary || "CGS Player"}</strong>
@@ -303,16 +348,22 @@ function MatchCard({
             <small>Live every league night | YouTube | Instagram | TikTok</small>
           </div>
         ) : (
-          <div className="td-segment-copy">
-            <strong>{primary || "Update incoming"}</strong>
-            {value ? <b>{value}</b> : null}
-            <p>
-              {sponsor
-                ? `Presented by ${sponsor}`
-                : overlay === "sponsor" && payload.promoCode
-                  ? `Promo code: ${String(payload.promoCode)}`
-                  : "CGS League Night"}
-            </p>
+          <div className={`td-segment-player-layout ${avatarUrl ? "has-photo" : ""}`}>
+            {avatarUrl ? (
+              <BroadcastPlayerPortrait avatarUrl={avatarUrl} name={primary} />
+            ) : null}
+            <div className="td-segment-copy">
+              <strong>{primary || "Update incoming"}</strong>
+              {value ? <b>{value}</b> : null}
+              {team ? <small>{team}</small> : null}
+              <p>
+                {sponsor
+                  ? `Presented by ${sponsor}`
+                  : overlay === "sponsor" && payload.promoCode
+                    ? `Promo code: ${String(payload.promoCode)}`
+                    : "CGS League Night"}
+              </p>
+            </div>
           </div>
         )}
       </section>
