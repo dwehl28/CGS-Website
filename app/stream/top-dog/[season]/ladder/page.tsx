@@ -14,5 +14,13 @@ export default async function TopDogLadderPage({ params }: PageProps) {
   const snapshot = await getPublishedTopDogSnapshot(season);
   if (!snapshot) notFound();
 
-  return <main className="top-dog-stream-page"><TopDogStreamOverlay initialSnapshot={snapshot} view="ladder" /></main>;
+  return (
+    <main className="top-dog-stream-page">
+      <TopDogStreamOverlay
+        initialSnapshot={snapshot}
+        view="ladder"
+        standaloneLadder
+      />
+    </main>
+  );
 }

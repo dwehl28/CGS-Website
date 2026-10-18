@@ -76,30 +76,57 @@ type FixtureEditPayload = {
   displayOrder: number;
 };
 
-const directorButtons: Array<{
+type DirectorButton = {
   overlay: TopDogCentralOverlay;
   label: string;
+  description: string;
   shortcut?: string;
+};
+
+const directorGroups: Array<{
+  label: string;
+  description: string;
+  buttons: DirectorButton[];
 }> = [
-  { overlay: "match", label: "Match Score", shortcut: "1" },
-  { overlay: "match_of_night", label: "Match of the Night" },
-  { overlay: "live_ladder", label: "Live Ladder", shortcut: "2" },
-  { overlay: "results_hold", label: "If Results Hold" },
-  { overlay: "best_team", label: "Best Team" },
-  { overlay: "longest_drive", label: "Longest Drive", shortcut: "3" },
-  { overlay: "ctp", label: "CTP" },
-  { overlay: "bunker_boy", label: "Bunker Boy" },
-  { overlay: "one_putt_jackpot", label: "One-Putt Jackpot", shortcut: "4" },
-  { overlay: "sponsor", label: "Sponsor", shortcut: "5" },
-  { overlay: "subscribe", label: "Subscribe", shortcut: "6" },
-  { overlay: "player_interview", label: "Player Interview" },
-  { overlay: "up_next", label: "Up Next" },
-  { overlay: "match_result", label: "Match Result" },
-  { overlay: "shot_of_night", label: "Shot of the Night" },
-  { overlay: "doghouse", label: "The Doghouse" },
-  { overlay: "butters_board", label: "Butters' Board" },
-  { overlay: "night_wrap_up", label: "Night Wrap-Up" },
+  {
+    label: "Live competition",
+    description: "Scores, standings and the next match.",
+    buttons: [
+      { overlay: "match", label: "Match Score", description: "Featured fixture score card.", shortcut: "1" },
+      { overlay: "match_of_night", label: "Match of the Night", description: "Premium featured-match treatment." },
+      { overlay: "live_ladder", label: "Live Ladder", description: "Official table using completed results.", shortcut: "2" },
+      { overlay: "results_hold", label: "If Results Hold", description: "Projected table using live scores." },
+      { overlay: "up_next", label: "Up Next", description: "Next waiting fixture and bay." },
+      { overlay: "match_result", label: "Match Result", description: "Most recent final result." },
+    ],
+  },
+  {
+    label: "Prizes and moments",
+    description: "Bring a winner, challenge or highlight on screen.",
+    buttons: [
+      { overlay: "best_team", label: "Best Team", description: "Current projected league leader." },
+      { overlay: "longest_drive", label: "Longest Drive", description: "Current Longest Drive leader.", shortcut: "3" },
+      { overlay: "ctp", label: "CTP", description: "Closest-to-the-pin leader." },
+      { overlay: "bunker_boy", label: "Bunker Boy", description: "Latest Bunker Boy recipient." },
+      { overlay: "one_putt_jackpot", label: "One-Putt Jackpot", description: "Current jackpot challenge.", shortcut: "4" },
+      { overlay: "shot_of_night", label: "Shot of the Night", description: "Best shot highlight." },
+      { overlay: "doghouse", label: "The Doghouse", description: "Funniest disaster of the night." },
+    ],
+  },
+  {
+    label: "Production breaks",
+    description: "Sponsor, interview and show-format graphics.",
+    buttons: [
+      { overlay: "sponsor", label: "Sponsor", description: "Sponsor message or promotion.", shortcut: "5" },
+      { overlay: "subscribe", label: "Subscribe", description: "Timed subscribe call-to-action.", shortcut: "6" },
+      { overlay: "player_interview", label: "Player Interview", description: "Player interview identification." },
+      { overlay: "butters_board", label: "Butters' Board", description: "League update and storyline." },
+      { overlay: "night_wrap_up", label: "Night Wrap-Up", description: "End-of-night results and honours." },
+    ],
+  },
 ];
+
+const directorButtons = directorGroups.flatMap((group) => group.buttons);
 
 const tickerCategoryOptions = [
   ["scores", "Match scores"],
@@ -196,38 +223,42 @@ function BroadcastAssetLibrary({ seasonSlug }: { seasonSlug: string }) {
     {
       name: "Rotating League Banner",
       path: `/stream/top-dog/${seasonSlug}/banner`,
+      previewPath: `/stream/top-dog/${seasonSlug}/banner`,
       size: "1920 x 180",
-      purpose: "Auto-rotates current fixtures, the official ladder, and last round results.",
+      control: "Always visible",
+      purpose: "Auto-rotates fixtures, the official ladder and last-round results. Stream Director does not hide it.",
     },
     {
       name: "Live Scorebug",
       path: `/stream/top-dog/${seasonSlug}/scorebug`,
+      previewPath: `/stream/top-dog/${seasonSlug}/scorebug?preview=1`,
       size: "1920 x 1080",
-      purpose: "Compact corner score graphic for the fixture selected as Scorebug.",
+      control: "Scorebug toggle",
+      purpose: "Compact corner score. Select a fixture, then use the separate Scorebug Show/Hide control.",
     },
     {
-      name: "Central Graphics",
+      name: "Main Graphics",
       path: `/stream/top-dog/${seasonSlug}/match`,
+      previewPath: `/stream/top-dog/${seasonSlug}/match?preview=1`,
       size: "1920 x 1080",
-      purpose: "One URL for Match, prizes, sponsors, interviews, results, and wrap-up slides.",
+      control: "Stream Director",
+      purpose: "Add this once in OBS. Every Stream Director scene, including both ladder views, appears through this source.",
     },
     {
-      name: "Live Ladder",
+      name: "Standalone Ladder",
       path: `/stream/top-dog/${seasonSlug}/ladder`,
+      previewPath: `/stream/top-dog/${seasonSlug}/ladder`,
       size: "1920 x 1080",
-      purpose: "Shows Live Ladder or If Results Hold when triggered in Stream Director.",
+      control: "Always visible",
+      purpose: "Always shows the official ladder. Use this optional source only when you want a permanently visible ladder.",
     },
     {
       name: "Lower Ticker",
       path: `/stream/top-dog/${seasonSlug}/ticker`,
+      previewPath: `/stream/top-dog/${seasonSlug}/ticker?preview=1`,
       size: "1920 x 1080",
-      purpose: "Persistent lower-third rotation controlled by the ticker settings.",
-    },
-    {
-      name: "One-Putt Jackpot",
-      path: `/stream/top-dog/${seasonSlug}/jackpot`,
-      size: "1920 x 1080",
-      purpose: "Dedicated browser source for the recurring jackpot segment.",
+      control: "Ticker toggle",
+      purpose: "Persistent lower-third rotation. Its own Show/Hide and Pause controls do not affect Main Graphics.",
     },
   ];
 
@@ -244,7 +275,7 @@ function BroadcastAssetLibrary({ seasonSlug }: { seasonSlug: string }) {
         <div>
           <span>OBS-ready browser sources</span>
           <h2>Broadcast Asset Library</h2>
-          <p>Every graphic has a clear name, purpose, and source size. Open to preview or copy the full URL into OBS.</p>
+          <p>Preview always shows content. Copy OBS URL gives you the live source that follows the control shown on each card.</p>
         </div>
         <LibraryBig aria-hidden="true" />
       </header>
@@ -253,16 +284,17 @@ function BroadcastAssetLibrary({ seasonSlug }: { seasonSlug: string }) {
           <article key={asset.path}>
             <div>
               <span>{asset.size}</span>
+              <b>{asset.control}</b>
               <h3>{asset.name}</h3>
               <p>{asset.purpose}</p>
             </div>
             <footer>
-              <Link href={asset.path} target="_blank">
-                <ExternalLink aria-hidden="true" /> Preview
+              <Link href={asset.previewPath} target="_blank">
+                <ExternalLink aria-hidden="true" /> Preview with content
               </Link>
               <button type="button" onClick={() => void copyAssetUrl(asset.path)}>
                 {copiedPath === asset.path ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-                {copiedPath === asset.path ? "Copied" : "Copy URL"}
+                {copiedPath === asset.path ? "Copied" : "Copy OBS URL"}
               </button>
             </footer>
           </article>
@@ -1141,6 +1173,13 @@ export default function LeagueNightControlCentre({
     router.push(`/clubhouse-admin/top-dog/live?${params}`);
   }
 
+  const activeDirectorButton = directorButtons.find(
+    (button) => button.overlay === snapshot.streamState.centralOverlay
+  );
+  const centralGraphicLabel = snapshot.streamState.centralOverlayVisible
+    ? activeDirectorButton?.label ?? "Custom graphic"
+    : "Nothing on air";
+
   return (
     <div className="top-dog-control-centre">
       <section className="top-dog-command-bar">
@@ -1255,6 +1294,37 @@ export default function LeagueNightControlCentre({
             <Radio aria-hidden="true" />
           </header>
 
+          <div className="top-dog-director-guide">
+            <MonitorPlay aria-hidden="true" />
+            <div>
+              <strong>What this controls</strong>
+              <p>
+                Leave the Main Graphics browser source enabled in OBS. Show makes one scene
+                animate on screen; Hide returns that source to transparent. It does not change
+                scores, fixtures or the public website.
+              </p>
+            </div>
+          </div>
+
+          <div
+            className={`top-dog-director-output ${
+              snapshot.streamState.centralOverlayVisible ? "is-live" : "is-hidden"
+            }`}
+          >
+            <span>Main Graphics output</span>
+            <strong>{centralGraphicLabel}</strong>
+            <b>
+              {snapshot.streamState.centralOverlayVisible
+                ? "On air now"
+                : "Transparent in OBS"}
+            </b>
+          </div>
+
+          <div className="top-dog-director-subheading">
+            <span>Separate persistent sources</span>
+            <p>Scorebug and ticker can stay on while Main Graphics changes.</p>
+          </div>
+
           <div className="top-dog-persistent-controls">
             <div>
               <span>Scorebug</span>
@@ -1296,36 +1366,52 @@ export default function LeagueNightControlCentre({
             onClick={() => void updateStreamState({ centralOverlayVisible: false })}
             disabled={streamPending || !snapshot.streamState.centralOverlayVisible}
           >
-            <EyeOff aria-hidden="true" /> Hide all central graphics <kbd>Esc</kbd>
+            <EyeOff aria-hidden="true" /> Clear Main Graphics from stream <kbd>Esc</kbd>
           </button>
 
-          <div className="top-dog-director-buttons">
-            {directorButtons.map((button) => {
-              const isLive =
-                snapshot.streamState.centralOverlayVisible &&
-                snapshot.streamState.centralOverlay === button.overlay;
+          <div className="top-dog-director-subheading is-scenes">
+            <span>Main Graphics scenes</span>
+            <p>Only one scene can be on air at a time.</p>
+          </div>
 
-              return (
-                <div key={button.overlay} className={isLive ? "is-live" : ""}>
-                  <span>{button.label}</span>
-                  {button.shortcut ? <kbd>{button.shortcut}</kbd> : null}
-                  <button
-                    type="button"
-                    onClick={() => showDirectorOverlay(button.overlay)}
-                    disabled={streamPending || isLive}
-                  >
-                    <Eye aria-hidden="true" /> Show
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void updateStreamState({ centralOverlayVisible: false })}
-                    disabled={streamPending || !isLive}
-                  >
-                    <EyeOff aria-hidden="true" /> Hide
-                  </button>
+          <div className="top-dog-director-buttons">
+            {directorGroups.map((group) => (
+              <section key={group.label}>
+                <header>
+                  <strong>{group.label}</strong>
+                  <span>{group.description}</span>
+                </header>
+                <div className="top-dog-director-button-grid">
+                  {group.buttons.map((button) => {
+                    const isLive =
+                      snapshot.streamState.centralOverlayVisible &&
+                      snapshot.streamState.centralOverlay === button.overlay;
+
+                    return (
+                      <div key={button.overlay} className={isLive ? "is-live" : ""}>
+                        <div>
+                          <span>{button.label}</span>
+                          <small>{button.description}</small>
+                        </div>
+                        {isLive ? <b>On air</b> : button.shortcut ? <kbd>{button.shortcut}</kbd> : null}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            isLive
+                              ? void updateStreamState({ centralOverlayVisible: false })
+                              : showDirectorOverlay(button.overlay)
+                          }
+                          disabled={streamPending}
+                        >
+                          {isLive ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+                          {isLive ? "Hide from stream" : "Show on stream"}
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
+              </section>
+            ))}
           </div>
 
           <div className="top-dog-ticker-settings">

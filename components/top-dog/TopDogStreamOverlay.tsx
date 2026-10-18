@@ -33,6 +33,9 @@ type TopDogStreamOverlayProps = {
   initialSnapshot: TopDogSnapshot;
   view: TopDogStreamView;
   allowedOverlays?: TopDogCentralOverlay[];
+  preview?: boolean;
+  previewOverlay?: TopDogCentralOverlay;
+  standaloneLadder?: boolean;
 };
 
 function getFixture(snapshot: TopDogSnapshot, purpose: "scorebug" | "featured") {
@@ -50,8 +53,10 @@ function getFixture(snapshot: TopDogSnapshot, purpose: "scorebug" | "featured") 
   );
 }
 
-function getCentralFixture(snapshot: TopDogSnapshot) {
-  const overlay = snapshot.streamState.centralOverlay;
+function getCentralFixture(
+  snapshot: TopDogSnapshot,
+  overlay: TopDogCentralOverlay = snapshot.streamState.centralOverlay
+) {
 
   if (overlay === "up_next") {
     return snapshot.fixtures.find((fixture) => fixture.status === "waiting") ?? null;
@@ -193,12 +198,13 @@ function MatchCard({
   snapshot,
   fixture,
   visible,
+  overlay,
 }: {
   snapshot: TopDogSnapshot;
   fixture: TopDogFixture | null;
   visible: boolean;
+  overlay: TopDogCentralOverlay;
 }) {
-  const overlay = snapshot.streamState.centralOverlay;
   const payload = snapshot.streamState.overlayPayload;
   const isFixtureOverlay = ["match", "match_of_night", "up_next", "match_result"].includes(
     overlay
@@ -384,8 +390,15 @@ function LadderRow({ standing }: { standing: TopDogStanding }) {
   );
 }
 
-function LadderGraphic({ snapshot, visible }: { snapshot: TopDogSnapshot; visible: boolean }) {
-  const projected = snapshot.streamState.centralOverlay === "results_hold";
+function LadderGraphic({
+  snapshot,
+  visible,
+  projected,
+}: {
+  snapshot: TopDogSnapshot;
+  visible: boolean;
+  projected: boolean;
+}) {
   const standings = projected ? snapshot.projectedLadder : snapshot.officialLadder;
 
   return (
@@ -523,6 +536,9 @@ export default function TopDogStreamOverlay({
   initialSnapshot,
   view,
   allowedOverlays,
+  preview = false,
+  previewOverlay,
+  standaloneLadder = false,
 }: TopDogStreamOverlayProps) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [connected, setConnected] = useState(false);
@@ -644,16 +660,18 @@ export default function TopDogStreamOverlay({
   ]);
 
   const scorebugFixture = getFixture(snapshot, "scorebug");
-  const centralFixture = getCentralFixture(snapshot);
-  const centralOverlay = streamCentralOverlay;
+  const centralOverlay = previewOverlay ?? streamCentralOverlay;
+  const centralFixture = getCentralFixture(snapshot, centralOverlay);
   const centralAutoHidden =
     centralOverlay === "subscribe" &&
     autoHiddenVersion === snapshot.streamState.updatedAt;
+  const centralVisible = preview || snapshot.streamState.centralOverlayVisible;
   const ladderVisible =
-    snapshot.streamState.centralOverlayVisible &&
-    (centralOverlay === "live_ladder" || centralOverlay === "results_hold");
+    standaloneLadder ||
+    (centralVisible &&
+      (centralOverlay === "live_ladder" || centralOverlay === "results_hold"));
   const matchVisible =
-    snapshot.streamState.centralOverlayVisible &&
+    centralVisible &&
     centralOverlay !== "none" &&
     centralOverlay !== "live_ladder" &&
     centralOverlay !== "results_hold" &&
@@ -663,16 +681,39 @@ export default function TopDogStreamOverlay({
   return (
     <div className={`td-broadcast-stage is-${view}`}>
       {view === "scorebug" ? (
-        <Scorebug fixture={scorebugFixture} visible={snapshot.streamState.scorebugVisible} />
+        <Scorebug
+          fixture={scorebugFixture}
+          visible={preview || snapshot.streamState.scorebugVisible}
+        />
       ) : null}
       {view === "match" ? (
-        <MatchCard snapshot={snapshot} fixture={centralFixture} visible={matchVisible} />
+        ladderVisible ? (
+          <LadderGraphic
+            snapshot={snapshot}
+            visible
+            projected={centralOverlay === "results_hold"}
+          />
+        ) : (
+          <MatchCard
+            snapshot={snapshot}
+            fixture={centralFixture}
+            visible={matchVisible}
+            overlay={centralOverlay}
+          />
+        )
       ) : null}
       {view === "ladder" ? (
-        <LadderGraphic snapshot={snapshot} visible={ladderVisible} />
+        <LadderGraphic
+          snapshot={snapshot}
+          visible={ladderVisible}
+          projected={!standaloneLadder && centralOverlay === "results_hold"}
+        />
       ) : null}
       {view === "ticker" ? (
-        <Ticker snapshot={snapshot} visible={snapshot.streamState.tickerVisible} />
+        <Ticker
+          snapshot={snapshot}
+          visible={preview || snapshot.streamState.tickerVisible}
+        />
       ) : null}
 
       <div className={`td-broadcast-connection ${connected ? "is-connected" : ""}`}>
