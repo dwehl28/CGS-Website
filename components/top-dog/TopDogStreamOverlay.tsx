@@ -35,7 +35,6 @@ type TopDogStreamOverlayProps = {
   view: TopDogStreamView;
   allowedOverlays?: TopDogCentralOverlay[];
   preview?: boolean;
-  previewOverlay?: TopDogCentralOverlay;
   standaloneLadder?: boolean;
 };
 
@@ -592,7 +591,6 @@ export default function TopDogStreamOverlay({
   view,
   allowedOverlays,
   preview = false,
-  previewOverlay,
   standaloneLadder = false,
 }: TopDogStreamOverlayProps) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
@@ -726,7 +724,8 @@ export default function TopDogStreamOverlay({
   ]);
 
   const scorebugFixture = getFixture(snapshot, "scorebug");
-  const centralOverlay = previewOverlay ?? streamCentralOverlay;
+  const centralOverlay =
+    preview && streamCentralOverlay === "none" ? "match" : streamCentralOverlay;
   const centralFixture = getCentralFixture(snapshot, centralOverlay);
   const centralAutoHidden =
     centralOverlay === "subscribe" &&

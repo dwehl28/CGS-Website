@@ -615,6 +615,10 @@ async function loadTopDogSnapshot(input: {
 
   const membershipRows = (membershipResult.data ?? []) as Record<string, unknown>[];
   const rounds = ((roundsResult.data ?? []) as Record<string, unknown>[]).map(mapRound);
+  const streamState = mapStreamState(
+    streamResult.data as Record<string, unknown> | null,
+    season.id
+  );
   const teamIds = [...new Set(membershipRows.map((row) => parseNumber(row.team_id)))];
   const roundIds = rounds.map((round) => round.id);
 
@@ -706,8 +710,9 @@ async function loadTopDogSnapshot(input: {
     .map((row) => mapFixture(row, teamsById, undoFixtureIds))
     .filter((fixture): fixture is TopDogFixture => fixture !== null);
 
+  const preferredRoundId = input.roundId ?? streamState.roundId;
   const selectedRound =
-    rounds.find((round) => round.id === input.roundId) ??
+    rounds.find((round) => round.id === preferredRoundId) ??
     rounds.find((round) => round.isCurrent) ??
     rounds.find((round) => round.status === "live") ??
     [...rounds].reverse().find((round) => round.status === "waiting") ??
@@ -744,10 +749,7 @@ async function loadTopDogSnapshot(input: {
     allFixtures,
     officialLadder,
     projectedLadder,
-    streamState: mapStreamState(
-      streamResult.data as Record<string, unknown> | null,
-      season.id
-    ),
+    streamState,
     generatedAt: new Date().toISOString(),
   };
 }

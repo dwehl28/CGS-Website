@@ -24,7 +24,6 @@ export default async function TopDogMatchPage({ params, searchParams }: PageProp
         initialSnapshot={snapshot}
         view="match"
         preview={preview === "1"}
-        previewOverlay={preview === "1" ? "match" : undefined}
       />
     </main>
   );

@@ -242,7 +242,7 @@ function BroadcastAssetLibrary({ seasonSlug }: { seasonSlug: string }) {
       previewPath: `/stream/top-dog/${seasonSlug}/match?preview=1`,
       size: "1920 x 1080",
       control: "Stream Director",
-      purpose: "Add this once in OBS. Every Stream Director scene, including both ladder views, appears through this source.",
+      purpose: "Add this once in OBS. Preview shows the exact scene selected in Stream Director, even while the live source is hidden.",
     },
     {
       name: "Standalone Ladder",
@@ -1055,7 +1055,10 @@ export default function LeagueNightControlCentre({
           seasonId: snapshot.season.id,
           seasonSlug: snapshot.season.slug,
           selectedRoundId,
-          updates,
+          updates: {
+            ...(selectedRoundId ? { roundId: selectedRoundId } : {}),
+            ...updates,
+          },
         }),
       });
       const feed = (await response.json()) as TopDogFeed & { message?: string };
