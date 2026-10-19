@@ -6,6 +6,7 @@ import {
   startTransition,
   useEffect,
   useEffectEvent,
+  useRef,
   useState,
 } from "react";
 import {
@@ -220,6 +221,7 @@ export default function TopDogProductionDesk({
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const refreshInFlight = useRef(false);
   const roundId = core.selectedRound?.id ?? production.roundId;
   const basePayload = {
     seasonId: core.season.id,
@@ -271,10 +273,11 @@ export default function TopDogProductionDesk({
   }
 
   async function refreshProduction() {
-    if (!roundId || pending) {
+    if (!roundId || pending || refreshInFlight.current) {
       return;
     }
 
+    refreshInFlight.current = true;
     const params = new URLSearchParams({
       season: core.season.slug,
       seasonId: String(core.season.id),
@@ -292,15 +295,21 @@ export default function TopDogProductionDesk({
       }
     } catch (error) {
       console.error("Top Dog production refresh error:", error);
+    } finally {
+      refreshInFlight.current = false;
     }
   }
 
   const handleFallbackRefresh = useEffectEvent(() => {
+    if (document.visibilityState !== "visible") {
+      return;
+    }
+
     void refreshProduction();
   });
 
   useEffect(() => {
-    const interval = window.setInterval(handleFallbackRefresh, 20000);
+    const interval = window.setInterval(handleFallbackRefresh, 5 * 60_000);
     return () => window.clearInterval(interval);
   }, []);
 

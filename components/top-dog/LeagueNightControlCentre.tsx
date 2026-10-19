@@ -790,6 +790,7 @@ export default function LeagueNightControlCentre({
   const [errorMessage, setErrorMessage] = useState("");
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const subscribeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const refreshInFlight = useRef(false);
   const currentOverlay = useRef(snapshot.streamState.centralOverlay);
   const selectedRoundId = snapshot.selectedRound?.id ?? null;
   const nextRoundNumber =
@@ -808,6 +809,11 @@ export default function LeagueNightControlCentre({
   };
 
   async function refreshSnapshot() {
+    if (refreshInFlight.current) {
+      return;
+    }
+
+    refreshInFlight.current = true;
     const params = new URLSearchParams({ season: snapshot.season.slug });
 
     if (selectedRoundId) {
@@ -826,7 +832,10 @@ export default function LeagueNightControlCentre({
       applyFeed((await response.json()) as TopDogFeed);
     } catch (error) {
       console.error("Top Dog admin refresh error:", error);
+      setSyncState("reconnecting");
       setErrorMessage("Live data is reconnecting. Your last confirmed controls remain on screen.");
+    } finally {
+      refreshInFlight.current = false;
     }
   }
 
@@ -841,6 +850,10 @@ export default function LeagueNightControlCentre({
   });
 
   const handleFallbackRefresh = useEffectEvent(() => {
+    if (document.visibilityState !== "visible") {
+      return;
+    }
+
     void refreshSnapshot();
   });
 
@@ -908,10 +921,10 @@ export default function LeagueNightControlCentre({
   useEffect(() => {
     const interval = setInterval(() => {
       handleFallbackRefresh();
-    }, 15000);
+    }, syncState === "connected" ? 5 * 60_000 : 30_000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [syncState]);
 
   async function runFixtureCommand(
     fixtureId: number,

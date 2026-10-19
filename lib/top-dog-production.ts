@@ -511,6 +511,11 @@ async function ensureChecklist(seasonId: number, roundId: number) {
   }
 }
 
+export async function initializeTopDogRoundProduction(seasonId: number, roundId: number) {
+  await assertRoundBelongsToSeason(seasonId, roundId);
+  await ensureChecklist(seasonId, roundId);
+}
+
 async function ensureJackpot(seasonId: number) {
   const supabaseAdmin = getSupabaseAdmin();
   const { error } = await supabaseAdmin.from("top_dog_jackpots").upsert(
@@ -839,12 +844,6 @@ export async function getAdminTopDogProductionFeed(
   const roundId = core.selectedRound?.id ?? null;
 
   try {
-    await ensureJackpot(core.season.id);
-
-    if (roundId) {
-      await ensureChecklist(core.season.id, roundId);
-    }
-
     const supabaseAdmin = getSupabaseAdmin();
     const teamIds = core.seasonTeams.map((membership) => membership.team.id);
     const [

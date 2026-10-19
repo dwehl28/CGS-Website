@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { requireAdminAuthenticated } from "@/lib/admin-auth";
 import { normalizeString } from "@/lib/form-utils";
+import { initializeTopDogRoundProduction } from "@/lib/top-dog-production";
 import {
   createCgsTeamForSeason,
   createTopDogFixture,
@@ -116,7 +117,7 @@ export async function createTopDogRoundAction(formData: FormData) {
   }
 
   try {
-    await createTopDogRound({
+    const roundId = await createTopDogRound({
       seasonId,
       roundNumber,
       name,
@@ -127,6 +128,7 @@ export async function createTopDogRoundAction(formData: FormData) {
       differentialDivisor,
       isCurrent: formData.get("is_current") === "on",
     });
+    await initializeTopDogRoundProduction(seasonId, roundId);
   } catch (error) {
     console.error("Create Top Dog round action error:", error);
     finishAction("That round could not be created. Its number may already exist.", "error");

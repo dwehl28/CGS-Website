@@ -5,6 +5,7 @@ import {
   startTransition,
   useEffect,
   useEffectEvent,
+  useRef,
   useState,
 } from "react";
 import { CalendarClock, CircleDot, Trophy, Wifi, WifiOff } from "lucide-react";
@@ -33,6 +34,8 @@ type BannerSlide =
     };
 
 const ROTATION_MS = 8000;
+const CONNECTED_REFRESH_INTERVAL_MS = 5 * 60_000;
+const RECOVERY_REFRESH_INTERVAL_MS = 30_000;
 
 function chunk<T>(items: T[], size: number) {
   return Array.from({ length: Math.ceil(items.length / size) }, (_, index) =>
@@ -199,12 +202,18 @@ export default function TopDogLeagueBanner({
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [activeIndex, setActiveIndex] = useState(0);
   const [connected, setConnected] = useState(false);
+  const refreshInFlight = useRef(false);
   const selectedRoundId = snapshot.selectedRound?.id ?? null;
   const slides = buildSlides(snapshot);
   const safeIndex = activeIndex % slides.length;
   const activeSlide = slides[safeIndex];
 
   async function refreshSnapshot() {
+    if (refreshInFlight.current) {
+      return;
+    }
+
+    refreshInFlight.current = true;
     const params = new URLSearchParams();
 
     if (selectedRoundId) {
@@ -226,6 +235,8 @@ export default function TopDogLeagueBanner({
     } catch (error) {
       console.error("Top Dog rotating banner refresh error:", error);
       setConnected(false);
+    } finally {
+      refreshInFlight.current = false;
     }
   }
 
@@ -296,9 +307,12 @@ export default function TopDogLeagueBanner({
   });
 
   useEffect(() => {
-    const interval = window.setInterval(handleFallbackRefresh, 10000);
+    const interval = window.setInterval(
+      handleFallbackRefresh,
+      connected ? CONNECTED_REFRESH_INTERVAL_MS : RECOVERY_REFRESH_INTERVAL_MS
+    );
     return () => window.clearInterval(interval);
-  }, []);
+  }, [connected]);
 
   return (
     <section className="td-league-banner-canvas" aria-label="CGS Top Dog rotating stream banner">

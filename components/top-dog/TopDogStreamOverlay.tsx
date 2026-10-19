@@ -5,6 +5,7 @@ import {
   startTransition,
   useEffect,
   useEffectEvent,
+  useRef,
   useState,
 } from "react";
 import {
@@ -37,6 +38,9 @@ type TopDogStreamOverlayProps = {
   previewOverlay?: TopDogCentralOverlay;
   standaloneLadder?: boolean;
 };
+
+const CONNECTED_REFRESH_INTERVAL_MS = 5 * 60_000;
+const RECOVERY_REFRESH_INTERVAL_MS = 30_000;
 
 function getFixture(snapshot: TopDogSnapshot, purpose: "scorebug" | "featured") {
   const requestedId =
@@ -594,6 +598,7 @@ export default function TopDogStreamOverlay({
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [connected, setConnected] = useState(false);
   const [autoHiddenVersion, setAutoHiddenVersion] = useState<string | null>(null);
+  const refreshInFlight = useRef(false);
   const selectedRoundId = snapshot.selectedRound?.id ?? null;
   const {
     centralOverlay: streamCentralOverlay,
@@ -602,6 +607,11 @@ export default function TopDogStreamOverlay({
   } = snapshot.streamState;
 
   async function refreshSnapshot() {
+    if (refreshInFlight.current) {
+      return;
+    }
+
+    refreshInFlight.current = true;
     const params = new URLSearchParams();
 
     if (selectedRoundId) {
@@ -623,6 +633,8 @@ export default function TopDogStreamOverlay({
     } catch (error) {
       console.error("Top Dog OBS refresh error:", error);
       setConnected(false);
+    } finally {
+      refreshInFlight.current = false;
     }
   }
 
@@ -687,9 +699,12 @@ export default function TopDogStreamOverlay({
   });
 
   useEffect(() => {
-    const interval = setInterval(handleFallbackRefresh, 10000);
+    const interval = setInterval(
+      handleFallbackRefresh,
+      connected ? CONNECTED_REFRESH_INTERVAL_MS : RECOVERY_REFRESH_INTERVAL_MS
+    );
     return () => clearInterval(interval);
-  }, []);
+  }, [connected]);
 
   useEffect(() => {
     if (streamCentralOverlay !== "subscribe" || !streamCentralOverlayVisible) {
