@@ -15752,49 +15752,132 @@ main.text-white {
 .par3-broadcast-sponsors {
   display: grid;
   height: 100%;
-  grid-template-columns: 1fr 90px 1fr;
-  align-items: center;
-  gap: 35px;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 22px;
 }
 
-.par3-broadcast-sponsors > div {
+.par3-broadcast-sponsor-intro {
+  display: flex;
+  align-items: baseline;
+  gap: 22px;
+  padding: 2px 8px 0;
+}
+
+.par3-broadcast-sponsor-intro > span {
+  color: var(--broadcast-gold);
+  font-size: 15px;
+  font-weight: 1000;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.par3-broadcast-sponsor-intro > strong {
+  font-size: 28px;
+  font-weight: 1000;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+}
+
+.par3-broadcast-sponsor-intro > p {
+  margin-left: auto;
+  color: #9eb1bd;
+  font-size: 14px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.par3-broadcast-sponsor-grid {
   display: grid;
-  height: 100%;
-  place-content: center;
-  justify-items: center;
-  border: 1px solid var(--broadcast-line);
-  background: rgba(2, 10, 17, 0.72);
-  padding: 40px;
-  text-align: center;
+  min-height: 0;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
 }
 
-.par3-broadcast-sponsors > div > span {
+.par3-broadcast-sponsor-card {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  overflow: hidden;
+  border: 1px solid var(--broadcast-line);
+  background:
+    linear-gradient(145deg, rgba(16, 42, 57, 0.92), rgba(2, 10, 17, 0.96));
+  padding: 22px;
+}
+
+.par3-broadcast-sponsor-card.is-prize {
+  border-color: rgba(255, 189, 24, 0.58);
+  background:
+    radial-gradient(circle at 80% 0%, rgba(255, 189, 24, 0.16), transparent 36%),
+    linear-gradient(145deg, rgba(32, 37, 35, 0.94), rgba(2, 10, 17, 0.96));
+}
+
+.par3-broadcast-sponsor-card::after {
+  position: absolute;
+  right: -38px;
+  bottom: -48px;
+  width: 135px;
+  height: 135px;
+  border: 1px solid rgba(101, 215, 255, 0.16);
+  border-radius: 50%;
+  content: "";
+}
+
+.par3-broadcast-sponsor-card.is-prize::after {
+  border-color: rgba(255, 189, 24, 0.22);
+}
+
+.par3-broadcast-sponsor-card > span {
   color: var(--broadcast-cyan);
-  font-size: 17px;
+  font-size: 13px;
   font-weight: 950;
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
-.par3-broadcast-sponsors img {
-  max-width: 430px;
-  max-height: 330px;
-  margin: 32px 0;
+.par3-broadcast-sponsor-card.is-prize > span {
+  color: var(--broadcast-gold);
+}
+
+.par3-broadcast-sponsor-logo {
+  display: grid;
+  min-height: 0;
+  place-items: center;
+  margin: 18px 0;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #f7f6f2;
+  box-shadow: inset 0 0 0 1px rgba(3, 16, 24, 0.12);
+}
+
+.par3-broadcast-sponsor-logo img {
+  width: 100%;
+  max-width: 340px;
+  max-height: 340px;
+  padding: 18px;
   object-fit: contain;
 }
 
-.par3-broadcast-sponsors > i {
-  color: var(--broadcast-gold);
-  font-size: 68px;
-  font-style: normal;
+.par3-broadcast-sponsor-card > h3 {
+  position: relative;
+  z-index: 1;
+  font-size: 27px;
   font-weight: 1000;
-  text-align: center;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
-.par3-broadcast-sponsors p {
+.par3-broadcast-sponsor-card > p {
+  position: relative;
+  z-index: 1;
+  margin-top: 8px;
   color: #a1b3be;
-  font-size: 18px;
+  font-size: 12px;
   font-weight: 850;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -15929,28 +16012,60 @@ main.text-white {
 }
 
 .par3-broadcast-portrait .par3-broadcast-sponsors {
-  grid-template-columns: 1fr;
-  grid-template-rows: 1fr 30px 1fr;
-  gap: 9px;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
 }
 
-.par3-broadcast-portrait .par3-broadcast-sponsors > div {
-  padding: 15px;
+.par3-broadcast-portrait .par3-broadcast-sponsor-intro {
+  display: grid;
+  gap: 2px;
+  padding: 0;
 }
 
-.par3-broadcast-portrait .par3-broadcast-sponsors img {
-  max-width: 210px;
-  max-height: 250px;
-  margin: 15px 0;
+.par3-broadcast-portrait .par3-broadcast-sponsor-intro > span {
+  font-size: 8px;
 }
 
-.par3-broadcast-portrait .par3-broadcast-sponsors > div > span,
-.par3-broadcast-portrait .par3-broadcast-sponsors p {
-  font-size: 10px;
+.par3-broadcast-portrait .par3-broadcast-sponsor-intro > strong {
+  font-size: 18px;
 }
 
-.par3-broadcast-portrait .par3-broadcast-sponsors > i {
-  font-size: 25px;
+.par3-broadcast-portrait .par3-broadcast-sponsor-intro > p {
+  display: none;
+}
+
+.par3-broadcast-portrait .par3-broadcast-sponsor-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.par3-broadcast-portrait .par3-broadcast-sponsor-card {
+  padding: 10px;
+}
+
+.par3-broadcast-portrait .par3-broadcast-sponsor-card > span {
+  font-size: 7px;
+}
+
+.par3-broadcast-portrait .par3-broadcast-sponsor-logo {
+  margin: 7px 0;
+  border-radius: 7px;
+}
+
+.par3-broadcast-portrait .par3-broadcast-sponsor-logo img {
+  max-width: 135px;
+  max-height: 165px;
+  padding: 7px;
+}
+
+.par3-broadcast-portrait .par3-broadcast-sponsor-card > h3 {
+  font-size: 13px;
+}
+
+.par3-broadcast-portrait .par3-broadcast-sponsor-card > p {
+  margin-top: 3px;
+  font-size: 7px;
 }
 
 .par3-stream-page.is-thumbnail {

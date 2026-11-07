@@ -561,28 +561,71 @@ function ChampionshipStage({
 }
 
 function SponsorBoard() {
+  const sponsors = [
+    {
+      name: "The Tee Lounge",
+      role: "Host venue",
+      detail: "Premium golf simulators / Underwood",
+      src: "/scoreboard/tee-lounge-logo.png",
+      width: 520,
+      height: 260,
+      type: "host",
+    },
+    {
+      name: "Crossodog Golf Society",
+      role: "Presented live by",
+      detail: "Good players. Great company.",
+      src: "/cgs-logo.png",
+      width: 360,
+      height: 360,
+      type: "broadcast",
+    },
+    {
+      name: "Royal & Awesome",
+      role: "Prize sponsor",
+      detail: "Championship II prize partner",
+      src: "/par3/sponsors/royal-and-awesome.jpg",
+      width: 556,
+      height: 235,
+      type: "prize",
+    },
+    {
+      name: "Range Ratz",
+      role: "Prize sponsor",
+      detail: "Championship II prize partner",
+      src: "/par3/sponsors/range-ratz.jpg",
+      width: 872,
+      height: 1307,
+      type: "prize",
+    },
+  ] as const;
+
   return (
     <section className="par3-broadcast-sponsors">
-      <div>
-        <span>Championship II is proudly hosted by</span>
-        <Image
-          src="/scoreboard/tee-lounge-logo.png"
-          alt="The Tee Lounge"
-          width={520}
-          height={260}
-        />
-        <p>Premium golf simulators / Underwood</p>
+      <div className="par3-broadcast-sponsor-intro">
+        <span>Championship II partners</span>
+        <strong>Hosted. Broadcast. Prizes.</strong>
+        <p>Thank you to the partners backing the championship.</p>
       </div>
-      <i aria-hidden="true">+</i>
-      <div>
-        <span>Presented live by</span>
-        <Image
-          src="/cgs-logo.png"
-          alt="Crossodog Golf Society"
-          width={360}
-          height={360}
-        />
-        <p>Good players. Great company.</p>
+      <div className="par3-broadcast-sponsor-grid">
+        {sponsors.map((sponsor) => (
+          <article
+            key={sponsor.name}
+            className={`par3-broadcast-sponsor-card is-${sponsor.type}`}
+          >
+            <span>{sponsor.role}</span>
+            <div className="par3-broadcast-sponsor-logo">
+              <Image
+                src={sponsor.src}
+                alt={sponsor.name}
+                width={sponsor.width}
+                height={sponsor.height}
+              />
+            </div>
+            <h3>{sponsor.name}</h3>
+            <p>{sponsor.detail}</p>
+          </article>
+        ))}
       </div>
     </section>
   );
@@ -669,7 +712,7 @@ export default function Par3StreamAsset({ initialSnapshot, view }: AssetProps) {
     bracket: ["Road to the title", "Finals bracket", "Sixteen players · single elimination · one champion"],
     finals: ["Knockout stage", "Finals live centre", "Playing now · previous results · upcoming fixtures"],
     road: ["Course draw", "Eight stages", "A new virtual course test in every round"],
-    sponsors: ["Championship partners", "Proudly presented by", "The Tee Lounge and Crossodog Golf Society"],
+    sponsors: ["Championship partners", "Proudly supported by", "Host venue, broadcast partner and official prize sponsors"],
     winner: ["Championship II", "Winner", "One field · one final · one champion"],
   };
   const [eyebrow, title, detail] = titles[resolvedView] ?? titles.live;
