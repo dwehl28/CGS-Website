@@ -41,14 +41,16 @@ export function isValidAdminSecret(input: string) {
 }
 
 export function isValidAdminCredentials(username: string, password: string) {
+  const configuredUsername = process.env.CGS_ADMIN_USERNAME || ADMIN_USERNAME;
+  const configuredPassword = process.env.CGS_ADMIN_PASSWORD || ADMIN_PASSWORD;
   return (
     secureEqual(
       `cgs-admin-username:${username}`,
-      `cgs-admin-username:${ADMIN_USERNAME}`
+      `cgs-admin-username:${configuredUsername}`
     ) &&
     secureEqual(
       `cgs-admin-password:${password}`,
-      `cgs-admin-password:${ADMIN_PASSWORD}`
+      `cgs-admin-password:${configuredPassword}`
     )
   );
 }

@@ -26,9 +26,19 @@ import Par3RegistrationForm from "@/components/par3/Par3RegistrationForm";
 import { getPublicPar3Snapshot } from "@/lib/par3-showdown";
 import {
   getPar3RemainingSpots,
-  PAR3_FINALS_STAGES,
-  PAR3_POOL_STAGES,
+  getPar3PoolSizes,
+  getPar3FinalsStages,
 } from "@/lib/par3-showdown-types";
+import {
+  getPar3DisplayCourseStages,
+  getPar3DisplayQualification,
+  getPar3DisplayFinalistCount,
+  getPar3QualificationDescription,
+  getPar3StageHoleLabel,
+  getPar3DisplayPoolSize,
+  PAR3_COURSE_POSTER_URL,
+  par3Ordinal,
+} from "@/lib/par3-display";
 import { absoluteUrl } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +46,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "CGS Par 3 Championship II | 7 November 2026",
   description:
-    "Enter the CGS Par 3 Championship II at The Tee Lounge: 24 players, six pools, two CTP contests, and a live-streamed Round of 16.",
+    "Enter the CGS Par 3 Championship II at The Tee Lounge. Follow the current pools, live draw, results and knockout finals.",
   alternates: { canonical: absoluteUrl("/") },
   openGraph: {
     title: "CGS Par 3 Championship II",
@@ -57,7 +67,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "CGS Par 3 Championship II",
     description:
-      "24 players. Six pools. One winner. Saturday 7 November at The Tee Lounge.",
+      "Pool play. Knockout finals. One winner. Saturday 7 November at The Tee Lounge.",
     images: [absoluteUrl("/opengraph-image")],
   },
 };
@@ -83,7 +93,20 @@ export default async function Home() {
     currency: "AUD",
     maximumFractionDigits: 0,
   }).format(event.entryFeeCents / 100);
-  const courseStages = [...PAR3_POOL_STAGES, ...PAR3_FINALS_STAGES];
+  const courseStages = getPar3DisplayCourseStages(snapshot);
+  const finalsStages = getPar3FinalsStages(event);
+  const byeTarget = finalsStages[1]?.label.toLowerCase() ?? "the next round";
+  const finalsPath = finalsStages.slice(1).map((stage) => stage.label.toLowerCase()).join(" → ");
+  const qualification = getPar3DisplayQualification(snapshot);
+  const poolSizes = qualification.allPlayersAdvance
+    ? Array.from({ length: event.poolCount }, (_, index) => getPar3DisplayPoolSize(snapshot, index + 1))
+    : getPar3PoolSizes(event);
+  const smallestPool = Math.min(...poolSizes);
+  const largestPool = Math.max(...poolSizes);
+  const matchesPerPlayer = smallestPool === largestPool
+    ? `${smallestPool - 1}`
+    : `${smallestPool - 1}–${largestPool - 1}`;
+  const poolSizeLabel = smallestPool === largestPool ? `${smallestPool}` : `${smallestPool}–${largestPool}`;
 
   return (
     <main className="par3-home par3-v2-home">
@@ -118,7 +141,7 @@ export default async function Home() {
               <div><Clock3 /><span>First tee<strong>5:00pm start</strong></span></div>
               <div><MapPin /><span>Venue<strong>The Tee Lounge</strong></span></div>
               <div><CircleDollarSign /><span>Entry<strong>{feeLabel}</strong></span></div>
-              <div><Users /><span>Maximum<strong>24 players</strong></span></div>
+              <div><Users /><span>Maximum<strong>{event.maxPlayers} players</strong></span></div>
               <div className="is-availability">
                 <Radio />
                 <span>Available now<strong>{remainingSpots === 0 ? "Sold out" : `${remainingSpots} spots`}</strong></span>
@@ -138,24 +161,24 @@ export default async function Home() {
           </div>
 
           <div className="par3-v2-poster-wrap">
-            <span>Official event poster</span>
+            <span>Official course draw</span>
             <Image
-              src="/par3/championship-ii-poster.webp"
-              alt="CGS Par 3 Championship II event poster"
-              width={567}
-              height={701}
+              src={PAR3_COURSE_POSTER_URL}
+              alt="CGS Par 3 course draw: Gailes, Royal Canberra, Royal Hobart, Augusta, Royal Adelaide, New South Wales, The Australian and National Old Course"
+              width={1122}
+              height={1402}
               priority
             />
           </div>
         </div>
         <div className="par3-v2-scroll-cue">
-          <span>Registration open</span>
+          <span>{remainingSpots === 0 ? "Field complete" : event.registrationsOpen ? `${remainingSpots} places available` : "Registrations closed"}</span>
           <i />
-          <span>Six pools of four</span>
+          <span>{event.poolCount} pools / {poolSizeLabel} players per pool</span>
           <i />
           <span>Live streamed</span>
           <i />
-          <span>Two CTP contests</span>
+          <span>{qualification.ctpPurpose === "bye" ? "Pool winners contest the finals bye" : qualification.ctpQualifierCount ? "CTP qualification playoff" : "Automatic qualification"}</span>
           <i />
           <span>One champion</span>
         </div>
@@ -191,7 +214,7 @@ export default async function Home() {
               ))}
             </div>
             <ul>
-              <li><CheckCircle2 /> Three pool matches guaranteed</li>
+              <li><CheckCircle2 /> {matchesPerPlayer} pool matches per player in a full pool</li>
               <li><CheckCircle2 /> Live fixtures and simulator calls</li>
               <li><CheckCircle2 /> Finals and CTP qualification paths</li>
               <li><CheckCircle2 /> Full CGS livestream coverage</li>
@@ -204,51 +227,81 @@ export default async function Home() {
         <div className="par3-v2-section-head is-light">
           <div>
             <span>02 / The format</span>
-            <h2>Six pools. Two routes through.</h2>
+            <h2>{event.poolCount} pools. One champion.</h2>
           </div>
           <p>
-            Every player gets three head-to-head matches before the best sixteen
-            move into a single-elimination finals bracket.
+            {qualification.allPlayersAdvance ? `All ${qualification.requiredPlayerCount} players advance from pool play. The ${event.poolCount} pool winners contest CTP for one bye to the ${byeTarget}; everyone else plays the opening round.` : <>
+            Every player faces each opponent in their pool once. {getPar3DisplayFinalistCount(snapshot)} players
+            advance into the single-elimination finals. {getPar3QualificationDescription(snapshot)}
+            </>}
           </p>
         </div>
 
-        <div className="par3-v2-format-road">
+        {qualification.allPlayersAdvance ? <div className="par3-v2-format-summary" aria-label="Tournament format at a glance">
+          <div><strong>{qualification.requiredPlayerCount}</strong><span>Players advance</span></div>
+          <div><strong>{event.poolCount} × {poolSizeLabel}</strong><span>Pools × players</span></div>
+          <div><strong>{qualification.openingMatchCount}</strong><span>Opening matches</span></div>
+          <div><strong>1</strong><span>CTP bye to {byeTarget}</span></div>
+        </div> : null}
+
+        <div className={`par3-v2-format-road${qualification.allPlayersAdvance ? " is-bye-format" : ""}`}>
+          {qualification.allPlayersAdvance ? <>
+          <article>
+            <span>Pool phase</span><Users /><h3>{event.poolCount} pools of {poolSizeLabel}</h3><strong>{matchesPerPlayer} matches per player</strong>
+            <p>{smallestPool === 3 && largestPool === 3 ? "Three pool rounds, with one player resting in each round. Every player faces both pool opponents." : "Every player faces each pool opponent once. Odd pools rotate the resting player each round."} All {qualification.requiredPlayerCount} advance.</p>
+          </article>
+          <article>
+            <span>CTP playoff</span><Target /><h3>{event.poolCount} pool winners</h3><strong>Bye to {byeTarget}</strong>
+            <p>Pool winners shoot closest to the pin. The winner advances straight to the {byeTarget}.</p>
+          </article>
+          <article>
+            <span>Opening round</span><Flag /><h3>{qualification.requiredPlayerCount - 1} players compete</h3><strong>{qualification.openingMatchCount} head-to-head matches</strong>
+            <p>The CTP winner rests while the other {qualification.requiredPlayerCount - 1} players compete for the remaining places in the {byeTarget}.</p>
+          </article>
+          <article className="is-final">
+            <span>Finals</span><Trophy /><h3>{qualification.finalsSize / 2} players remain</h3><strong>One champion</strong>
+            <p>The {qualification.openingMatchCount} opening-round winners join the CTP winner. {finalsPath}.</p>
+          </article>
+          </> : <>
           <article>
             <span>Stage 01</span>
             <Users />
             <h3>Pool play</h3>
-            <strong>6 pools of 4</strong>
+            <strong>{event.poolCount} pools of {poolSizeLabel}</strong>
             <p>Every player faces each opponent in their pool once.</p>
           </article>
           <article>
             <span>Stage 02</span>
             <Trophy />
-            <h3>Automatic spots</h3>
-            <strong>Top 2 advance</strong>
-            <p>Twelve players lock in their Round of 16 places.</p>
+            <h3>{qualification.allPlayersAdvance ? "Everyone advances" : "Automatic spots"}</h3>
+            <strong>{qualification.allPlayersAdvance ? `All ${qualification.requiredPlayerCount} advance` : qualification.automaticPlaces ? `Top ${qualification.automaticPlaces} advance` : "CTP decides places"}</strong>
+            <p>{qualification.allPlayersAdvance ? "Pool play determines the seeding and the pool winners’ CTP field." : `${qualification.automaticPlaces * event.poolCount} automatic finals places across the pools.`}</p>
           </article>
           <article>
             <span>Stage 03</span>
             <Target />
             <h3>CTP playoff</h3>
-            <strong>Top 4 advance</strong>
-            <p>All third-place players shoot for the final four bracket spots.</p>
+            <strong>{qualification.ctpPurpose === "bye" ? "Winner earns a bye" : qualification.ctpQualifierCount ? `Top ${qualification.ctpQualifierCount} advance` : "Not required"}</strong>
+            <p>{qualification.ctpPurpose === "bye" ? `Pool winners contest CTP. The winner advances straight to the ${getPar3FinalsStages(event)[1]?.label ?? "next round"}.` : qualification.ctpQualifierCount ? `${qualification.ctpAllRemaining ? "Remaining pool players" : `${par3Ordinal(qualification.ctpPoolPosition)}-place finishers`} compete for the remaining finals places.` : "The nominated format fills every finals place automatically."}</p>
           </article>
           <article>
             <span>Side contest</span>
             <Medal />
             <h3>CTP prize</h3>
-            <strong>Fourth places</strong>
-            <p>A separate closest-to-pin contest keeps every pool alive.</p>
+            <strong>Eligible last places</strong>
+            <p>{qualification.allPlayersAdvance ? "A separate closest-to-pin prize contest for last-place pool finishers." : "A separate closest-to-pin prize contest for last-place finishers outside automatic qualification."}</p>
           </article>
           <article className="is-final">
             <span>Stage 04</span>
             <Flag />
             <h3>Finals</h3>
-            <strong>16 to 1</strong>
-            <p>Win and advance through the Round of 16 to the title.</p>
+            <strong>{getPar3DisplayFinalistCount(snapshot)} to 1</strong>
+            <p>{qualification.ctpPurpose === "bye" ? `${qualification.openingMatchCount} opening matches, one CTP bye, then the ${getPar3FinalsStages(event)[1]?.label ?? "next round"}.` : `Win and advance from the ${getPar3FinalsStages(event)[0]?.label ?? "opening round"} to the title.`}</p>
           </article>
+          </>}
         </div>
+
+        {qualification.allPlayersAdvance ? <p className="par3-v2-side-contest"><Medal /><span><strong>Separate CTP prize:</strong> last-place pool finishers compete for the closest-to-pin prize.</span></p> : null}
 
         <div className="par3-v2-rules">
           <span>No handicaps</span>
@@ -272,21 +325,23 @@ export default async function Home() {
         <Par3LiveTournament initialSnapshot={snapshot} />
       </section>
 
-      <section className="par3-v2-course-section">
+      <section id="courses" className="par3-v2-course-section">
         <div className="par3-v2-course-copy">
-          <span>04 / Eight stages</span>
+          <span>04 / {courseStages.length} stages</span>
           <h2>A different test every round.</h2>
           <p>
-            The course changes as the pressure rises. Pool allocations, simulator
-            calls, and the complete schedule will be published in the live centre.
+            The confirmed courses and hole selections are below. Follow the fixtures
+            and simulator calls in the live tournament centre.
           </p>
+          <a href={PAR3_COURSE_POSTER_URL} download="CGS-Par3-Course-Draw.png" className="par3-v2-button is-secondary">Download course and hole poster <ImageDown /></a>
         </div>
         <div className="par3-v2-course-grid">
           {courseStages.map((stage, index) => (
             <article key={stage.key}>
-              <b>{String(index + 1).padStart(2, "0")}</b>
+              <b>{stage.stageNumber ? `R${stage.stageNumber}` : String(index + 1).padStart(2, "0")}</b>
               <span>{stage.label}</span>
               <strong>{stage.course}</strong>
+              <small className="par3-course-holes">{getPar3StageHoleLabel(stage)}</small>
             </article>
           ))}
         </div>

@@ -9,10 +9,12 @@ import {
   createPar3Player,
   generatePar3Knockout,
   generatePar3PoolFixtures,
+  allocatePar3Pools,
   recordPar3KnockoutWinner,
   resetPar3KnockoutMatch,
   startPar3KnockoutMatch,
   updatePar3PoolCount,
+  updatePar3TournamentFormat,
   updatePar3EventSettings,
   updatePar3CtpDistance,
   updatePar3CtpQualifiers,
@@ -79,9 +81,10 @@ export async function updatePar3CtpWinnerAction(formData: FormData) {
   await requireAdminAuthenticated();
   const eventId = parseNumber(formData.get("event_id"));
   const playerId = parseOptionalNumber(formData.get("player_id"));
-  const rankedPlayerIds = [1, 2, 3, 4].map((rank) =>
+  const rankedPlayerIds = Array.from({ length: 64 }, (_, index) => index + 1).map((rank) =>
     parseOptionalNumber(formData.get(`qualifier_${rank}`))
   );
+  while (rankedPlayerIds.length && rankedPlayerIds.at(-1) === null) rankedPlayerIds.pop();
   const qualifierIds = playerId !== null ? [playerId] : rankedPlayerIds;
 
   if (!eventId) {
@@ -104,7 +107,7 @@ export async function updatePar3PoolCountAction(formData: FormData) {
   const eventId = parseNumber(formData.get("event_id"));
   const poolCount = parseNumber(formData.get("pool_count"));
 
-  if (!eventId || (poolCount !== 5 && poolCount !== 6)) {
+  if (!eventId || poolCount === null || !Number.isInteger(poolCount) || poolCount < 1 || poolCount > 16) {
     redirect(noticeUrl("pool-format-failed", "entrants"));
   }
 
@@ -119,8 +122,56 @@ export async function updatePar3PoolCountAction(formData: FormData) {
   redirect(noticeUrl("pool-format-saved", "entrants"));
 }
 
-function noticeUrl(notice: string, anchor = "") {
-  return `/clubhouse-admin/par3?notice=${notice}${anchor ? `#${anchor}` : ""}`;
+export async function updatePar3TournamentFormatAction(formData: FormData) {
+  await requireAdminAuthenticated();
+  const eventId = parseNumber(formData.get("event_id"));
+  const finalsSize = parseNumber(formData.get("finals_size"));
+  const finalsFormatValue = normalizeString(formData.get("finals_format"), 40);
+  const finalsFormat = finalsFormatValue || undefined;
+  const rawSizes = normalizeString(formData.get("pool_sizes"), 200);
+  let poolSizes: unknown;
+  try {
+    poolSizes = JSON.parse(rawSizes);
+  } catch {
+    redirect(noticeUrl("pool-format-failed", "entrants"));
+  }
+  if (!eventId || !Number.isInteger(eventId) || !Array.isArray(poolSizes) ||
+      poolSizes.some((size) => typeof size !== "number" || !Number.isInteger(size)) ||
+      finalsSize === null || !Number.isInteger(finalsSize) ||
+      (finalsFormat !== undefined && finalsFormat !== "standard" && finalsFormat !== "pool_winners_ctp_bye")) {
+    redirect(noticeUrl("pool-format-failed", "entrants"));
+  }
+  try {
+    await updatePar3TournamentFormat(eventId, { poolSizes: poolSizes as number[], finalsSize, ...(finalsFormat ? { finalsFormat } : {}) });
+  } catch (error) {
+    console.error("Update Par 3 tournament format error:", error);
+    redirect(noticeUrl("pool-format-failed", "entrants", error instanceof Error ? error.message : ""));
+  }
+  revalidatePar3();
+  redirect(noticeUrl("pool-format-saved", "entrants"));
+}
+
+export async function allocatePar3PoolsAction(formData: FormData) {
+  await requireAdminAuthenticated();
+  const eventId = parseNumber(formData.get("event_id"));
+  const method = normalizeString(formData.get("method"), 20);
+  if (!eventId || !Number.isInteger(eventId) || (method !== "seeded" && method !== "random")) {
+    redirect(noticeUrl("pool-allocation-failed", "entrants"));
+  }
+  try {
+    await allocatePar3Pools(eventId, method);
+  } catch (error) {
+    console.error("Allocate Par 3 pools error:", error);
+    redirect(noticeUrl("pool-allocation-failed", "entrants", error instanceof Error ? error.message : ""));
+  }
+  revalidatePar3();
+  redirect(noticeUrl("pool-allocation-saved", "entrants"));
+}
+
+function noticeUrl(notice: string, anchor = "", detail = "") {
+  const query = new URLSearchParams({ notice });
+  if (detail) query.set("detail", detail.slice(0, 240));
+  return `/clubhouse-admin/par3?${query}${anchor ? `#${anchor}` : ""}`;
 }
 
 export async function updatePar3EventAction(formData: FormData) {

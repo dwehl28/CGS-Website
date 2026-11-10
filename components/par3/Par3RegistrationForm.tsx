@@ -24,14 +24,18 @@ type SubmitState =
   | { status: "error"; message: string };
 
 export default function Par3RegistrationForm({
-  maxPlayers,
+  maxPlayers: initialMaxPlayers,
   initialConfirmedPlayers,
-  registrationsOpen,
-  entryFeeCents,
+  registrationsOpen: initialRegistrationsOpen,
+  entryFeeCents: initialEntryFeeCents,
 }: RegistrationFormProps) {
-  const [confirmedPlayers, setConfirmedPlayers] = useState(
-    initialConfirmedPlayers
-  );
+  const [availability, setAvailability] = useState({
+    maxPlayers: initialMaxPlayers,
+    confirmedPlayers: initialConfirmedPlayers,
+    registrationsOpen: initialRegistrationsOpen,
+    entryFeeCents: initialEntryFeeCents,
+  });
+  const { maxPlayers, confirmedPlayers, registrationsOpen, entryFeeCents } = availability;
   const [state, setState] = useState<SubmitState>({ status: "idle" });
   const remainingSpots = Math.max(0, maxPlayers - confirmedPlayers);
   const soldOut = remainingSpots === 0;
@@ -51,9 +55,13 @@ export default function Par3RegistrationForm({
       }
 
       const snapshot = (await response.json()) as Par3Snapshot;
-      setConfirmedPlayers(
-        snapshot.players.filter((player) => !player.isWithdrawn).length
-      );
+      if (snapshot.source !== "database") return;
+      setAvailability({
+        maxPlayers: snapshot.event.maxPlayers,
+        confirmedPlayers: snapshot.players.filter((player) => !player.isWithdrawn).length,
+        registrationsOpen: snapshot.event.registrationsOpen,
+        entryFeeCents: snapshot.event.entryFeeCents,
+      });
     } catch {
       // The server-rendered availability remains visible if polling is interrupted.
     }
@@ -96,7 +104,7 @@ export default function Par3RegistrationForm({
       }
 
       const nextRemaining = payload.remainingSpots ?? Math.max(0, remainingSpots - 1);
-      setConfirmedPlayers(maxPlayers - nextRemaining);
+      setAvailability((current) => ({ ...current, confirmedPlayers: Math.max(0, current.maxPlayers - nextRemaining) }));
       setState({
         status: "success",
         message: "You are on the Championship II list. CGS will confirm payment and event details with you.",

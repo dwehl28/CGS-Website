@@ -19,21 +19,30 @@ import {
 } from "lucide-react";
 
 import {
-  PAR3_POOL_STAGES,
   buildPar3Pools,
-  getPar3AutomaticQualifyingPlaces,
   getPar3CtpContestants,
-  getPar3CtpPoolPosition,
-  getPar3CtpQualifierCount,
+  getPar3CtpStage,
+  getPar3FinalsStages,
   getPar3CtpWinner,
   getKnockoutParticipantName,
   getPar3Champion,
   getPar3KnockoutRounds,
   getPar3SimulatorQueues,
-  getPoolMatchRound,
+  getPoolStage,
   getTeeCategoryLabel,
   type Par3Snapshot,
 } from "@/lib/par3-showdown-types";
+import {
+  getPar3DisplayQualification,
+  getPar3DisplayByePlayer,
+  getPar3ByeAdvanceLabel,
+  isPar3DisplayPoolOrderConfirmed,
+  getPar3DisplayMatchRound,
+  getPar3DisplayPoolSize,
+  getPar3DisplayPoolStages,
+  getPar3QualificationDescription,
+  getPar3StageHoleLabel,
+} from "@/lib/par3-display";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 type TournamentTab = "up-next" | "pools" | "draw" | "matches" | "finals";
@@ -74,8 +83,8 @@ export default function Par3LiveTournament({
   );
   const pools = useMemo(() => buildPar3Pools(snapshot), [snapshot]);
   const knockoutRounds = useMemo(
-    () => getPar3KnockoutRounds(snapshot.event.knockoutData),
-    [snapshot.event.knockoutData]
+    () => getPar3KnockoutRounds(snapshot.event.knockoutData, snapshot.event),
+    [snapshot.event]
   );
   const simulatorQueues = useMemo(
     () => getPar3SimulatorQueues(snapshot),
@@ -86,12 +95,12 @@ export default function Par3LiveTournament({
     () => getPar3CtpContestants(snapshot),
     [snapshot]
   );
-  const ctpWinner = getPar3CtpWinner(snapshot);
-  const automaticQualifyingPlaces = getPar3AutomaticQualifyingPlaces(
-    snapshot.event.poolCount
-  );
-  const ctpPoolPosition = getPar3CtpPoolPosition(snapshot.event.poolCount);
-  const ctpQualifierCount = getPar3CtpQualifierCount(snapshot.event.poolCount);
+  const qualification = getPar3DisplayQualification(snapshot);
+  const poolOrderConfirmed = isPar3DisplayPoolOrderConfirmed(snapshot);
+  const ctpWinner = poolOrderConfirmed ? getPar3CtpWinner(snapshot) : null;
+  const poolStages = getPar3DisplayPoolStages(snapshot);
+  const finalsStages = getPar3FinalsStages(snapshot.event);
+  const ctpStage = getPar3CtpStage();
 
   async function refresh() {
     setIsRefreshing(true);
@@ -237,12 +246,14 @@ export default function Par3LiveTournament({
                   label="Now playing"
                   match={queue.current}
                   playersById={playersById}
+                  snapshot={snapshot}
                   isCurrent
                 />
                 <SimulatorCall
                   label="Up next"
                   match={queue.upNext}
                   playersById={playersById}
+                  snapshot={snapshot}
                 />
                 <p className="par3-simulator-queue-count">
                   {queue.queued.length > 1
@@ -300,10 +311,10 @@ export default function Par3LiveTournament({
         {activeTab === "draw" ? (
           snapshot.poolMatches.length ? (
             <div className="par3-draw-rounds">
-              {PAR3_POOL_STAGES.map((stage, stageIndex) => {
+              {poolStages.map((stage, stageIndex) => {
                 const roundNumber = stageIndex + 1;
                 const matches = snapshot.poolMatches.filter(
-                  (match) => getPoolMatchRound(match.matchNumber) === roundNumber
+                  (match) => getPar3DisplayMatchRound(snapshot, match) === roundNumber
                 );
 
                 return (
@@ -312,6 +323,7 @@ export default function Par3LiveTournament({
                       <div>
                         <span>{stage.label}</span>
                         <h3>{stage.course}</h3>
+                        <small className="par3-course-holes">{getPar3StageHoleLabel(stage)}</small>
                       </div>
                       <span>{matches.length} fixtures</span>
                     </div>
@@ -337,7 +349,7 @@ export default function Par3LiveTournament({
           ) : (
             <EmptyState
               title="Fixture draw coming soon"
-              detail={`All ${snapshot.event.poolCount * 6} pool matches will appear here in three course rounds.`}
+              detail={`The round-robin fixtures for ${snapshot.event.poolCount} pools will appear here after the draw is confirmed.`}
             />
           )
         ) : null}
@@ -399,11 +411,13 @@ export default function Par3LiveTournament({
 
         {activeTab === "finals" ? (
           <div className="par3-finals-stack">
-            <section className="par3-ctp-public-card">
+            {qualification.ctpQualifierCount > 0 ? <section className="par3-ctp-public-card">
               <div>
                 <Target />
-                <span>Closest-to-pin playoff</span>
-                <h3>Pebble Beach / 7th hole</h3>
+                <span>{qualification.ctpPurpose === "bye" ? "Pool winners CTP / finals bye" : "Closest-to-pin playoff"}</span>
+                <h3>{ctpStage.course} / {getPar3StageHoleLabel(ctpStage)}</h3>
+                {!poolOrderConfirmed ? <p>Provisional pool positions. The CTP field is confirmed after pool play.</p> : null}
+                {qualification.ctpPurpose === "bye" ? <p>{ctpWinner ? `${ctpWinner.name}: ${getPar3ByeAdvanceLabel(snapshot)}` : "Every player advances. The CTP winner goes straight to the next finals round."}</p> : null}
               </div>
               <div>
                 {ctpContestants.map((standing) => (
@@ -411,21 +425,22 @@ export default function Par3LiveTournament({
                     key={standing.player.id}
                     className={ctpWinner?.id === standing.player.id ? "is-winner" : ""}
                   >
-                    Pool {String.fromCharCode(64 + (standing.player.poolNumber ?? 1))}: {standing.player.name}
+                    Pool {String.fromCharCode(64 + (standing.player.poolNumber ?? 1))}: {standing.player.name}{!poolOrderConfirmed ? " (provisional)" : ""}
                   </span>
                 ))}
                 {!ctpContestants.length ? (
-                  <span>{ordinal(ctpPoolPosition)}-place qualifiers pending</span>
+                  <span>{qualification.ctpPurpose === "bye" ? "Pool winners pending" : qualification.ctpAllRemaining ? "CTP contestants pending" : `${ordinal(qualification.ctpPoolPosition)}-place qualifiers pending`}</span>
                 ) : null}
               </div>
-            </section>
+            </section> : null}
 
           {knockoutRounds.length && snapshot.event.knockoutData ? (
             <div className="par3-bracket-scroll">
-              <div className="par3-bracket-grid">
+              <div className="par3-bracket-grid" style={{ gridTemplateColumns: `repeat(${knockoutRounds.length}, minmax(225px, 1fr))` }}>
                 {knockoutRounds.map((round) => (
                   <section key={String(round.id)}>
                     <h3>{round.label}</h3>
+                    <small className="par3-course-holes">{finalsStages[round.number - 1]?.course} / {finalsStages[round.number - 1] ? getPar3StageHoleLabel(finalsStages[round.number - 1]) : ""}</small>
                     <div>
                       {round.matches.map((match) => {
                         const first = getKnockoutParticipantName(
@@ -436,9 +451,11 @@ export default function Par3LiveTournament({
                           snapshot.event.knockoutData!,
                           match.opponent2?.id
                         );
+                        const byePlayer = getPar3DisplayByePlayer(snapshot, round.number, match);
 
                         return (
-                          <div key={String(match.id)} className="par3-bracket-match">
+                          <div key={String(match.id)} className={`par3-bracket-match${byePlayer ? " is-bye" : ""}`}>
+                            {byePlayer ? <><p className="is-winner"><span>{byePlayer}</span></p><p><span>{getPar3ByeAdvanceLabel(snapshot)}</span></p></> : <>
                             <p className={match.opponent1?.result === "win" ? "is-winner" : ""}>
                               <span>{first}</span>
                               {match.opponent1?.result === "win" ? <Check /> : null}
@@ -447,6 +464,7 @@ export default function Par3LiveTournament({
                               <span>{second}</span>
                               {match.opponent2?.result === "win" ? <Check /> : null}
                             </p>
+                            </>}
                           </div>
                         );
                       })}
@@ -465,7 +483,7 @@ export default function Par3LiveTournament({
           ) : (
             <EmptyState
               title="Finals bracket not set"
-              detail={`The top ${automaticQualifyingPlaces} from each pool qualify automatically. The top ${ctpQualifierCount} players from the ${ordinal(ctpPoolPosition)}-place CTP playoff complete the Round of 16.`}
+              detail={`${getPar3QualificationDescription(snapshot)} The finals start with ${finalsStages[0]?.label ?? "the confirmed draw"}.`}
             />
           )}
           </div>
@@ -479,15 +497,17 @@ function SimulatorCall({
   label,
   match,
   playersById,
+  snapshot,
   isCurrent = false,
 }: {
   label: string;
   match: Par3Snapshot["poolMatches"][number] | null;
   playersById: Map<number, Par3Snapshot["players"][number]>;
+  snapshot: Par3Snapshot;
   isCurrent?: boolean;
 }) {
   const stage = match
-    ? PAR3_POOL_STAGES[getPoolMatchRound(match.matchNumber) - 1]
+    ? getPoolStage(match.matchNumber, getPar3DisplayPoolSize(snapshot, match.poolNumber))
     : null;
 
   return (
@@ -504,6 +524,7 @@ function SimulatorCall({
             Pool {String.fromCharCode(64 + match.poolNumber)}
             <i />
             {stage?.shortCourse ?? `Match ${match.matchNumber}`}
+            {stage ? ` / ${getPar3StageHoleLabel(stage)}` : ""}
           </p>
         </>
       ) : (

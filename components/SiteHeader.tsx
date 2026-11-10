@@ -11,6 +11,7 @@ const eventLinks = [
   { href: "/#watch", label: "Watch" },
   { href: "/#format", label: "Format" },
   { href: "/scorecard", label: "Scorecard Tool" },
+  { href: "/cgl", label: "CGL League" },
 ];
 
 export default function SiteHeader() {
@@ -21,7 +22,7 @@ export default function SiteHeader() {
       <div className="par3-header-alert">
         <span>CGS Par 3 Championship II</span>
         <strong>Saturday 7 November</strong>
-        <span>24 places / The Tee Lounge</span>
+        <span>The Tee Lounge / Underwood</span>
       </div>
       <div className="par3-header-inner">
         <Link href="/" className="par3-header-brand" onClick={() => setIsOpen(false)}>
@@ -46,8 +47,8 @@ export default function SiteHeader() {
           ))}
         </nav>
 
-        <Link href="/#register" className="par3-header-entry">
-          Enter now
+        <Link href="/#format" className="par3-header-entry">
+          Event details
         </Link>
 
         <button

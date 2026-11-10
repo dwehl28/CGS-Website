@@ -107,7 +107,7 @@ export async function createShareImage() {
                 maxWidth: "720px",
               }}
             >
-              24 players. Six pools. One champion. Live from 5:00pm.
+              Pool play. Knockout finals. One champion. Live from 5:00pm.
             </div>
           </div>
 
@@ -128,7 +128,7 @@ export async function createShareImage() {
                 background: "#f4b41b",
               }}
             />
-            Registration now open / crossodoggolf.com
+            Course draw and live results / crossodoggolf.com
           </div>
         </div>
 

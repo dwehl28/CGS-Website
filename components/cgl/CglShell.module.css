@@ -1,0 +1,388 @@
+.shell {
+  --cgl-ink: #0a2133;
+  --cgl-muted: #607280;
+  --cgl-bg: #f3f6f8;
+  --cgl-accent: #ffbd16;
+  --cgl-line: #dce5eb;
+  position: relative;
+  min-height: 100svh;
+  background: var(--cgl-bg);
+  color: var(--cgl-ink);
+  font-family: var(--font-space-grotesk), "Segoe UI", Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  isolation: isolate;
+}
+
+.shell h1,
+.shell h2,
+.shell h3,
+.shell h4 {
+  color: inherit;
+  font-family: inherit;
+  letter-spacing: -0.045em;
+  line-height: 1.12;
+}
+
+.shell button,
+.shell input,
+.shell select {
+  font: inherit;
+}
+.shell a {
+  text-decoration: none;
+}
+.shell a:hover,
+.shell button:hover {
+  transform: none;
+}
+.shell a:focus-visible,
+.shell button:focus-visible,
+.shell select:focus-visible,
+.shell input:focus-visible,
+.shell summary:focus-visible {
+  outline: 3px solid #007d93;
+  outline-offset: 4px;
+}
+.shell svg {
+  flex-shrink: 0;
+}
+.shell section[id] {
+  scroll-margin-top: 110px;
+}
+.skip {
+  position: absolute;
+  left: 18px;
+  top: -100px;
+  z-index: 50;
+  background: var(--cgl-accent);
+  padding: 12px 20px;
+  color: var(--cgl-ink);
+  font-weight: 700;
+}
+.skip:focus {
+  top: 12px;
+}
+.header {
+  background: #081a2a;
+  color: white;
+  border-bottom: 1px solid #ffffff15;
+}
+.headerInner,
+.navInner {
+  width: min(1240px, calc(100% - 64px));
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.headerInner {
+  min-height: 91px;
+  gap: 20px;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  color: white;
+}
+.brand img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+.brandLetters {
+  font-size: 37px;
+  font-weight: 950;
+  letter-spacing: -3px;
+  line-height: 1;
+}
+.brandLetters > span {
+  color: #65d7ff;
+  font-size: 28px;
+}
+.brandName {
+  padding-left: 4px;
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.4;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+.back {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: #a7bdce;
+  font-size: 12px;
+  font-weight: 600;
+}
+.back:hover {
+  color: #006d7a;
+}
+.navWrap {
+  border-top: 1px solid #ffffff14;
+}
+.navInner {
+  gap: 24px;
+}
+.navigation {
+  display: flex;
+  gap: 30px;
+  scrollbar-width: none;
+}
+.navigation::-webkit-scrollbar {
+  display: none;
+}
+.navigation a {
+  min-height: 53px;
+  display: flex;
+  align-items: center;
+  border-bottom: 3px solid transparent;
+  padding: 4px 0 1px;
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+  color: #a8bfce;
+}
+.navigation a[aria-current="page"] {
+  color: #fff;
+  border-color: #ffbd16;
+}
+.navigation a:hover {
+  color: #65d7ff;
+}
+.seasonLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--cgl-muted);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.seasonLabel span {
+  color: #a7b8b2;
+  margin: 0 5px;
+}
+.preview {
+  background: #e8eedf;
+  border-bottom: 1px solid #dbe4ce;
+}
+.preview > div {
+  width: min(1240px, calc(100% - 64px));
+  margin: 0 auto;
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  padding: 10px 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #40513a;
+}
+.preview strong {
+  white-space: nowrap;
+}
+.preview span {
+  padding-left: 9px;
+  border-left: 1px solid #becbb0;
+}
+.main {
+  width: min(1240px, calc(100% - 64px));
+  margin: 0 auto;
+  padding: 35px 0 72px;
+  outline: none;
+}
+.footer {
+  width: min(1240px, calc(100% - 64px));
+  margin: 0 auto;
+  padding: 35px 0 28px;
+  border-top: 1px solid #cedad3;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 28px;
+}
+.footerLogo {
+  font-size: 28px;
+  font-weight: 950;
+  letter-spacing: -1.5px;
+}
+.footerLogo span {
+  color: #008f9c;
+}
+.footer p {
+  color: var(--cgl-muted);
+  font-size: 12px;
+  margin-top: 5px;
+}
+.footerLinks {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 22px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.footerLinks a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.footerLinks a:hover {
+  text-decoration: underline;
+}
+.footer .footerNote {
+  width: 100%;
+  border-top: 1px solid var(--cgl-line);
+  padding-top: 18px;
+  font-size: 10px;
+}
+.preview > div {
+  font-size: 12px;
+}
+.navigation a {
+  font-size: 12px;
+}
+.headerActions {
+  display: flex;
+  gap: 25px;
+  align-items: center;
+}
+.account {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #416173;
+  padding: 10px 15px;
+  border-radius: 3px;
+  font-size: 12px;
+  color: #ddf5ff;
+  font-weight: 700;
+}
+.launch {
+  background: #e3f3fb;
+  color: #225875;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 25px;
+  padding: 9px 16px;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+}
+.launch a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  border-left: 1px solid #bdd7e5;
+  padding-left: 25px;
+}
+
+@media (min-width: 1500px) {
+  .main {
+    padding-top: 42px;
+  }
+}
+@media (max-width: 760px) {
+  .headerInner,
+  .navInner,
+  .preview > div,
+  .main,
+  .footer {
+    width: calc(100% - 32px);
+  }
+  .headerInner {
+    min-height: 78px;
+  }
+  .brand {
+    gap: 9px;
+  }
+  .brand img {
+    width: 38px;
+    height: 38px;
+  }
+  .brandLetters {
+    font-size: 31px;
+  }
+  .brandName {
+    font-size: 8px;
+    padding-left: 9px;
+    letter-spacing: 1px;
+  }
+  .back {
+    font-size: 10px;
+    gap: 4px;
+  }
+  .headerActions {
+    gap: 12px;
+  }
+  .headerActions .back {
+    display: none;
+  }
+  .account {
+    padding: 9px;
+    font-size: 10px;
+  }
+  .launch {
+    gap: 10px;
+    font-size: 8px;
+  }
+  .launch a {
+    padding-left: 10px;
+    font-size: 9px;
+  }
+  .seasonLabel {
+    display: none;
+  }
+  .navInner {
+    width: 100%;
+  }
+  .navigation {
+    width: 100%;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 0 16px;
+    overflow-x: auto;
+  }
+  .navigation a {
+    font-size: 12px;
+    min-height: 49px;
+  }
+  .preview > div {
+    align-items: flex-start;
+    font-size: 11px;
+    gap: 7px;
+  }
+  .preview svg {
+    margin-top: 1px;
+  }
+  .preview span {
+    padding-left: 7px;
+  }
+  .main {
+    padding-top: 25px;
+    padding-bottom: 46px;
+  }
+  .footer {
+    padding-top: 24px;
+    gap: 20px;
+  }
+  .footerLinks {
+    gap: 16px;
+    font-size: 11px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell *,
+  .shell *::before,
+  .shell *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}

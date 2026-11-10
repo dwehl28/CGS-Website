@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 
 import SiteChrome from "@/components/SiteChrome";
+import AccountInviteRedirect from "@/components/account/AccountInviteRedirect";
 import { absoluteUrl } from "@/lib/seo";
 import { siteConfig } from "@/lib/site-content";
 import {
@@ -79,6 +80,7 @@ export default function RootLayout({
   return (
     <html lang="en" data-scroll-behavior="smooth">
       <body className="antialiased">
+        <AccountInviteRedirect />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={createJsonLd(buildOrganizationJsonLd())}

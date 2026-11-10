@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
     },
   },
   images: {
+    localPatterns: [
+      { pathname: "/**", search: "" },
+      { pathname: "/par3/par3-course-draw.png", search: "?v=20261105" },
+    ],
     remotePatterns: [
       {
         protocol: "https",

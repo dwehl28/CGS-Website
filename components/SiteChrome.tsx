@@ -33,6 +33,10 @@ export default function SiteChrome({ children }: SiteChromeProps) {
     return <div className="site-shell admin-shell">{children}</div>;
   }
 
+  if (pathname === "/cgl" || pathname.startsWith("/cgl/")) {
+    return <>{children}</>;
+  }
+
   return (
     <div className="site-shell">
       <a href="#main-content" className="skip-link">

@@ -1,0 +1,108 @@
+.page {
+  min-height: 65vh;
+  padding: clamp(32px, 7vw, 88px) 20px;
+  color: #f7f5ef;
+}
+
+.card {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: clamp(24px, 5vw, 40px);
+  border: 1px solid #435568;
+  border-radius: 18px;
+  background: #0d2235;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: #72d9ff;
+  font-size: 0.8rem;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.card h1 {
+  margin: 0 0 20px;
+  font-size: clamp(1.7rem, 5vw, 2.3rem);
+  line-height: 1.15;
+}
+
+.card p {
+  line-height: 1.6;
+}
+
+.email {
+  overflow-wrap: anywhere;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  margin-top: 24px;
+}
+
+.form label {
+  margin-bottom: 8px;
+  font-weight: 650;
+}
+
+.form input {
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid #718393;
+  border-radius: 8px;
+  background: #06111e;
+  color: #fff;
+  font: inherit;
+}
+
+.hint {
+  margin: 8px 0 22px;
+  color: #d0d7dd;
+  font-size: 0.88rem;
+}
+
+.form button,
+.primaryLink {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 24px;
+  padding: 12px 20px;
+  border: 0;
+  border-radius: 8px;
+  background: #72d9ff;
+  color: #06111e;
+  font: inherit;
+  font-weight: 750;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.form button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.form input:focus-visible,
+.form button:focus-visible,
+.card a:focus-visible {
+  outline: 3px solid #ffbe18;
+  outline-offset: 4px;
+}
+
+.error {
+  margin: 18px 0 0;
+  color: #ffcfba;
+}
+
+.signInLink {
+  display: inline-block;
+  margin-top: 28px;
+  color: #72d9ff;
+  text-underline-offset: 4px;
+}
