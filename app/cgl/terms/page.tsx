@@ -3,56 +3,61 @@ import { CglHeading } from "@/components/cgl/CglPublicExperience";
 import s from "@/components/cgl/Cgl2027.module.css";
 
 const documents = [
-  [
-    "Membership Terms",
-    "Full membership provides access during the paid membership period. Casual registration and season entry are separate purchases. Final eligibility, start dates and inclusions require CGS approval.",
-  ],
-  [
-    "Automatic Renewal Disclosure",
-    "Annual, monthly and weekly plans are intended to renew automatically. Casual registration and casual season entry never automatically renew. The exact charge and next billing date must be disclosed before purchase.",
-  ],
-  [
-    "Cancellation Policy",
-    "Proposed: monthly and weekly cancellations take effect at the next published 13-week season boundary; annual cancellations take effect at the end of the paid annual term. The proposed minimum commitment and future payments require Australian legal review before live activation.",
-  ],
-  [
-    "Competition Rules",
-    "Verified SGT results, locked A/B divisions, published event conditions, points within division and best eight of ten championship weeks. Missing tie details require review. The admin must approve the final rules and countback configuration.",
-  ],
-  [
-    "Prize Conditions",
-    "Weekly net, gross and CTP prizes compare all eligible divisions, with one prize per player. Season prizes require published eligibility and approval. Physical prizes may be claimed until the end of the following season. Credits follow their own expiry dates.",
-  ],
-  [
-    "CGS Credits Terms",
-    "Promotional credits are non-transferable and cannot be withdrawn as cash. Credits expire 18 months after each issue date and remain with the account after membership cancellation. Available catalogue items show their exact credit price and conditions.",
-  ],
-  [
-    "Privacy Policy",
-    "Public CGL results use SGT usernames. Contact information, billing records, internal notes and credit transactions are private. SGT and Square process information needed for their respective services. The CGL-specific data handling policy requires approval.",
-  ],
-  [
-    "Refund and Consumer Rights",
-    "A final refund policy must preserve rights under applicable Australian consumer law and explain billing errors, cancellations and competition changes. This review screen does not replace legal advice or an approved customer contract.",
-  ],
+  {
+    title: "Confirmed pricing",
+    status: "CGS confirmed",
+    text: "Annual membership is $249 per year, monthly is $29.95 per month and weekly is $8.95 per week. Casual registration is a $29 one-off purchase lasting one year, and casual season entry is a separate $100 one-off purchase.",
+  },
+  {
+    title: "Membership terms",
+    status: "Final document pending",
+    text: "Full membership provides access during the paid membership period. Casual registration and season entry are separate purchases. Final eligibility, season dates, inclusions and the complete customer contract still require publication and approval before live sales open.",
+  },
+  {
+    title: "Automatic renewal disclosure",
+    status: "Recurring launch blocked",
+    text: "Annual, monthly and weekly plans are intended to renew automatically. Casual registration and casual season entry never automatically renew. The exact charge and next billing date must be displayed before purchase. Recurring production checkout stays disabled until this provider flow is verified.",
+  },
+  {
+    title: "Cancellation policy",
+    status: "CGS confirmed",
+    text: "Monthly and weekly cancellations take effect at the next published 13-week season boundary. Annual cancellation takes effect at the end of the paid annual term. The membership centre must show the effective date and remaining scheduled payments before a request is submitted.",
+  },
+  {
+    title: "Competition and prize rules",
+    status: "Final rules pending",
+    text: "Verified SGT results, locked A/B divisions, published conditions, points within division and the best eight of ten championship weeks form the current competition model. Countback, prize eligibility and claim conditions must be finalised before the season is published.",
+  },
+  {
+    title: "CGS Credits terms",
+    status: "Final document pending",
+    text: "The current model makes promotional credits non-transferable and not redeemable as cash. Credits expire 18 months after each issue and remain with the account after cancellation. Final catalogue and consumer wording still require approval.",
+  },
+  {
+    title: "Privacy, refunds and consumer rights",
+    status: "Final document pending",
+    text: "Contact details, billing records, internal notes and credit transactions remain private. Final privacy and refund documents must explain Square and SGT data use, billing errors, cancellations, competition changes and all applicable Australian consumer rights.",
+  },
 ];
 export default function CglTermsPage() {
   return (
     <div className={s.page}>
-      <CglHeading label="Policy review" title="Before the season opens.">
-        Draft policy summaries for CGS review. These are not legally approved
-        membership terms.
+      <CglHeading label="Launch policy" title="Clear before anyone pays.">
+        CGS has confirmed the prices and cancellation timing. The complete
+        customer terms and recurring-payment flow are still being finalised.
       </CglHeading>
       <div className={s.notice}>
-        Live billing and formal membership commitments remain disabled until CGS
-        approves final documents following the required legal review.
+        Live checkout remains disabled until the final documents, Square
+        production account and launch checks are approved. This page records
+        the current CGS position; it is not legal advice or the final customer
+        contract.
       </div>
       <div className={s.grid2}>
-        {documents.map(([title, text]) => (
-          <article className={s.panel} key={title}>
-            <span className={s.badge}>Awaiting approval</span>
-            <h2 style={{ marginTop: 16 }}>{title}</h2>
-            <p>{text}</p>
+        {documents.map((document) => (
+          <article className={s.panel} key={document.title}>
+            <span className={s.badge}>{document.status}</span>
+            <h2 style={{ marginTop: 16 }}>{document.title}</h2>
+            <p>{document.text}</p>
           </article>
         ))}
       </div>

@@ -37,6 +37,17 @@ export function isCglSandboxRecord(record: CglData) {
     record.source === "square_sandbox" ||
     String(record.external_id ?? "").startsWith("square:sandbox:");
 }
+export function isCglSquareEnvironmentRecord(
+  record: CglData,
+  environment: "sandbox" | "production",
+) {
+  if (environment === "sandbox") return isCglSandboxRecord(record);
+  const metadata = record.metadata as CglData | null | undefined;
+  return metadata?.environment === environment ||
+    record.environment === environment ||
+    record.source === `square_${environment}` ||
+    String(record.external_id ?? "").startsWith(`square:${environment}:`);
+}
 export interface CglIdentity {
   id: string;
   email: string;

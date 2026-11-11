@@ -408,6 +408,7 @@ function Finance({
   const forecast = financialScenario({ ...input, prices });
   const payments = rows(data.payments);
   const testBilling = row(data.billing);
+  const billingIsTest = str(testBilling.environment, "sandbox") !== "production";
   const overview = row(data.overview);
   const actual = num(overview.annual_revenue_cents);
   const labels: Record<string, string> = {
@@ -533,15 +534,17 @@ function Finance({
         columns={["created_at", "member_id", "kind", "amount_cents", "state"]}
       />
       <article className={s.panel}>
-        <h3>Square Sandbox — test billing</h3>
+        <h3>{billingIsTest ? "Square Sandbox — test billing" : "Square production — live billing"}</h3>
         <p className={s.muted}>
-          Test payments are excluded from real revenue, competition entry and gifts.
-          Failed or unmatched notifications remain visible for reconciliation.
-          Live payments and season-boundary cancellation are disabled.
+          {billingIsTest
+            ? "Test payments are excluded from real revenue, competition entry and gifts."
+            : "Confirmed production payments are included in live revenue and eligible access."}
+          {" "}Failed or unmatched notifications remain visible for reconciliation.
+          {!billingIsTest && testBilling.recurringEnabled !== true ? " Recurring memberships remain disabled pending provider verification." : ""}
         </p>
-        <h4>Test memberships</h4>
+        <h4>{billingIsTest ? "Test memberships" : "Square memberships"}</h4>
         <RecordList items={rows(testBilling.memberships)} columns={["member_id", "plan_code", "state", "paid_through", "next_billing_at"]} />
-        <h4>Test payment history</h4>
+        <h4>{billingIsTest ? "Test payment history" : "Square payment history"}</h4>
         <RecordList items={rows(testBilling.payments)} columns={["created_at", "member_id", "kind", "amount_cents", "state", "external_id"]} />
         <h4>Webhook recovery queue</h4>
         <RecordList items={rows(testBilling.events).filter(event => !["reconciled", "ignored"].includes(str(event.state)))} columns={["event_id", "event_type", "state", "attempts", "next_attempt_at", "review_reason"]} />
@@ -558,6 +561,8 @@ export default function CglAdminCentre() {
   const [message, setMessage] = useState("");
   const [failed, setFailed] = useState(false);
   const [selected, setSelected] = useState<CglRow>({});
+  const billing = row(data.billing);
+  const billingIsTest = str(billing.environment, "sandbox") !== "production";
   const load = useCallback(async (accessToken?: string) => {
     try {
       const response = await fetch("/api/cgl/admin", {
@@ -707,7 +712,9 @@ export default function CglAdminCentre() {
           Public clubhouse
           <ArrowRight size={13} />
         </Link>
-        <span className={s.badge}>Square Sandbox · Live billing disabled</span>
+        <span className={s.badge}>{billingIsTest
+          ? "Square Sandbox · Live billing disabled"
+          : `Square production · ${billing.livePaymentsEnabled === true ? "One-off payments enabled" : "Launch disabled"}`}</span>
       </div>
       {data.status !== "ready" ? (
         <div className={s.notice} role="status">
@@ -826,8 +833,8 @@ export default function CglAdminCentre() {
                 <article className={s.panel}>
                   <h2>Before opening the season</h2>
                   <p>
-                    Approve competition and membership terms, configure Square
-                    Sandbox, verify the SGT import process, and publish
+                    Approve competition and membership terms, complete the
+                    controlled Square launch, verify the SGT import process, and publish
                     confirmed dates. Annual rankings and C Grade remain inactive
                     until explicitly configured.
                   </p>
@@ -1606,7 +1613,7 @@ export default function CglAdminCentre() {
                   {
                     key: "approved",
                     label:
-                      "CGS has approved this policy following legal review",
+                      "CGS owner has confirmed this operating policy",
                     type: "checkbox",
                   },
                 ]}
@@ -1750,7 +1757,7 @@ export default function CglAdminCentre() {
               <OperationForm
                 key={`settings-${selected._setting ? str(selected.key) : "new"}`}
                 title="League settings"
-                description="Version and review rule changes before using them in a published competition. Approved legal terms must also exist before Sandbox checkout is enabled."
+                description="Version and review rule changes before using them in a published competition. Approved customer terms are an independent requirement before production checkout can be enabled."
                 action="save_settings"
                 record={
                   selected._setting

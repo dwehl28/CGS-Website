@@ -672,6 +672,14 @@ test("Sandbox full and casual payments cannot qualify a member for real league e
   assert.equal((await platformHarness(casual).platform.getCglEligibility(MEMBER, week(4), "2027-03-23T00:00:00Z")).eligible, false);
 });
 
+test("Square billing records are classified by their explicit environment only", () => {
+  const { platform } = platformHarness();
+  assert.equal(platform.isCglSquareEnvironmentRecord({ metadata: { environment: "sandbox" } }, "sandbox"), true);
+  assert.equal(platform.isCglSquareEnvironmentRecord({ external_id: "square:production:payment" }, "production"), true);
+  assert.equal(platform.isCglSquareEnvironmentRecord({ metadata: { environment: "production" } }, "sandbox"), false);
+  assert.equal(platform.isCglSquareEnvironmentRecord({ id: "manual-payment" }, "production"), false);
+});
+
 test("a member sees owned Sandbox billing in a separate test history, without granting gifts or exposing another account", async () => {
   const tables = eligibilityTables({}, { metadata: { environment: "sandbox" }, starts_at: "2026-01-01", paid_through: "2099-01-01" });
   tables.cgl_payments = [

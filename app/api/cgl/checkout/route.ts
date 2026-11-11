@@ -4,7 +4,7 @@ import { getCglMemberIdentity, cglApiFailure, verifyCglOrigin } from "@/lib/cgl-
 import {
   CglSquareError,
   createCglSquareCheckout,
-  getCglSquareReadiness,
+  getCglSquareOperationalReadiness,
   type CglSquareCheckout,
 } from "@/lib/cgl-square";
 
@@ -41,6 +41,7 @@ export async function GET(request: Request) {
         { error: "Choose an available CGL plan." },
         { status: 404 },
       );
+    const readiness = await getCglSquareOperationalReadiness();
     return Response.json(
       {
         planCode: plan.code,
@@ -48,8 +49,8 @@ export async function GET(request: Request) {
         currency: "AUD",
         recurring: plan.auto_renew,
         billingInterval: plan.billing_interval,
-        environment: "sandbox",
-        readiness: getCglSquareReadiness(),
+        environment: readiness.environment,
+        readiness,
         prorationAvailable: false,
         creditsAvailable: false,
         notice:
@@ -67,10 +68,12 @@ export async function POST(request: Request) {
     verifyCglOrigin(request);
     // Bearer authentication is verified by Supabase; the existing shared admin token cannot buy a membership.
     const member = await getCglMemberIdentity(request);
-    const readiness = getCglSquareReadiness();
+    const readiness = await getCglSquareOperationalReadiness();
     if (!readiness.ready)
       throw new CglSquareError(
-        "CGL test payments are awaiting Square Sandbox setup and testing activation. No payment has been taken.",
+        readiness.environment === "sandbox"
+          ? "CGL test payments are awaiting Square Sandbox setup and testing activation. No payment has been taken."
+          : "CGL live payments are awaiting verified Square production setup and launch activation. No payment has been taken.",
       );
     if (Number(request.headers.get("content-length") ?? 0) > 4096)
       return Response.json(
@@ -92,8 +95,16 @@ export async function POST(request: Request) {
         },
         { status: 400 },
       );
+    if (readiness.environment === "production" && ["annual", "monthly", "weekly"].includes(body.data.planCode) && !readiness.subscriptionActionsEnabled)
+      throw new CglSquareError(
+        "Recurring Square memberships are still in controlled verification. Choose a one-off casual option for now.",
+        409,
+        "square_recurring_disabled",
+      );
     const { data, error } = await getSupabaseAdmin().rpc(
-      "cgl_prepare_square_checkout",
+      readiness.environment === "production"
+        ? "cgl_prepare_square_live_checkout"
+        : "cgl_prepare_square_checkout",
       {
         p_member_id: member.id,
         p_plan_code: body.data.planCode,
@@ -127,7 +138,7 @@ export async function POST(request: Request) {
         checkoutId: checkout.id,
         amountCents: checkout.amount_cents,
         currency: "AUD",
-        environment: "sandbox",
+        environment: readiness.environment,
         recurring: checkout.recurring,
       },
       { headers: { "Cache-Control": "no-store" } },

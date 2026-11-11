@@ -173,7 +173,7 @@ test("a completed Sandbox membership never replaces real membership status or th
   assert.match(html, /TEST payment history/);
   assert.match(html, /No payments recorded/);
   assert.equal(html.split(TEST_PAYMENT).length - 1, 1);
-  assert.match(html, /proposed 13-week cancellation policy is awaiting approval/);
+  assert.match(html, /confirmed cancellation policy has not yet been published/);
   assert.match(html, /<button[^>]*disabled=""[^>]*>Review cancellation<\/button>/);
 });
 

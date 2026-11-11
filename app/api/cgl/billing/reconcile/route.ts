@@ -13,13 +13,14 @@ export async function GET(request: Request) {
   if (expected.length < 32 || expectedBytes.length !== actualBytes.length || !timingSafeEqual(expectedBytes, actualBytes))
     return Response.json({ error: "The billing scheduler is not authorised." }, { status: 403 });
   try {
-    if (!getCglSquareReadiness().configured)
-      return Response.json({ status: "disabled", environment: "sandbox", livePaymentsEnabled: false });
+    const readiness = getCglSquareReadiness();
+    if (!readiness.configured)
+      return Response.json({ status: "disabled", environment: readiness.environment, livePaymentsEnabled: false });
     return Response.json(await processQueuedCglSquareEvents({ limit: 5 }), {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {
-    return Response.json({ error: error instanceof CglSquareError ? error.message : "Square Sandbox recovery is pending." }, {
+    return Response.json({ error: error instanceof CglSquareError ? error.message : "Square recovery is pending." }, {
       status: error instanceof CglSquareError ? error.status : 503,
       headers: { "Cache-Control": "no-store" },
     });

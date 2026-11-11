@@ -80,7 +80,7 @@ const faq = [
   ],
   [
     "Can I cancel my membership?",
-    "You can submit a cancellation request in your membership centre. The proposed monthly and weekly policy takes effect at a published season boundary; annual membership ends at the paid term. These terms require CGS approval and legal review before live billing opens.",
+    "You can submit a cancellation request in your membership centre. CGS has confirmed that monthly and weekly cancellation takes effect at the next published 13-week season boundary, while annual membership ends at the paid annual term. The exact date and remaining payments must be shown before you submit.",
   ],
   [
     "Are trial results part of the 2027 championship?",
@@ -1095,7 +1095,7 @@ export default function CglPublicExperience({
               payment.
             </p>
             <Link className={s.textLink} href="/cgl/terms">
-              Review the draft policies
+              Review pricing and policy status
               <ArrowRight size={13} />
             </Link>
           </div>

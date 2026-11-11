@@ -1,4 +1,6 @@
-# CGL Square Sandbox billing
+# CGL Square billing
+
+Production one-off groundwork is documented in [CGL Square production launch](cgl-square-production-launch.md). This document retains the Sandbox evidence and limitations used to validate the adapter. Production recurring billing remains disabled.
 
 The existing CGS Stripe payment-intent route is preserved. CGL uses a separate Square REST adapter pinned to API version `2026-09-16`. Its API origin is fixed to `https://connect.squareupsandbox.com/v2`; setting an environment value to `production` disables the adapter. The supplied application ID identifies the application; it does not authenticate requests or prove that a merchant, location, catalogue, webhook or checkout has been connected. Record actual provider-test evidence before describing any part of the integration as externally verified.
 
@@ -84,7 +86,7 @@ All **167 CGL tests passed**, as did TypeScript checking and targeted lint. Thes
 | `CGL_JOB_SECRET`                  | Independent private secret for the protected maintenance/recovery endpoint |
 | `CRON_SECRET`                     | Private Vercel daily recovery credential; at least 32 random characters |
 
-Never prefix these variables with `NEXT_PUBLIC_`. Keep separate Sandbox and eventual live credentials. No production path is provided by this adapter.
+Never prefix these variables with `NEXT_PUBLIC_`. Keep Sandbox and production credentials separate. The production adapter is restricted to guarded one-off casual purchases; recurring production billing is not yet enabled.
 
 The repository's `.env.example` provides empty secret placeholders and disabled checkout flags. Use an isolated database for development tests. The user-authorised hosted integration reuses the existing CGS backend with explicit Sandbox namespaces and no live entitlements; its release evidence is recorded below. The Supabase service-role key remains server-only. Verify the selected database, migration history and backups before applying migrations.
 

@@ -5,10 +5,12 @@ import {
   executeCglAdminAction,
   getCglAdminActor,
   getCglAdminSnapshot,
+  isCglSquareEnvironmentRecord,
   readCglBody,
   verifyCglOrigin,
   type CglData,
 } from "@/lib/cgl-platform";
+import { getCglSquareOperationalReadiness } from "@/lib/cgl-square";
 
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
@@ -43,7 +45,42 @@ export async function GET(request: Request) {
         },
       );
     }
-    return Response.json(snapshot, {
+    if (!("billing" in snapshot))
+      return Response.json(snapshot, {
+        headers: { "Cache-Control": "no-store" },
+      });
+    const readiness = await getCglSquareOperationalReadiness();
+    const environment = readiness.environment;
+    return Response.json({
+      ...snapshot,
+      billing: {
+        ...snapshot.billing,
+        environment,
+        livePaymentsEnabled: readiness.livePaymentsEnabled,
+        recurringEnabled: readiness.recurringEnabled,
+        memberships: (environment === "sandbox"
+          ? snapshot.billing.memberships
+          : snapshot.memberships
+        ).filter((record) => isCglSquareEnvironmentRecord(record, environment)),
+        payments: (environment === "sandbox"
+          ? snapshot.billing.payments
+          : snapshot.payments
+        ).filter((record) => isCglSquareEnvironmentRecord(record, environment)),
+        checkouts: snapshot.billing.checkouts.filter((record) =>
+          isCglSquareEnvironmentRecord(record, environment),
+        ),
+        events: snapshot.billing.events.filter((record) =>
+          isCglSquareEnvironmentRecord(record, environment),
+        ),
+        invoices: snapshot.billing.invoices.filter((record) =>
+          isCglSquareEnvironmentRecord(record, environment),
+        ),
+        seasonEntitlements: snapshot.billing.seasonEntitlements.filter((record) =>
+          isCglSquareEnvironmentRecord(record, environment),
+        ),
+        readiness,
+      },
+    }, {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {

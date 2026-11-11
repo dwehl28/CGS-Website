@@ -23,7 +23,8 @@ function harness(options={}) {
   };
   const square={
     CglSquareError:BillingError,
-    getCglSquareReadiness:()=>({ready:options.ready!==false,configured:true}),
+    getCglSquareReadiness:()=>({ready:options.ready!==false,configured:true,environment:options.environment??'sandbox',subscriptionActionsEnabled:options.subscriptionActionsEnabled===true}),
+    getCglSquareOperationalReadiness:async()=>({ready:options.ready!==false,configured:true,environment:options.environment??'sandbox',subscriptionActionsEnabled:options.subscriptionActionsEnabled===true}),
     async createCglSquareCheckout(...args){calls.checkout.push(args);return'https://sandbox.square.link/test';},
     async syncCglSquareMember(...args){calls.sync.push(args);return{status:'pending',checkouts:[{id:args[1],state:'pending'}]};},
     async receiveCglSquareWebhook(...args){calls.receipt.push(args);if(options.badSignature)throw new BillingError('Invalid signature',401);return{eventId:'event',queued:true};},
@@ -31,7 +32,7 @@ function harness(options={}) {
   };
   const mocks={
     '@/lib/cgl-platform':platform,'@/lib/cgl-square':square,
-    '@/lib/supabase-admin':{getSupabaseAdmin:()=>({async rpc(...args){calls.rpc.push(args);return options.rpcFailure?{error:{message:'Changed price'}}:{data:{id:checkoutId,member_id:memberId,amount_cents:2995,recurring:true}};}})},
+    '@/lib/supabase-admin':{getSupabaseAdmin:()=>({async rpc(...args){calls.rpc.push(args);return options.rpcFailure?{error:{message:'Changed price'}}:{data:options.intent??{id:checkoutId,member_id:memberId,amount_cents:2995,recurring:true,environment:options.environment??'sandbox'}};}})},
     'next/server':{after(fn){calls.after.push(fn);}},
   };
   return{calls,checkout:compile('app/api/cgl/checkout/route.ts',mocks),sync:compile('app/api/cgl/billing/sync/route.ts',mocks),webhook:compile('app/api/cgl/square-webhook/route.ts',mocks),recovery:compile('app/api/cgl/billing/reconcile/route.ts',mocks)};
@@ -49,6 +50,15 @@ test('checkout binds the verified account and confirmed price to one atomic prep
   assert.deepEqual(h.calls.rpc[0],['cgl_prepare_square_checkout',{p_member_id:memberId,p_plan_code:'monthly',p_season_id:null,p_request_key:checkoutId,p_accepted_amount_cents:2995}]);
   assert.equal(h.calls.checkout.length,1);
   const changed=harness({rpcFailure:true});assert.equal((await changed.checkout.POST(post('/api/cgl/checkout',purchase))).status,409);assert.equal(changed.calls.checkout.length,0);
+});
+test('production checkout uses the live one-off RPC and keeps recurring plans locked',async()=>{
+  const oneOff={planCode:'casual_registration',requestKey:checkoutId,termsAccepted:true,acceptedAmountCents:2900};
+  const live=harness({environment:'production',intent:{id:checkoutId,member_id:memberId,amount_cents:2900,recurring:false,environment:'production'}});
+  assert.equal((await live.checkout.POST(post('/api/cgl/checkout',oneOff))).status,200);
+  assert.deepEqual(live.calls.rpc[0],['cgl_prepare_square_live_checkout',{p_member_id:memberId,p_plan_code:'casual_registration',p_season_id:null,p_request_key:checkoutId,p_accepted_amount_cents:2900}]);
+  const recurring=harness({environment:'production'});
+  assert.equal((await recurring.checkout.POST(post('/api/cgl/checkout',purchase))).status,409);
+  assert.equal(recurring.calls.rpc.length,0);assert.equal(recurring.calls.checkout.length,0);
 });
 test('Sandbox checkout disabled flag, malformed JSON and actual body limits fail before preparation',async()=>{
   const off=harness({ready:false});assert.equal((await off.checkout.POST(post('/api/cgl/checkout',purchase))).status,503);assert.equal(off.calls.rpc.length,0);
@@ -71,4 +81,34 @@ test('recovery job rejects missing or incorrect secrets before processing any qu
   const saved=process.env.CRON_SECRET;process.env.CRON_SECRET='test-recovery-secret-with-at-least-32-characters';
   try{for(const token of ['', 'wrong']){const h=harness();const response=await h.recovery.GET(new Request('https://example.test/api/cgl/billing/reconcile',{headers:{authorization:'Bearer '+token}}));assert.equal(response.status,403);assert.equal(h.calls.worker.length,0);}}
   finally{if(saved===undefined)delete process.env.CRON_SECRET;else process.env.CRON_SECRET=saved;}
+});
+test('member and admin production billing views exclude Sandbox and unrelated manual records',async()=>{
+  const environmentRecord=(record,environment)=>record.environment===environment||record.metadata?.environment===environment||String(record.external_id??'').startsWith(`square:${environment}:`);
+  const sandbox={id:'sandbox',member_id:memberId,environment:'sandbox',metadata:{environment:'sandbox'}};
+  const production={id:'production',member_id:memberId,environment:'production',metadata:{environment:'production'}};
+  const manual={id:'manual'};
+  const billing={memberships:[sandbox],payments:[sandbox],checkouts:[sandbox,production],events:[sandbox,production],invoices:[sandbox,production],seasonEntitlements:[sandbox,production]};
+  const platform={
+    cglApiFailure(error){return Response.json({error:error.message},{status:error.status??500});},
+    async getCglAdminActor(){return{id:'admin',role:'super_admin'};},
+    async getCglAdminSnapshot(){return{status:'ready',memberships:[production,manual],payments:[production,manual],billing};},
+    async getCglMemberIdentity(){return{id:memberId};},
+    async getCglMemberSnapshot(){return{status:'ready',memberships:[production,manual],payments:[production,manual],billing:{memberships:[sandbox],payments:[sandbox]}};},
+    isCglSquareEnvironmentRecord:environmentRecord,
+  };
+  const square={getCglSquareOperationalReadiness:async()=>({environment:'production',livePaymentsEnabled:true,recurringEnabled:false,ready:true})};
+  const records={cgl_square_checkout_intents:[sandbox,production],cgl_square_season_entitlements:[sandbox,production]};
+  const database={getSupabaseAdmin:()=>({from(table){const filters=[];const builder={select(){return builder;},eq(key,value){filters.push([key,value]);return builder;},order(){return builder;},limit(){return builder;},then(resolve,reject){const data=(records[table]??[]).filter(row=>filters.every(([key,value])=>row[key]===value));return Promise.resolve({data,error:null}).then(resolve,reject);}};return builder;}})};
+  const mocks={'@/lib/cgl-platform':platform,'@/lib/cgl-square':square,'@/lib/supabase-admin':database};
+  const admin=compile('app/api/cgl/admin/route.ts',mocks);
+  const member=compile('app/api/cgl/member/route.ts',mocks);
+  const adminBody=await (await admin.GET(new Request('https://example.test/api/cgl/admin'))).json();
+  const memberBody=await (await member.GET(new Request('https://example.test/api/cgl/member'))).json();
+  for(const body of [adminBody,memberBody]){
+    assert.deepEqual(body.billing.memberships.map(row=>row.id),['production']);
+    assert.deepEqual(body.billing.payments.map(row=>row.id),['production']);
+    assert.deepEqual(body.billing.checkouts.map(row=>row.id),['production']);
+    assert.equal(JSON.stringify(body.billing).includes('sandbox'),false);
+    assert.equal(JSON.stringify(body.billing).includes('manual'),false);
+  }
 });

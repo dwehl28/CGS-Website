@@ -96,67 +96,71 @@ export function CglSandboxBilling({ billing, ready, busy, syncing, message, onRe
   const payments = rows(billing.payments);
   const checkouts = rows(billing.checkouts);
   const seasonEntitlements = rows(billing.seasonEntitlements);
+  const isTest = str(billing.environment, "sandbox") !== "production";
+  const prefix = isTest ? "TEST · " : "";
   return (
-    <section className={s.section} aria-labelledby="cgl-test-billing-title">
+    <section className={s.section} aria-labelledby="cgl-square-billing-title">
       <div className={s.sectionHead}>
         <div>
-          <span className={s.badge}>TEST · Square Sandbox</span>
-          <h2 id="cgl-test-billing-title" style={{ fontSize: 25, marginTop: 12 }}>Your test billing</h2>
+          <span className={s.badge}>{isTest ? "TEST · Square Sandbox" : "Square · Secure live payments"}</span>
+          <h2 id="cgl-square-billing-title" style={{ fontSize: 25, marginTop: 12 }}>{isTest ? "Your test billing" : "Your Square billing"}</h2>
         </div>
         <button type="button" className={s.smallButton} disabled={syncing || busy || !ready || row(billing.readiness).configured !== true} onClick={onRefresh}>
           <RefreshCw size={14} aria-hidden="true" />
-          {syncing ? "Checking Square…" : "Refresh Square test payments"}
+          {syncing ? "Checking Square…" : `Refresh Square ${isTest ? "test " : ""}payments`}
         </button>
       </div>
-      <div className={s.notice}>Test subscriptions and payments do not activate a real membership, competition access, gifts or rewards. They are excluded from real revenue.</div>
+      <div className={s.notice}>{isTest
+        ? "Test subscriptions and payments do not activate a real membership, competition access, gifts or rewards. They are excluded from real revenue."
+        : "Square confirms each payment before CGL updates your access. Returning from checkout alone is not proof of payment."}</div>
       {message ? <p className={s.notice} role="status" aria-live="polite">{message}</p> : null}
       {memberships.length ? (
         <div className={s.grid2}>
           {memberships.map((membership) => (
             <article className={s.panel} key={str(membership.id)}>
-              <span className={s.badge}>TEST</span>
+              <span className={s.badge}>{isTest ? "TEST" : "SQUARE"}</span>
               <h3 style={{ marginTop: 12 }}>{str(membership.plan_code).replaceAll("_", " ")}</h3>
-              <p>Test status: <strong>{str(membership.state)}</strong></p>
+              <p>{isTest ? "Test status" : "Status"}: <strong>{str(membership.state)}</strong></p>
               <dl className={s.muted}>
-                <dt>Test paid-through</dt><dd>{date(membership.paid_through)}</dd>
-                <dt>Next test payment</dt><dd>{membership.next_billing_at ? date(membership.next_billing_at) : "No confirmed recurring test date"}</dd>
+                <dt>{isTest ? "Test paid-through" : "Paid-through"}</dt><dd>{date(membership.paid_through)}</dd>
+                <dt>{isTest ? "Next test payment" : "Next payment"}</dt><dd>{membership.next_billing_at ? date(membership.next_billing_at) : isTest ? "No confirmed recurring test date" : "No recurring payment scheduled"}</dd>
               </dl>
               {membership.state === "past_due" || membership.failed_at ? (
-                <p className={s.notice}>Your test payment needs attention. Refresh the test records or contact CGS for review. This does not change real competition eligibility; a replacement-card flow is not yet available here.</p>
+                <p className={s.notice}>Your {isTest ? "test " : ""}payment needs attention. Refresh the records or contact CGS for review.{isTest ? " A replacement-card flow is not yet available, and this does not change real competition eligibility." : ""}</p>
               ) : null}
             </article>
           ))}
         </div>
-      ) : <p className={s.muted}>No Square test membership has been recorded for your account.</p>}
+      ) : <p className={s.muted}>No Square {isTest ? "test " : ""}membership has been recorded for your account.</p>}
       {checkouts.length ? (
         <div className={s.tableWrap} style={{ marginTop: 20 }}>
           <table className={s.table}>
-            <caption className={s.fine}>Your TEST checkout requests</caption>
-            <thead><tr>{["Created", "Plan", "Amount", "Test status"].map((label) => <th key={label} scope="col">{label}</th>)}</tr></thead>
+            <caption className={s.fine}>Your {isTest ? "TEST " : ""}checkout requests</caption>
+            <thead><tr>{["Created", "Plan", "Amount", isTest ? "Test status" : "Status"].map((label) => <th key={label} scope="col">{label}</th>)}</tr></thead>
             <tbody>{checkouts.map((intent) => (
-              <tr key={str(intent.id)}><td>{date(intent.created_at, true)}</td><td>{str(intent.plan_code).replaceAll("_", " ")}</td><td>{aud(intent.amount_cents)}</td><td>TEST · {str(intent.state)}</td></tr>
+              <tr key={str(intent.id)}><td>{date(intent.created_at, true)}</td><td>{str(intent.plan_code).replaceAll("_", " ")}</td><td>{aud(intent.amount_cents)}</td><td>{prefix}{str(intent.state)}</td></tr>
             ))}</tbody>
           </table>
         </div>
       ) : null}
-      <h3 style={{ marginTop: 25 }}>TEST payment history</h3>
-      <p className={s.fine}>These are test payment records, not receipts. Square Sandbox does not send receipt emails.</p>
+      <h3 style={{ marginTop: 25 }}>{isTest ? "TEST payment history" : "Square payment history"}</h3>
+      <p className={s.fine}>{isTest ? "These are test payment records, not receipts. Square Sandbox does not send receipt emails." : "Confirmed Square payments are also included in your main payment history below."}</p>
       {payments.length ? (
         <div className={s.tableWrap}>
           <table className={s.table}>
-            <thead><tr>{["Date", "Test amount", "Test status", "Reference"].map((label) => <th key={label} scope="col">{label}</th>)}</tr></thead>
+            <thead><tr>{["Date", isTest ? "Test amount" : "Amount", isTest ? "Test status" : "Status", "Reference"].map((label) => <th key={label} scope="col">{label}</th>)}</tr></thead>
             <tbody>{payments.map((payment) => (
-              <tr key={str(payment.id)}><td>{date(payment.paid_at ?? payment.created_at)}</td><td>{aud(payment.amount_cents)}</td><td>TEST · {str(payment.state)}</td><td>{str(payment.external_id ?? payment.id)}</td></tr>
+              <tr key={str(payment.id)}><td>{date(payment.paid_at ?? payment.created_at)}</td><td>{aud(payment.amount_cents)}</td><td>{prefix}{str(payment.state)}</td><td>{str(payment.external_id ?? payment.id)}</td></tr>
             ))}</tbody>
           </table>
         </div>
-      ) : <p className={s.muted}>No TEST payments recorded. Returning from Square does not confirm payment.</p>}
+      ) : <p className={s.muted}>No {isTest ? "TEST " : ""}payments recorded. Returning from Square does not confirm payment.</p>}
       {seasonEntitlements.length ? (
         <>
-          <h3 style={{ marginTop: 25 }}>TEST season purchases</h3>
-          <p className={s.fine}>These test purchases do not enter you into a real CGL season.</p>
+          <h3 style={{ marginTop: 25 }}>{isTest ? "TEST season purchases" : "Season purchases"}</h3>
+          <p className={s.fine}>{isTest ? "These test purchases do not enter you into a real CGL season." : "These purchases provide access only to the named season and do not automatically renew."}</p>
           <ul>{seasonEntitlements.map((entry) => (
-            <li key={str(entry.id ?? entry.season_id)}>TEST · {str(entry.season_name ?? entry.season_id, "Selected season")} · {str(entry.state)}</li>
+            <li key={str(entry.id ?? entry.season_id)}>{prefix}{str(entry.season_name ?? entry.season_id, "Selected season")} · {str(entry.state, "confirmed")}</li>
           ))}</ul>
         </>
       ) : null}
@@ -166,17 +170,18 @@ export function CglSandboxBilling({ billing, ready, busy, syncing, message, onRe
 
 export function CglSquareQuoteSummary({ quote }: { quote: CglSnapshot }) {
   const intervals: Record<string, string> = { annual: "year", monthly: "month", weekly: "week" };
+  const isTest = str(quote.environment ?? row(quote.readiness).environment, "sandbox") !== "production";
   return (
     <div className={s.notice}>
-      <strong>Payment summary · TEST</strong>
-      <p>Initial test charge: {aud(quote.amountCents)}</p>
+      <strong>Payment summary{isTest ? " · TEST" : ""}</strong>
+      <p>{isTest ? "Initial test charge" : "Charge today"}: {aud(quote.amountCents)}</p>
       <p>{quote.recurring === true
-        ? `Automatic test renewal: ${aud(quote.amountCents)} every ${intervals[str(quote.billingInterval)] ?? "confirmed billing period"}. Square shows the exact next test billing date before authorisation.`
-        : "One-off test payment. This purchase does not automatically renew."}</p>
-      <p>{str(quote.notice ?? quote.disclosure, "Review the amount, recurring interval and proposed membership disclosures before authorising a test payment.")}</p>
-      {row(quote.readiness).ready !== true ? <p>Square Sandbox configuration or approval is still pending. You can review this quote, but payment confirmation is unavailable.</p> : null}
+        ? `Automatic ${isTest ? "test " : ""}renewal: ${aud(quote.amountCents)} every ${intervals[str(quote.billingInterval)] ?? "confirmed billing period"}. Square shows the exact next billing date before authorisation.`
+        : `One-off ${isTest ? "test " : ""}payment. This purchase does not automatically renew.`}</p>
+      <p>{str(quote.notice ?? quote.disclosure, `Review the amount and membership disclosures before authorising this ${isTest ? "test " : ""}payment.`)}</p>
+      {row(quote.readiness).ready !== true ? <p>Square {isTest ? "Sandbox " : "production "}configuration or approval is still pending. You can review this quote, but payment confirmation is unavailable.</p> : null}
       <label style={{ display: "flex", gap: 10 }}>
-        <input required type="checkbox" name="terms" />I have reviewed the displayed test payment and draft membership disclosures.
+        <input required type="checkbox" name="terms" />I have reviewed the displayed payment and membership terms.
       </label>
     </div>
   );
@@ -314,21 +319,22 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
           signal: controller.signal,
         });
         const result = await response.json();
-        if (!response.ok) throw new Error(str(result.message ?? result.error, "Your Square test payment could not be checked. Refresh it below or contact CGS."));
+        const isTest = result.environment !== "production";
+        if (!response.ok) throw new Error(str(result.message ?? result.error, `Your Square ${isTest ? "test " : ""}payment could not be checked. Refresh it below or contact CGS.`));
         const snapshot = await load(token, controller.signal);
         if (cancelled) return;
         const intent = rows(row(snapshot?.billing).checkouts).find((item) => item.id === checkoutId);
         if (intent && ["completed", "review", "cancelled"].includes(str(intent.state))) {
           setBillingMessage(intent.state === "completed"
-            ? "Your Square test payment is confirmed. This test does not activate a real membership."
-            : "Your Square test checkout needs CGS review. No real membership has been activated.");
+            ? isTest ? "Your Square test payment is confirmed. This test does not activate a real membership." : "Your Square payment is confirmed and your account has been updated."
+            : `Your Square ${isTest ? "test " : ""}checkout needs CGS review.`);
           return;
         }
         if (returnSync.current.attempts < 6) {
-          setBillingMessage("Checking your Square test payment. Returning from checkout is not confirmation of payment.");
+          setBillingMessage(`Checking your Square ${isTest ? "test " : ""}payment. Returning from checkout is not confirmation of payment.`);
           timer = setTimeout(() => { void poll(); }, 3_000);
         } else {
-          setBillingMessage("Your Square test payment is still pending. Use Refresh Square test payments below to check again.");
+          setBillingMessage(`Your Square ${isTest ? "test " : ""}payment is still pending. Use Refresh Square payments below to check again.`);
         }
       } catch (error) {
         if (!cancelled) setBillingMessage(error instanceof Error ? error.message : "Your Square test payment could not be checked. Refresh it below.");
@@ -338,7 +344,7 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
     };
     timer = setTimeout(() => {
       setTab("Membership");
-      setBillingMessage("Checking your Square test payment. No real membership is activated by this return link.");
+      setBillingMessage("Checking your Square payment. Returning from checkout is not confirmation of payment.");
       void poll();
     }, 0);
     return () => {
@@ -360,10 +366,11 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
         body: JSON.stringify({}),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(str(result.message ?? result.error, "Square test payments could not be refreshed."));
+      const isTest = result.environment !== "production";
+      if (!response.ok) throw new Error(str(result.message ?? result.error, `Square ${isTest ? "test " : ""}payments could not be refreshed.`));
       if (accountId.current !== owner) return;
       await load(session.access_token);
-      if (accountId.current === owner) setBillingMessage(str(result.message, "Square test payment check completed. Review the current TEST records below; no real membership has been activated."));
+      if (accountId.current === owner) setBillingMessage(str(result.message, isTest ? "Square test payment check completed. Review the current TEST records below; no real membership has been activated." : "Square payment check completed. Review the confirmed records below."));
     } catch (error) {
       if (accountId.current === owner) setBillingMessage(error instanceof Error ? error.message : "Square test payments could not be refreshed.");
     } finally {
@@ -467,7 +474,7 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
       const seasonId =
         planCode === "casual_season" ? String(form.get("season") ?? "") : "";
       if (checkoutQuote && row(checkoutQuote.readiness).ready !== true) {
-        throw new Error("Square Sandbox setup or approved test disclosures are still pending. No payment has been taken.");
+        throw new Error("Square setup or the required payment disclosures are still pending. No payment has been taken.");
       }
       const scope = cglCheckoutStorageKey(session.user.id, planCode, seasonId);
       let storage: Storage | null = null;
@@ -513,7 +520,7 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
         setMessage(
           str(
             result.message,
-            "Review your payment details before continuing to Square Sandbox.",
+            `Review your payment details before continuing to Square${result.environment === "sandbox" ? " Sandbox" : ""}.`,
           ),
         );
       }
@@ -530,6 +537,7 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
   }
   const member = row(data.member);
   const billing = row(data.billing);
+  const billingIsTest = str(billing.environment, "sandbox") !== "production";
   const checkoutReadiness = row(checkoutQuote?.readiness ?? billing.readiness);
   const cancellationPolicyApproved = billing.cancellationPolicyApproved === true;
   const memberships = rows(data.memberships);
@@ -1151,7 +1159,7 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
                   >
                     Review cancellation
                   </button>
-                  {!cancellationPolicyApproved ? <p className={s.fine}>The proposed 13-week cancellation policy is awaiting approval. Contact CGS for membership help; no binding request can be submitted here yet.</p> : null}
+                  {!cancellationPolicyApproved ? <p className={s.fine}>The confirmed cancellation policy has not yet been published to this environment. Contact CGS for membership help; no request can be submitted here yet.</p> : null}
                 </div>
               )}
             </article>
@@ -1162,10 +1170,9 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
               Choose your membership
             </h2>
             <form className={s.panel} onSubmit={checkout}>
-              <div className={s.notice}>
-                Square Sandbox only. Final terms and billing setup must be
-                approved before live membership sales.
-              </div>
+              <div className={s.notice}>{billingIsTest
+                ? "Square Sandbox only. Test payments do not activate real membership access."
+                : "Secure live Square checkout. Recurring memberships remain unavailable until their renewal flow completes final verification."}</div>
               <div className={s.formGrid}>
                 <label className={s.field}>
                   Plan
@@ -1211,12 +1218,12 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
                   {busy
                     ? "Preparing…"
                     : checkoutQuote
-                      ? "Continue to Square Sandbox"
+                      ? `Continue to Square${billingIsTest ? " Sandbox" : ""}`
                       : "Review payment"}
                   <ArrowRight size={14} />
                 </button>
                 <Link className={s.textLink} href="/cgl/terms">
-                  Read draft policies
+                  Read membership terms
                 </Link>
               </div>
             </form>

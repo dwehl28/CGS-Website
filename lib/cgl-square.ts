@@ -2,13 +2,16 @@ import "server-only";
 import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
-// No production endpoint, production fallback, or configurable provider host.
-const SQUARE_API = "https://connect.squareupsandbox.com/v2";
+const SQUARE_API = {
+  sandbox: "https://connect.squareupsandbox.com/v2",
+  production: "https://connect.squareup.com/v2",
+} as const;
 const SQUARE_VERSION = "2026-09-16";
 const SANDBOX_APPLICATION_ID = "sandbox-sq0idb-coifDq2jybhW8YXqBoxAyw";
 const PLAN_CADENCES: Record<string, string> = { annual: "ANNUAL", monthly: "MONTHLY", weekly: "WEEKLY" };
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 type Data = Record<string, unknown>;
+export type CglSquareEnvironment = keyof typeof SQUARE_API;
 export class CglSquareError extends Error {
   constructor(message: string, public status = 503, public code = "square_configuration") { super(message); this.name = "CglSquareError"; }
 }
@@ -16,6 +19,7 @@ export type CglSquareCheckout = {
   id: string; member_id: string; membership_id: string; plan_code: string; amount_cents: number;
   recurring: boolean; square_plan_variation_id: string | null; payment_link_url: string | null;
   square_link_id?: string | null; square_order_id?: string | null; season_id: string | null;
+  environment?: CglSquareEnvironment;
 };
 function object(value: unknown): Data { return value && typeof value === "object" && !Array.isArray(value) ? value as Data : {}; }
 function string(value: unknown): string | null { return typeof value === "string" && value.length > 0 ? value : null; }
@@ -27,30 +31,130 @@ function canonicalTimezone(value: unknown) {
   try { return new Intl.DateTimeFormat("en-AU", { timeZone: value }).resolvedOptions().timeZone; } catch { return null; }
 }
 
+function configuredEnvironment(env: NodeJS.ProcessEnv): CglSquareEnvironment {
+  return env.CGL_SQUARE_ENVIRONMENT === "production" ? "production" : "sandbox";
+}
+
+function environmentKeys(environment: CglSquareEnvironment) {
+  if (environment === "production") return {
+    applicationId: "CGL_SQUARE_PRODUCTION_APPLICATION_ID",
+    token: "CGL_SQUARE_PRODUCTION_ACCESS_TOKEN",
+    locationId: "CGL_SQUARE_PRODUCTION_LOCATION_ID",
+    merchantId: "CGL_SQUARE_PRODUCTION_MERCHANT_ID",
+    signatureKey: "CGL_SQUARE_PRODUCTION_WEBHOOK_SIGNATURE_KEY",
+    notificationUrl: "CGL_SQUARE_PRODUCTION_WEBHOOK_URL",
+  } as const;
+  return {
+    applicationId: "CGL_SQUARE_APPLICATION_ID",
+    token: "CGL_SQUARE_ACCESS_TOKEN",
+    locationId: "CGL_SQUARE_LOCATION_ID",
+    merchantId: "CGL_SQUARE_MERCHANT_ID",
+    signatureKey: "CGL_SQUARE_WEBHOOK_SIGNATURE_KEY",
+    notificationUrl: "CGL_SQUARE_WEBHOOK_URL",
+  } as const;
+}
+
 export function getCglSquareReadiness(env: NodeJS.ProcessEnv = process.env) {
-  const apiRequired = ["CGL_SQUARE_ACCESS_TOKEN", "CGL_SQUARE_LOCATION_ID", "CGL_SQUARE_MERCHANT_ID"];
-  const missing = [...apiRequired, "CGL_SQUARE_WEBHOOK_SIGNATURE_KEY", "CGL_SQUARE_WEBHOOK_URL"].filter(key => !env[key]?.trim());
-  const applicationId = env.CGL_SQUARE_APPLICATION_ID?.trim() || SANDBOX_APPLICATION_ID;
-  const enabled = env.CGL_SQUARE_CHECKOUT_ENABLED === "true", testingEnabled = env.CGL_SQUARE_SANDBOX_TESTING_ENABLED === "true";
+  const environment = configuredEnvironment(env), keys = environmentKeys(environment);
+  const apiRequired = [keys.token, keys.locationId, keys.merchantId] as const;
+  const required = [...apiRequired, keys.signatureKey, keys.notificationUrl, keys.applicationId];
+  const missing = required.filter(key => !env[key]?.trim());
+  const applicationId = env[keys.applicationId]?.trim() || (environment === "sandbox" ? SANDBOX_APPLICATION_ID : "");
+  const enabled = env.CGL_SQUARE_CHECKOUT_ENABLED === "true";
+  const testingEnabled = env.CGL_SQUARE_SANDBOX_TESTING_ENABLED === "true";
+  const livePaymentsEnabled = env.CGL_SQUARE_LIVE_PAYMENTS_ENABLED === "true";
+  const recurringEnabled = env.CGL_SQUARE_LIVE_RECURRING_ENABLED === "true";
   const termsApproved = env.CGL_SQUARE_TERMS_APPROVED === "true";
+  const termsVersion = env.CGL_SQUARE_TERMS_VERSION?.trim() ?? "";
   let webhookUrlValid = false;
-  try { const url = new URL(env.CGL_SQUARE_WEBHOOK_URL ?? ""); webhookUrlValid = url.protocol === "https:" && !url.username && !url.password && !url.hash; } catch { /* Stay unready. */ }
-  const apiConfigured = env.CGL_SQUARE_ENVIRONMENT === "sandbox" && applicationId === SANDBOX_APPLICATION_ID && apiRequired.every(key => Boolean(env[key]?.trim()));
+  try { const url = new URL(env[keys.notificationUrl] ?? ""); webhookUrlValid = url.protocol === "https:" && !url.username && !url.password && !url.hash; } catch { /* Stay unready. */ }
+  const applicationMatches = environment === "sandbox"
+    ? applicationId === SANDBOX_APPLICATION_ID
+    : applicationId.startsWith("sq0idp-");
+  const apiConfigured = applicationMatches && apiRequired.every(key => Boolean(env[key]?.trim()));
   const configured = apiConfigured && missing.length === 0 && webhookUrlValid;
-  return { environment: "sandbox" as const, applicationId, apiConfigured, configured, enabled, testingEnabled, termsApproved, ready: configured && enabled && testingEnabled, subscriptionActionsEnabled: false, missing, webhookUrlValid };
+  const ready = environment === "sandbox"
+    ? configured && enabled && testingEnabled
+    : configured && enabled && livePaymentsEnabled && termsApproved && Boolean(termsVersion);
+  return {
+    environment,
+    applicationId,
+    apiConfigured,
+    configured,
+    enabled,
+    testingEnabled,
+    livePaymentsEnabled: environment === "production" && ready,
+    recurringEnabled: environment === "production" && ready && recurringEnabled,
+    termsApproved,
+    termsVersion,
+    ready,
+    oneOffActionsEnabled: ready,
+    subscriptionActionsEnabled: environment === "production" && ready && recurringEnabled,
+    missing,
+    webhookUrlValid,
+  };
+}
+export async function getCglSquareOperationalReadiness(
+  env: NodeJS.ProcessEnv = process.env,
+) {
+  const readiness = getCglSquareReadiness(env);
+  if (readiness.environment === "sandbox")
+    return {
+      ...readiness,
+      databaseApproved: true,
+      databaseRecurringApproved: false,
+    };
+
+  let setting: Data = {};
+  try {
+    const { data, error } = await getSupabaseAdmin()
+      .from("cgl_settings")
+      .select("value")
+      .eq("key", "square_production")
+      .maybeSingle();
+    if (!error) setting = object(object(data).value);
+  } catch {
+    // Missing or unavailable launch approval must fail closed.
+  }
+  const databaseApproved = setting.checkout_enabled === true &&
+    setting.launch_approved === true;
+  const databaseRecurringApproved = databaseApproved &&
+    setting.recurring_enabled === true;
+  return {
+    ...readiness,
+    databaseApproved,
+    databaseRecurringApproved,
+    ready: readiness.ready && databaseApproved,
+    livePaymentsEnabled: readiness.livePaymentsEnabled && databaseApproved,
+    recurringEnabled: readiness.recurringEnabled && databaseRecurringApproved,
+    oneOffActionsEnabled: readiness.oneOffActionsEnabled && databaseApproved,
+    subscriptionActionsEnabled:
+      readiness.subscriptionActionsEnabled && databaseRecurringApproved,
+  };
 }
 function getConfig(checkout = false, webhook = true) {
   const readiness = getCglSquareReadiness();
-  if (!(webhook ? readiness.configured : readiness.apiConfigured)) throw new CglSquareError("Square Sandbox is not connected. No payment has been taken.");
-  if (checkout && !readiness.ready) throw new CglSquareError("CGL Sandbox checkout requires explicit test activation. Live payments and subscription actions remain disabled.");
-  return { token: process.env.CGL_SQUARE_ACCESS_TOKEN!.trim(), locationId: process.env.CGL_SQUARE_LOCATION_ID!.trim(), merchantId: process.env.CGL_SQUARE_MERCHANT_ID!.trim(), signatureKey: process.env.CGL_SQUARE_WEBHOOK_SIGNATURE_KEY?.trim() ?? "", notificationUrl: process.env.CGL_SQUARE_WEBHOOK_URL?.trim() ?? "" };
+  const keys = environmentKeys(readiness.environment), label = readiness.environment === "sandbox" ? "Square Sandbox" : "Square production";
+  if (!(webhook ? readiness.configured : readiness.apiConfigured)) throw new CglSquareError(`${label} is not connected. No payment has been taken.`);
+  if (checkout && !readiness.ready) throw new CglSquareError(readiness.environment === "sandbox"
+    ? "CGL Sandbox checkout requires explicit test activation. Live payments remain disabled."
+    : "CGL live checkout requires verified production credentials, published terms and explicit launch activation. No payment has been taken.");
+  return {
+    environment: readiness.environment,
+    apiBase: SQUARE_API[readiness.environment],
+    token: process.env[keys.token]!.trim(),
+    locationId: process.env[keys.locationId]!.trim(),
+    merchantId: process.env[keys.merchantId]!.trim(),
+    signatureKey: process.env[keys.signatureKey]?.trim() ?? "",
+    notificationUrl: process.env[keys.notificationUrl]?.trim() ?? "",
+  };
 }
 async function squareRequest(path: string, init: Pick<RequestInit, "method" | "body"> = {}) {
   const config = getConfig(false, false);
   if (!path.startsWith("/") || path.startsWith("//") || path.includes("\\")) invalid("Invalid Square API path.");
   let response: Response;
-  try { response = await fetch(`${SQUARE_API}${path}`, { ...init, cache: "no-store", signal: AbortSignal.timeout(12_000), headers: { Authorization: `Bearer ${config.token}`, "Square-Version": SQUARE_VERSION, "Content-Type": "application/json" } }); }
-  catch { throw new CglSquareError("Square Sandbox could not be reached. The saved request can be retried safely.", 503, "square_unavailable"); }
+  try { response = await fetch(`${config.apiBase}${path}`, { ...init, cache: "no-store", signal: AbortSignal.timeout(12_000), headers: { Authorization: `Bearer ${config.token}`, "Square-Version": SQUARE_VERSION, "Content-Type": "application/json" } }); }
+  catch { throw new CglSquareError("Square could not be reached. The saved request can be retried safely.", 503, "square_unavailable"); }
   const value = object(await response.json().catch(() => null));
   if (!response.ok || !Object.keys(value).length || list(value.errors).length) {
     // Operational diagnostics contain static resource names and documented error
@@ -64,8 +168,8 @@ async function squareRequest(path: string, init: Pick<RequestInit, "method" | "b
       const code = string(object(error).code);
       return code && /^[A-Z][A-Z0-9_]{0,80}$/.test(code) ? code : "UNKNOWN";
     });
-    console.error("CGL Square Sandbox request failed", { operation, status: response.status, codes });
-    throw new CglSquareError("Square Sandbox could not verify this record. No unverified access has been granted.", 502,
+    console.error("CGL Square request failed", { environment: config.environment, operation, status: response.status, codes });
+    throw new CglSquareError("Square could not verify this record. No unverified access has been granted.", 502,
       codes.includes("IDEMPOTENCY_KEY_REUSED") ? "square_idempotency_reused" : response.status === 429 || response.status >= 500 ? "square_unavailable" : "square_provider_rejected");
   }
   return value;
@@ -75,10 +179,10 @@ export async function verifyCglSquareConnection() {
   const config = getConfig(false, false);
   const [seller, place] = await Promise.all([squareRequest(`/merchants/${encodeURIComponent(config.merchantId)}`), squareRequest(`/locations/${encodeURIComponent(config.locationId)}`)]);
   const merchant = object(seller.merchant), location = object(place.location);
-  if (merchant.id !== config.merchantId || merchant.status !== "ACTIVE" || merchant.country !== "AU" || location.id !== config.locationId || location.merchant_id !== config.merchantId || location.status !== "ACTIVE" || location.country !== "AU" || location.currency !== "AUD") invalid("The Square Sandbox seller or active Australian dollar location does not match CGL.");
+  if (merchant.id !== config.merchantId || merchant.status !== "ACTIVE" || merchant.country !== "AU" || location.id !== config.locationId || location.merchant_id !== config.merchantId || location.status !== "ACTIVE" || location.country !== "AU" || location.currency !== "AUD") invalid("The Square seller or active Australian dollar location does not match CGL.");
   const timezone = string(location.timezone);
   if (!canonicalTimezone(timezone)) invalid("The Square location has an invalid billing timezone.");
-  return { environment: "sandbox" as const, merchantId: config.merchantId, locationId: config.locationId, timezone: timezone! };
+  return { environment: config.environment, merchantId: config.merchantId, locationId: config.locationId, timezone: timezone! };
 }
 export function verifyCglSquareSignature(rawBody: string, signature: string | null, key: string, notificationUrl: string) {
   if (!signature || !key || !notificationUrl) return false;
@@ -117,19 +221,29 @@ export function buildCglSquareCheckout(checkout: CglSquareCheckout, locationId: 
   if (![checkout.id, checkout.member_id, checkout.membership_id].every(value => UUID.test(value))) invalid("Verified CGL member, membership and checkout identities are required.");
   if (!Number.isSafeInteger(checkout.amount_cents) || checkout.amount_cents < 1) invalid("A positive, verified CGL checkout amount is required.");
   if (checkout.recurring !== Boolean(PLAN_CADENCES[checkout.plan_code]) || (checkout.recurring && !checkout.square_plan_variation_id)) invalid("The CGL recurring plan is not configured.");
+  const environment = checkout.environment ?? getCglSquareReadiness().environment;
+  if (!Object.hasOwn(SQUARE_API, environment)) invalid("The CGL checkout environment is invalid.");
   // Hosted checkout selects the customer from buyer input. Its template preserves
   // our authenticated website identities; email and customer_id are not proof.
-  return { idempotency_key: `cgl-checkout-${checkout.id}`, order: { location_id: locationId, reference_id: `cgl:${checkout.id}`, metadata: { cgl_environment: "sandbox", cgl_intent_id: checkout.id, cgl_member_id: checkout.member_id, cgl_membership_id: checkout.membership_id }, line_items: [{ name: `CGL ${checkout.plan_code.replaceAll("_", " ")} — Sandbox test`, quantity: "1", base_price_money: { amount: checkout.amount_cents, currency: "AUD" } }], pricing_options: { auto_apply_taxes: false, auto_apply_discounts: false } }, checkout_options: { allow_tipping: false, redirect_url: redirectUrl, ...(checkout.recurring ? { subscription_plan_id: checkout.square_plan_variation_id } : {}) }, payment_note: `CGL checkout ${checkout.id}` };
+  const label = environment === "sandbox" ? "Sandbox test" : "Crossodog Golf League";
+  return { idempotency_key: environment === "sandbox" ? `cgl-checkout-${checkout.id}` : `cgl-live-checkout-${checkout.id}`, order: { location_id: locationId, reference_id: `cgl:${checkout.id}`, metadata: { cgl_environment: environment, cgl_intent_id: checkout.id, cgl_member_id: checkout.member_id, cgl_membership_id: checkout.membership_id }, line_items: [{ name: `CGL ${checkout.plan_code.replaceAll("_", " ")} — ${label}`, quantity: "1", base_price_money: { amount: checkout.amount_cents, currency: "AUD" } }], pricing_options: { auto_apply_taxes: false, auto_apply_discounts: false } }, checkout_options: { allow_tipping: false, redirect_url: redirectUrl, ...(checkout.recurring ? { subscription_plan_id: checkout.square_plan_variation_id } : {}) }, payment_note: `CGL checkout ${checkout.id}` };
 }
-export function isCglSquareCheckoutUrl(value: string) {
-  try { const url = new URL(value); return url.protocol === "https:" && !url.username && !url.password && !url.hash && ["square.link", "squareupsandbox.com"].some(host => url.hostname === host || url.hostname.endsWith(`.${host}`)); } catch { return false; }
+export function isCglSquareCheckoutUrl(value: string, environment: CglSquareEnvironment = getCglSquareReadiness().environment) {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.username || url.password || url.hash) return false;
+    const hosts = environment === "sandbox"
+      ? ["square.link", "squareupsandbox.com"]
+      : ["square.link", "square.site", "squareup.com"];
+    return hosts.some(host => url.hostname === host || url.hostname.endsWith(`.${host}`));
+  } catch { return false; }
 }
 function assertLocation(value: Data) { if (value.location_id !== getConfig(false, false).locationId) invalid("The Square record belongs to a different location."); }
 type CheckoutLink = { intent_id: string; order_id: string; member_id: string; membership_id: string; customer_id: string | null; subscription_id: string | null };
 function checkoutLinkFromOrder(order: Data, subscription?: Data): CheckoutLink | null {
   assertLocation(order);
   const meta = object(order.metadata), id = string(meta.cgl_intent_id);
-  if (!id || meta.cgl_environment !== "sandbox") return null;
+  if (!id || meta.cgl_environment !== getConfig(false, false).environment) return null;
   if (!UUID.test(id) || !UUID.test(String(meta.cgl_member_id)) || !UUID.test(String(meta.cgl_membership_id)) || order.reference_id !== `cgl:${id}` || !string(order.id)) invalid("The Square checkout template identity is inconsistent.");
   return { intent_id: id, order_id: String(order.id), member_id: String(meta.cgl_member_id), membership_id: String(meta.cgl_membership_id), customer_id: string(subscription?.customer_id), subscription_id: string(subscription?.id) };
 }
@@ -211,11 +325,16 @@ async function recoverCglSquareCheckout(checkout: CglSquareCheckout, redirectUrl
 }
 export async function createCglSquareCheckout(checkout: CglSquareCheckout) {
   const config = getConfig(true);
+  const environment = checkout.environment ?? config.environment;
+  if (environment !== config.environment) invalid("The saved checkout belongs to a different Square environment.");
+  if (environment === "production" && checkout.recurring && !getCglSquareReadiness().subscriptionActionsEnabled) {
+    throw new CglSquareError("Recurring Square membership checkout is not yet enabled. Choose a one-off option or contact CGS.", 409, "square_recurring_disabled");
+  }
   await verifyCglSquareConnection();
   if (checkout.payment_link_url) {
-    if (!checkout.square_link_id || !checkout.square_order_id || !isCglSquareCheckoutUrl(checkout.payment_link_url)) invalid("The stored checkout needs reconciliation before reuse.");
+    if (!checkout.square_link_id || !checkout.square_order_id || !isCglSquareCheckoutUrl(checkout.payment_link_url, environment)) invalid("The stored checkout needs reconciliation before reuse.");
     const link = object((await squareRequest(`/online-checkout/payment-links/${encodeURIComponent(checkout.square_link_id)}`)).payment_link);
-    if (link.id !== checkout.square_link_id || link.order_id !== checkout.square_order_id || !string(link.url) || !isCglSquareCheckoutUrl(String(link.url))) invalid("The saved Square checkout is unavailable.");
+    if (link.id !== checkout.square_link_id || link.order_id !== checkout.square_order_id || !string(link.url) || !isCglSquareCheckoutUrl(String(link.url), environment)) invalid("The saved Square checkout is unavailable.");
     const order = object((await squareRequest(`/orders/${encodeURIComponent(checkout.square_order_id)}`)).order), proof = checkoutLinkFromOrder(order);
     if (!proof || proof.order_id !== checkout.square_order_id || proof.intent_id !== checkout.id || proof.member_id !== checkout.member_id || proof.membership_id !== checkout.membership_id || order.state === "COMPLETED" || order.state === "CANCELED") invalid("The saved checkout is no longer payable. Reconcile its result before another.");
     requireUnpaidCheckoutOrder(order);
@@ -231,7 +350,7 @@ export async function createCglSquareCheckout(checkout: CglSquareCheckout) {
     throw error;
   }
   const link = object(response.payment_link), url = string(link.url), orderId = string(link.order_id);
-  if (!url || !isCglSquareCheckoutUrl(url) || !string(link.id) || !orderId) throw new CglSquareError("Square returned an incomplete checkout. Reconcile the saved request before another payment.", 502, "square_invalid_record");
+  if (!url || !isCglSquareCheckoutUrl(url, environment) || !string(link.id) || !orderId) throw new CglSquareError("Square returned an incomplete checkout. Reconcile the saved request before another payment.", 502, "square_invalid_record");
   const proof = checkoutLinkFromOrder(object((await squareRequest(`/orders/${encodeURIComponent(orderId)}`)).order));
   if (!proof || proof.order_id !== orderId || proof.intent_id !== checkout.id || proof.member_id !== checkout.member_id || proof.membership_id !== checkout.membership_id) invalid("Square did not preserve the CGL checkout identity.");
   const { error } = await getSupabaseAdmin().rpc("cgl_attach_square_checkout", { p_intent_id: checkout.id, p_link_id: link.id, p_order_id: orderId, p_url: url });
@@ -361,6 +480,7 @@ async function subscriptionEvents(id: string) {
   return { events, complete: false };
 }
 async function hydrateEvent(kind: string, objectId: string | null, timezone: string) {
+  const environment = getConfig(false, false).environment;
   const payments = new Map<string, NormalizedPayment>(), invoices = new Map<string, NormalizedInvoice>();
   let subscription: Data | null = null, checkoutLink: CheckoutLink | null = null, invoiceOrderId: string | null = null;
   const readPayment = async (id: string) => {
@@ -393,13 +513,27 @@ async function hydrateEvent(kind: string, objectId: string | null, timezone: str
       checkoutLink = checkoutLinkFromOrder(order);
       if (checkoutLink) { checkoutLink.customer_id = payment.customer_id; payment.intent_id = checkoutLink.intent_id; }
     }
-    subscription = await findSubscriptionForPayment(payment);
+    subscription = environment === "sandbox" ? await findSubscriptionForPayment(payment) : null;
   } else if (objectId && /^refund\.(created|updated)$/.test(kind)) {
     const refund = object((await squareRequest(`/refunds/${encodeURIComponent(objectId)}`)).refund);
     if (refund.id !== objectId || (refund.location_id != null && refund.location_id !== getConfig(false, false).locationId)) invalid("The Square refund identity does not match.");
-    if (string(refund.payment_id)) subscription = await findSubscriptionForPayment(await readPayment(String(refund.payment_id)));
-  } else if (objectId && /^subscription\.(created|updated)$/.test(kind)) subscription = await fetchSubscription(objectId);
-  else if (objectId && /^invoice\./.test(kind)) { const invoice = await readInvoice(objectId); invoiceOrderId = invoice.order_id; if (invoice.subscription_id) subscription = await fetchSubscription(invoice.subscription_id); }
+    if (string(refund.payment_id)) {
+      const payment = await readPayment(String(refund.payment_id));
+      if (payment.order_id) {
+        const order = object((await squareRequest(`/orders/${encodeURIComponent(payment.order_id)}`)).order);
+        if (order.id !== payment.order_id) invalid("The Square refund order identity does not match.");
+        checkoutLink = checkoutLinkFromOrder(order);
+        if (checkoutLink) { checkoutLink.customer_id = payment.customer_id; payment.intent_id = checkoutLink.intent_id; }
+      }
+      subscription = environment === "sandbox" ? await findSubscriptionForPayment(payment) : null;
+    }
+  } else if (objectId && /^subscription\.(created|updated)$/.test(kind)) {
+    if (environment === "production" && !getCglSquareReadiness().subscriptionActionsEnabled) throw new CglSquareError("Production subscription processing is not enabled.", 409, "square_recurring_disabled");
+    subscription = await fetchSubscription(objectId);
+  } else if (objectId && /^invoice\./.test(kind)) {
+    if (environment === "production" && !getCglSquareReadiness().subscriptionActionsEnabled) throw new CglSquareError("Production subscription processing is not enabled.", 409, "square_recurring_disabled");
+    const invoice = await readInvoice(objectId); invoiceOrderId = invoice.order_id; if (invoice.subscription_id) subscription = await fetchSubscription(invoice.subscription_id);
+  }
   let normalizedSubscription: Data | null = null;
   if (subscription) {
     if (canonicalTimezone(subscription.timezone) !== canonicalTimezone(timezone)) invalid("The Square subscription timezone differs from its verified location.");
@@ -419,7 +553,7 @@ async function hydrateEvent(kind: string, objectId: string | null, timezone: str
     normalizedSubscription = { id: string(subscription.id), customer_id: string(subscription.customer_id), plan_variation_id: string(subscription.plan_variation_id), state: string(subscription.status), start_date: string(subscription.start_date), charged_through_date: string(subscription.charged_through_date), paid_until_date: string(subscription.paid_until_date), canceled_date: string(subscription.canceled_date), timezone: string(subscription.timezone), version: integer(subscription.version), actions: list(subscription.actions).map(action => ({ type: string(object(action).type), effective_date: string(object(action).effective_date) })), template_order_ids: templateIds(subscription), intent_id: checkoutLink?.intent_id ?? null, ...coverage };
   }
   const config = getConfig(false, false);
-  return { environment: "sandbox", merchant_id: config.merchantId, location_id: config.locationId, payments: [...payments.values()], subscription: normalizedSubscription, invoices: [...invoices.values()], checkout_link: checkoutLink, invoice_failed: /^invoice\.(scheduled_charge_failed|payment_failed)$/.test(kind), invoice_order_id: invoiceOrderId };
+  return { environment: config.environment, merchant_id: config.merchantId, location_id: config.locationId, payments: [...payments.values()], subscription: normalizedSubscription, invoices: [...invoices.values()], checkout_link: checkoutLink, invoice_failed: /^invoice\.(scheduled_charge_failed|payment_failed)$/.test(kind), invoice_order_id: invoiceOrderId };
 }
 async function deadline<T>(promise: PromiseLike<T>, milliseconds: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -429,12 +563,13 @@ async function deadline<T>(promise: PromiseLike<T>, milliseconds: number): Promi
 export async function receiveCglSquareWebhook(rawBody: string, signature: string | null, environmentHeader: string | null) {
   const config = getConfig();
   if (!verifyCglSquareSignature(rawBody, signature, config.signatureKey, config.notificationUrl)) throw new CglSquareError("Invalid Square webhook signature.", 401, "square_invalid_signature");
-  if (environmentHeader && environmentHeader.toLowerCase() !== "sandbox") throw new CglSquareError("Only Square Sandbox notifications are accepted.", 400, "square_wrong_environment");
+  if (environmentHeader && environmentHeader.toLowerCase() !== config.environment) throw new CglSquareError(`Only Square ${config.environment} notifications are accepted.`, 400, "square_wrong_environment");
   let parsed: unknown;
   try { parsed = JSON.parse(rawBody); } catch { throw new CglSquareError("Invalid Square notification.", 400, "square_invalid_event"); }
   const event = object(parsed), data = object(event.data);
   if (event.merchant_id !== config.merchantId || !string(event.event_id) || String(event.event_id).length > 200 || !string(event.type) || !string(event.created_at) || !Number.isFinite(Date.parse(String(event.created_at)))) invalid("The Square merchant or event identity does not match.");
-  const { data: result, error } = await deadline(getSupabaseAdmin().rpc("cgl_enqueue_square_event", { p_event_id: event.event_id, p_event_type: event.type, p_occurred_at: event.created_at, p_body_hash: createHash("sha256").update(rawBody).digest("hex"), p_event_data: { environment: "sandbox", merchant_id: config.merchantId, object_id: string(data.id), object_type: string(data.type) } }), 6000);
+  const enqueueRpc = config.environment === "sandbox" ? "cgl_enqueue_square_event" : "cgl_enqueue_square_live_event";
+  const { data: result, error } = await deadline(getSupabaseAdmin().rpc(enqueueRpc, { p_event_id: event.event_id, p_event_type: event.type, p_occurred_at: event.created_at, p_body_hash: createHash("sha256").update(rawBody).digest("hex"), p_event_data: { environment: config.environment, merchant_id: config.merchantId, object_id: string(data.id), object_type: string(data.type) } }), 6000);
   if (error || !result) throw new CglSquareError("The Square event could not be saved. Square will retry safely.", 503, "square_queue_unavailable");
   return { ...object(result), event_id: String(event.event_id), eventId: String(event.event_id) };
 }
@@ -448,15 +583,20 @@ export async function processQueuedCglSquareEvents({ eventId, limit = 1 }: { eve
   // Lease only the event we are about to hydrate. Other queued events must not
   // lose their lease while this event's provider history is being retrieved.
   for (let attempt = 0; attempt < maximum && Date.now() - startedAt < 40_000; attempt += 1) {
-    const { data: jobs, error } = await getSupabaseAdmin().rpc("cgl_claim_square_events", { p_event_id: eventId ?? null, p_limit: 1 });
+    const claimRpc = connection.environment === "sandbox" ? "cgl_claim_square_events" : "cgl_claim_square_live_events";
+    const claimArgs = connection.environment === "sandbox"
+      ? { p_event_id: eventId ?? null, p_limit: 1 }
+      : { p_event_id: eventId ?? null, p_limit: 1, p_environment: connection.environment };
+    const { data: jobs, error } = await getSupabaseAdmin().rpc(claimRpc, claimArgs);
     if (error) throw new CglSquareError("The Square reconciliation queue is unavailable.", 503, "square_queue_unavailable");
     const item = list(jobs)[0];
     if (!item) break;
     const job = object(item), identity = object(job.event_data);
     try {
-      if (identity.environment !== "sandbox" || identity.merchant_id !== connection.merchantId || !string(job.lease_token)) invalid("The queued Square event identity does not match.");
+      if (identity.environment !== connection.environment || identity.merchant_id !== connection.merchantId || !string(job.lease_token)) invalid("The queued Square event identity does not match.");
       const normalized = await hydrateEvent(String(job.event_type), string(identity.object_id), connection.timezone);
-      const { data: result, error: reconcileError } = await getSupabaseAdmin().rpc("cgl_reconcile_square_event", { p_event_id: job.event_id, p_event_type: job.event_type, p_occurred_at: job.occurred_at, p_body_hash: job.body_hash, p_normalized: normalized, p_lease_token: job.lease_token });
+      const reconcileRpc = connection.environment === "sandbox" ? "cgl_reconcile_square_event" : "cgl_reconcile_square_live_event";
+      const { data: result, error: reconcileError } = await getSupabaseAdmin().rpc(reconcileRpc, { p_event_id: job.event_id, p_event_type: job.event_type, p_occurred_at: job.occurred_at, p_body_hash: job.body_hash, p_normalized: normalized, p_lease_token: job.lease_token });
       if (reconcileError) throw new CglSquareError("Square notification requires reconciliation retry.", 503, "square_reconciliation_failed");
       results.push({ event_id: job.event_id, ...object(result) });
     } catch (error) {
@@ -477,7 +617,7 @@ export async function processCglSquareWebhook(rawBody: string, signature: string
 export async function syncCglSquareMember(memberId: string, checkoutId?: string) {
   if (!UUID.test(memberId) || (checkoutId && !UUID.test(checkoutId))) invalid("A verified CGL member and checkout are required.");
   const connection = await verifyCglSquareConnection(), db = getSupabaseAdmin();
-  let query = db.from("cgl_square_checkout_intents").select("id,member_id,membership_id,square_order_id,recurring,state").eq("member_id", memberId).order("created_at", { ascending: false }).limit(5);
+  let query = db.from("cgl_square_checkout_intents").select("id,member_id,membership_id,square_order_id,recurring,state,environment").eq("member_id", memberId).eq("environment", connection.environment).order("created_at", { ascending: false }).limit(5);
   if (checkoutId) query = query.eq("id", checkoutId);
   const { data: intents, error } = await query;
   if (error) throw new CglSquareError("Your CGL billing history could not be checked.");
@@ -491,6 +631,10 @@ export async function syncCglSquareMember(memberId: string, checkoutId?: string)
       if (!paymentId) { checkouts.push({ id: item.id, state: "pending" }); continue; }
       checkouts.push({ id: item.id, state: await enqueueMemberSync("payment.updated", paymentId, connection.merchantId) }); continue;
     }
+    if (connection.environment === "production" && !getCglSquareReadiness().subscriptionActionsEnabled) {
+      checkouts.push({ id: item.id, state: "review" });
+      continue;
+    }
     let found: Data | null = null;
     for (const candidate of await searchSubscriptions()) {
       if (!templateIds(candidate).includes(item.square_order_id)) continue;
@@ -502,11 +646,20 @@ export async function syncCglSquareMember(memberId: string, checkoutId?: string)
     if (!found) { checkouts.push({ id: item.id, state: "pending" }); continue; }
     checkouts.push({ id: item.id, state: await enqueueMemberSync("subscription.updated", String(found.id), connection.merchantId) });
   }
-  return { environment: "sandbox" as const, status: checkouts.some(item => item.state === "review") ? "review" : "checked", message: "Square Sandbox billing was checked against your saved CGL checkouts. Test payments do not grant live competition access.", checkouts };
+  return {
+    environment: connection.environment,
+    status: checkouts.some(item => item.state === "review") ? "review" : "checked",
+    message: connection.environment === "sandbox"
+      ? "Square Sandbox billing was checked against your saved CGL checkouts. Test payments do not grant live competition access."
+      : "Square billing was checked against your saved CGL checkouts. Completed payments are reflected in your membership history.",
+    checkouts,
+  };
 }
 async function enqueueMemberSync(kind: string, objectId: string, merchantId: string) {
   const eventId = `cgl-sync-${randomUUID()}`, occurred = new Date().toISOString();
-  const { error } = await getSupabaseAdmin().rpc("cgl_enqueue_square_event", { p_event_id: eventId, p_event_type: kind, p_occurred_at: occurred, p_body_hash: createHash("sha256").update(`${eventId}:${kind}:${objectId}`).digest("hex"), p_event_data: { environment: "sandbox", merchant_id: merchantId, object_id: objectId, object_type: kind.split(".")[0] } });
+  const environment = getCglSquareReadiness().environment;
+  const enqueueRpc = environment === "sandbox" ? "cgl_enqueue_square_event" : "cgl_enqueue_square_live_event";
+  const { error } = await getSupabaseAdmin().rpc(enqueueRpc, { p_event_id: eventId, p_event_type: kind, p_occurred_at: occurred, p_body_hash: createHash("sha256").update(`${eventId}:${kind}:${objectId}`).digest("hex"), p_event_data: { environment, merchant_id: merchantId, object_id: objectId, object_type: kind.split(".")[0] } });
   if (error) throw new CglSquareError("Your Square billing check could not be queued.");
   const result = await processQueuedCglSquareEvents({ eventId, limit: 1 });
   return String(result.results[0]?.state ?? "pending");
