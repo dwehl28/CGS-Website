@@ -8,6 +8,8 @@ The CGL billing code supports two deliberately separate Square environments:
 - Production accepts only the one-off `casual_registration` ($29) and `casual_season` ($100) products.
 - Annual ($249), monthly ($29.95) and weekly ($8.95) production checkout remains blocked until Square recurring subscriptions, invoices, renewals and cancellation timing are verified.
 - Production credentials use dedicated environment variables. Sandbox credentials cannot satisfy production readiness.
+- The production application, merchant, AUD location, access token and webhook signature are stored as production-only Vercel settings.
+- The production webhook is enabled for `payment.created`, `payment.updated`, `refund.created` and `refund.updated` at the exact production notification URL.
 - Database production checkout and the Vercel live-payment gate both start disabled.
 - A completed, verified Square payment is required before access is granted. A browser return, open order, webhook note or customer email is not proof of payment.
 
@@ -17,13 +19,13 @@ CGS confirmed the pricing and cancellation model on 11 November 2026. Monthly an
 
 Complete these in order:
 
-1. Sign in to the Square Developer Console using the CGS production seller account.
-2. Confirm the production merchant is active in Australia and the selected location uses AUD and the intended Brisbane timezone.
-3. Record the dedicated production application, access token, merchant and location IDs in Vercel. Never reuse Sandbox values.
-4. Create a production webhook subscription for `https://crossodoggolf.com/api/cgl/square-webhook`, record its production signature key and enable the payment/order/refund events used by CGL.
+1. Sign in to the Square Developer Console using the CGS production seller account. **Completed 12 November 2026.**
+2. Confirm the production merchant is active in Australia and the selected location uses AUD. Before recurring billing is considered, change the Square location timezone from its current `Australia/Sydney` setting to the intended `Australia/Brisbane` setting and re-verify cancellation boundaries.
+3. Record the dedicated production application, access token, merchant and location IDs in Vercel. Never reuse Sandbox values. **Completed 12 November 2026.**
+4. Create a production webhook subscription for `https://crossodoggolf.com/api/cgl/square-webhook?environment=production`, record its production signature key and enable `payment.created`, `payment.updated`, `refund.created` and `refund.updated`. **Completed 12 November 2026.**
 5. Publish and approve a versioned customer terms document. Set the same version in the CGL database and `CGL_SQUARE_TERMS_VERSION`.
 6. Confirm the first CGL season dates before offering the $100 casual season entry.
-7. Verify the production merchant/location connection read-only.
+7. Verify the production merchant/location connection read-only. **Completed 12 November 2026; merchant and AUD location identities matched.**
 8. Enable one-off production checkout in a controlled window. Keep recurring checkout disabled.
 9. With explicit approval immediately before the transaction, make one low-value real one-off purchase using a CGS-owned test customer account.
 10. Confirm the payment, webhook, membership activation, receipt reference, admin history and refund/review behaviour end to end.
@@ -38,7 +40,7 @@ CGL_SQUARE_PRODUCTION_ACCESS_TOKEN=
 CGL_SQUARE_PRODUCTION_LOCATION_ID=
 CGL_SQUARE_PRODUCTION_MERCHANT_ID=
 CGL_SQUARE_PRODUCTION_WEBHOOK_SIGNATURE_KEY=
-CGL_SQUARE_PRODUCTION_WEBHOOK_URL=https://crossodoggolf.com/api/cgl/square-webhook
+CGL_SQUARE_PRODUCTION_WEBHOOK_URL=https://crossodoggolf.com/api/cgl/square-webhook?environment=production
 CGL_SQUARE_CHECKOUT_ENABLED=false
 CGL_SQUARE_LIVE_PAYMENTS_ENABLED=false
 CGL_SQUARE_LIVE_RECURRING_ENABLED=false
@@ -54,7 +56,7 @@ Set `CGL_SQUARE_LIVE_PAYMENTS_ENABLED=false` and redeploy. Existing payment reco
 
 ## Remaining owner input
 
-- Square production account sign-in.
+- Approval to change the Square production location timezone from `Australia/Sydney` to `Australia/Brisbane`.
 - The first 2027 season start and end dates.
 - Final version identifier for the published customer terms.
 - Explicit confirmation immediately before any real charge or refund.
