@@ -290,7 +290,6 @@ export function isConfiguredCglLegacyAdmin() {
   const secret = process.env.CGS_ADMIN_SECRET?.trim();
   return Boolean(
     secret &&
-      secret.length >= 32 &&
       !["cgs-admin-session-admin", "admin"].includes(secret),
   );
 }
