@@ -97,3 +97,18 @@ test("the scheduled sync endpoint fails closed around a dedicated long secret", 
   assert.match(route, /status: 403/);
   assert.match(route, /Cache-Control": "no-store/);
 });
+
+test("the SGT admin form reads credentials directly from its inputs", () => {
+  const component = fs.readFileSync(
+    path.resolve(
+      __dirname,
+      "..",
+      "components/cgl/CglAdminCentre.tsx",
+    ),
+    "utf8",
+  );
+  assert.match(component, /ref=\{sgtUsernameRef\}/);
+  assert.match(component, /ref=\{sgtPasswordRef\}/);
+  assert.match(component, /username: sgtUsernameRef\.current\?\.value/);
+  assert.match(component, /password: sgtPasswordRef\.current\?\.value/);
+});

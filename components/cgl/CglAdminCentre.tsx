@@ -8,7 +8,13 @@ import {
   RefreshCw,
   ShieldCheck,
 } from "lucide-react";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import ClubhouseAdminLogin from "@/components/ClubhouseAdminLogin";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { financialScenario, CGL_DEFAULT_PLANS } from "@/lib/cgl-engine";
@@ -380,6 +386,8 @@ function SgtLiveSync({
   const enabled = connection.sync_enabled === true;
   const canConfigure = data.role !== "results_admin";
   const [formError, setFormError] = useState("");
+  const sgtUsernameRef = useRef<HTMLInputElement>(null);
+  const sgtPasswordRef = useRef<HTMLInputElement>(null);
 
   async function connect(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -387,8 +395,8 @@ function SgtLiveSync({
     const form = event.currentTarget;
     const values = new FormData(form);
     const completed = await send("connect_sgt", {
-      username: values.get("username"),
-      password: values.get("password"),
+      username: sgtUsernameRef.current?.value ?? "",
+      password: sgtPasswordRef.current?.value ?? "",
       reason: values.get("reason"),
     });
     if (completed) form.reset();
@@ -435,11 +443,17 @@ function SgtLiveSync({
           <div className={s.formGrid}>
             <label className={s.field}>
               SGT administrator username
-              <input name="username" required autoComplete="username" />
+              <input
+                ref={sgtUsernameRef}
+                name="username"
+                required
+                autoComplete="username"
+              />
             </label>
             <label className={s.field}>
               SGT administrator password
               <input
+                ref={sgtPasswordRef}
                 name="password"
                 type="password"
                 required
