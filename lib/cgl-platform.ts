@@ -14,6 +14,7 @@ import {
   sanitizeSgtPublic,
   setCglSgtSyncEnabled,
 } from "@/lib/cgl-sgt";
+import { verifyCglSquareConnection } from "@/lib/cgl-square";
 import {
   CGL_DEFAULT_POINTS_TABLE,
   CGL_RULES_VERSION,
@@ -2034,6 +2035,14 @@ export async function executeCglAdminAction(actor: CglActor, body: CglData) {
       actor: actor.id,
       reason,
     });
+  }
+  if (action === "verify_square_connection") {
+    permission(actor, "manage_billing");
+    const connection = await verifyCglSquareConnection();
+    return {
+      ...connection,
+      message: `Square ${connection.environment} connection verified for an active AUD location in ${connection.timezone}. No payment was created.`,
+    };
   }
   if (action === "save_settings") {
     permission(actor, "manage_settings");

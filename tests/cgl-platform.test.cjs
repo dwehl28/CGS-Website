@@ -31,7 +31,7 @@ function compileModule(relative, overrides = {}) {
 const engine = compileModule("lib/cgl-engine.ts");
 
 function platformHarness(tables = {}, options = {}) {
-  const calls = { rpc: [], auth: [], reads: [], sgt: [] };
+  const calls = { rpc: [], auth: [], reads: [], sgt: [], square: [] };
   class TestSgtError extends Error {
     constructor(message, status = 503, code = "sgt_unavailable") {
       super(message);
@@ -119,6 +119,17 @@ function platformHarness(tables = {}, options = {}) {
       setCglSgtSyncEnabled: async (input) => {
         calls.sgt.push(["enabled", input]);
         return { enabled: input.enabled };
+      },
+    },
+    "@/lib/cgl-square": {
+      verifyCglSquareConnection: async () => {
+        calls.square.push(["verify"]);
+        return {
+          environment: "production",
+          merchantId: "merchant",
+          locationId: "location",
+          timezone: "Australia/Brisbane",
+        };
       },
     },
     "@/lib/admin-auth": {
@@ -422,6 +433,33 @@ test("SGT controls preserve role boundaries and pass audited server-only actions
       reason: "Connect the official CGSBunker club account",
     },
   ]);
+});
+
+test("Square connection verification is read-only and restricted to billing administrators", async () => {
+  const owner = platformHarness();
+  const result = await owner.platform.executeCglAdminAction(
+    { id: MEMBER, role: "super_admin" },
+    {
+      action: "verify_square_connection",
+      reason: "Verify the production Square connection without creating a payment",
+    },
+  );
+  assert.deepEqual(owner.calls.square, [["verify"]]);
+  assert.match(result.message, /Australia\/Brisbane/);
+  assert.match(result.message, /No payment was created/);
+
+  const restricted = platformHarness();
+  await assert.rejects(
+    restricted.platform.executeCglAdminAction(
+      { id: MEMBER, role: "results_admin" },
+      {
+        action: "verify_square_connection",
+        reason: "Attempt restricted production Square verification",
+      },
+    ),
+    { status: 403 },
+  );
+  assert.equal(restricted.calls.square.length, 0);
 });
 
 test("CGL mutations reject cross-origin requests and oversized or invalid JSON", async () => {

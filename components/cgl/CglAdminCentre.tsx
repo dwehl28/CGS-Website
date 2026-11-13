@@ -738,8 +738,24 @@ function Finance({
             ? "Test payments are excluded from real revenue, competition entry and gifts."
             : "Confirmed production payments are included in live revenue and eligible access."}
           {" "}Failed or unmatched notifications remain visible for reconciliation.
-          {!billingIsTest && testBilling.recurringEnabled !== true ? " Recurring memberships remain disabled pending provider verification." : ""}
+          {!billingIsTest && testBilling.recurringEnabled !== true ? " Recurring memberships remain intentionally disabled for the staged launch." : ""}
         </p>
+        <div className={s.actions}>
+          <button
+            type="button"
+            className={s.secondary}
+            disabled={busy}
+            onClick={() =>
+              void send("verify_square_connection", {
+                reason:
+                  "Verify the configured Square seller and active AUD location without creating a payment",
+              })
+            }
+          >
+            <ShieldCheck size={13} />
+            Verify Square connection
+          </button>
+        </div>
         <h4>{billingIsTest ? "Test memberships" : "Square memberships"}</h4>
         <RecordList items={rows(testBilling.memberships)} columns={["member_id", "plan_code", "state", "paid_through", "next_billing_at"]} />
         <h4>{billingIsTest ? "Test payment history" : "Square payment history"}</h4>
@@ -812,9 +828,10 @@ export default function CglAdminCentre() {
         throw new Error(
           str(result.error ?? result.message, "The change could not be saved."),
         );
+      const actionResult = row(result.result);
       setMessage(
         str(
-          result.message,
+          result.message ?? actionResult.message,
           "Saved. The change has been recorded in the CGL audit log.",
         ),
       );
