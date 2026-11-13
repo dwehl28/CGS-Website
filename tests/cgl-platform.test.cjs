@@ -31,7 +31,14 @@ function compileModule(relative, overrides = {}) {
 const engine = compileModule("lib/cgl-engine.ts");
 
 function platformHarness(tables = {}, options = {}) {
-  const calls = { rpc: [], auth: [], reads: [] };
+  const calls = { rpc: [], auth: [], reads: [], sgt: [] };
+  class TestSgtError extends Error {
+    constructor(message, status = 503, code = "sgt_unavailable") {
+      super(message);
+      this.status = status;
+      this.code = code;
+    }
+  }
   const database = {
     from(table) {
       const filters = [];
@@ -98,6 +105,22 @@ function platformHarness(tables = {}, options = {}) {
     "server-only": {},
     "@/lib/cgl-engine": engine,
     "@/lib/supabase-admin": { getSupabaseAdmin: () => database },
+    "@/lib/cgl-sgt": {
+      CglSgtError: TestSgtError,
+      sanitizeSgtPublic: (value) => value,
+      connectCglSgt: async (input) => {
+        calls.sgt.push(["connect", input]);
+        return { connected: true };
+      },
+      runCglSgtSync: async (input) => {
+        calls.sgt.push(["sync", input]);
+        return { status: "completed" };
+      },
+      setCglSgtSyncEnabled: async (input) => {
+        calls.sgt.push(["enabled", input]);
+        return { enabled: input.enabled };
+      },
+    },
     "@/lib/admin-auth": {
       isAdminAuthenticated: async () => options.cookieAdmin === true,
       isValidAdminAppAccessToken: (token) => token === "legacy-token",
@@ -355,6 +378,47 @@ test("results administrators cannot change billing, settings, members or credits
     );
   }
   assert.equal(calls.rpc.length, 0);
+});
+
+test("SGT controls preserve role boundaries and pass audited server-only actions", async () => {
+  const results = platformHarness();
+  await results.platform.executeCglAdminAction(
+    { id: MEMBER, role: "results_admin" },
+    { action: "sync_sgt", reason: "Refresh official club data for review" },
+  );
+  assert.equal(results.calls.sgt[0][0], "sync");
+  await assert.rejects(
+    results.platform.executeCglAdminAction(
+      { id: MEMBER, role: "results_admin" },
+      {
+        action: "connect_sgt",
+        username: "club-admin",
+        password: "private-password",
+        reason: "Attempt a restricted SGT connection",
+      },
+    ),
+    { status: 403 },
+  );
+
+  const owner = platformHarness();
+  await owner.platform.executeCglAdminAction(
+    { id: MEMBER, role: "super_admin" },
+    {
+      action: "connect_sgt",
+      username: "club-admin",
+      password: "private-password",
+      reason: "Connect the official CGSBunker club account",
+    },
+  );
+  assert.deepEqual(owner.calls.sgt[0], [
+    "connect",
+    {
+      username: "club-admin",
+      password: "private-password",
+      actor: MEMBER,
+      reason: "Connect the official CGSBunker club account",
+    },
+  ]);
 });
 
 test("CGL mutations reject cross-origin requests and oversized or invalid JSON", async () => {

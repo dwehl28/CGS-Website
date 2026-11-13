@@ -7,7 +7,7 @@ The implementation adds a CGS-branded public clubhouse, member portal and protec
 - Authentic supplied CGS bulldog asset, blue/yellow/navy presentation, responsive navigation, public standings, player histories, honours and performance highlights.
 - A/B divisions, explicit future C Grade setting, accepted SGT handicaps, qualification progress and audited division overrides. New rules are separate from the earlier trial.
 - Four two-nine-hole scoring formats, versioned regular 500-point placement table, division points, configurable countback, manual tie review, best eight of ten and annual calculations gated by approval.
-- Season creation, thirteen-fixture generation, individual dates and deadline extensions, block publication, verified manual SGT import, result revisions, review, calculation and publication.
+- Season creation, thirteen-fixture generation, individual dates and deadline extensions, block publication, official read-only SGT Club API sync, reviewed result revisions, calculation and publication.
 - Configured full and casual plan records, verified member ownership, server-side access checks, cancellation quotes/requests and failed-payment grace rules.
 - Square Sandbox hosted checkout adapter, current-price quotes, explicit amount confirmation, signature verification, provider re-reading, payment reconciliation and idempotent entitlements. Returning from checkout does not activate membership.
 - Transactional credit awards and redemptions, earliest-expiry spending, immutable history, eighteen-month defaults, stock management, compensating reversals, gift eligibility and fulfilment.

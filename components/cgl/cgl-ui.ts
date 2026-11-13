@@ -70,33 +70,42 @@ export function availableWeek(week: CglRow): boolean {
     Date.parse(week.closes_at) > now
   );
 }
-export function useCglPublic(enabled = true) {
+export function useCglPublic(enabled = true, refreshIntervalMs = 0) {
   const [data, setData] = useState<CglSnapshot>({ status: "loading" });
   useEffect(() => {
     if (!enabled) return;
     const controller = new AbortController();
-    fetch("/api/cgl/public", { signal: controller.signal, cache: "no-store" })
-      .then(async (response) => {
-        const value = await response.json();
-        setData(
-          response.ok || value.status === "setup_required"
-            ? value
-            : {
-                status: "error",
-                message:
-                  "League information could not be loaded. Please try again.",
-              },
-        );
-      })
-      .catch((error) => {
-        if (error.name !== "AbortError")
-          setData({
-            status: "error",
-            message:
-              "League information could not be loaded. Please try again.",
-          });
-      });
-    return () => controller.abort();
-  }, [enabled]);
+    const load = () =>
+      fetch("/api/cgl/public", { signal: controller.signal, cache: "no-store" })
+        .then(async (response) => {
+          const value = await response.json();
+          setData(
+            response.ok || value.status === "setup_required"
+              ? value
+              : {
+                  status: "error",
+                  message:
+                    "League information could not be loaded. Please try again.",
+                },
+          );
+        })
+        .catch((error) => {
+          if (error.name !== "AbortError")
+            setData({
+              status: "error",
+              message:
+                "League information could not be loaded. Please try again.",
+            });
+        });
+    void load();
+    const interval =
+      refreshIntervalMs > 0
+        ? window.setInterval(load, Math.max(15_000, refreshIntervalMs))
+        : null;
+    return () => {
+      controller.abort();
+      if (interval !== null) window.clearInterval(interval);
+    };
+  }, [enabled, refreshIntervalMs]);
   return data;
 }

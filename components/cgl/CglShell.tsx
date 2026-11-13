@@ -10,6 +10,7 @@ import styles from "./CglShell.module.css";
 
 const links = [
   { href: "/cgl", label: "The clubhouse" },
+  { href: "/cgl/live", label: "Live SGT" },
   { href: "/cgl/competition", label: "Competition" },
   { href: "/cgl/leaderboard", label: "Leaderboards" },
   { href: "/cgl/calendar", label: "Seasons" },
@@ -140,10 +141,13 @@ export default function CglShell({ children }: { children: ReactNode }) {
           <Link href="/cgl/trial">
             SGT trial <ArrowUpRight size={12} />
           </Link>
+          <Link href="/cgl/live">
+            Live SGT <ArrowUpRight size={12} />
+          </Link>
         </div>
         <p className={styles.footerNote}>
           A Crossodog Golf Society league. 2027 season details to be confirmed.
-          Trial results remain separate.
+          Official SGT club data is read-only. Trial results remain separate.
         </p>
       </footer>
     </div>

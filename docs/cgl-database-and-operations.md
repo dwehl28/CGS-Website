@@ -4,7 +4,7 @@
 
 The existing site runs Next.js 16.3.8, React 19, TypeScript, Supabase Auth/Postgres and Vercel. CGS already has a shared player account system and Clubhouse Admin. Par 3, Ambrose and Top Dog use their existing independent tables and routes. Existing event payments use Stripe; the CGL billing adapter uses Square Sandbox alongside them. No existing payment integration was replaced.
 
-The previous CGL trial consists of official SGT embeds, public SGT handles from trusted Auth app metadata and a separate fictional presentation preview. There is no documented SGT API credential/feed in this repository. This build preserves the trial and uses an explicitly verified manual import workflow for the new 2027 rules. It does not scrape an iframe or claim that embed data has been synchronised.
+The previous CGL trial consists of official SGT embeds, public SGT handles from trusted Auth app metadata and a separate fictional presentation preview. The official SGT Club Admin API is now integrated for `CGSBunker` as a read-only source. Its rotating key is encrypted in Supabase Vault, the administrator password is never stored, and a protected 30-minute sync caches tours, tournaments, registrations, scorecards, standings and statistics. The trial remains separate and CGL award publication still uses the existing reviewed result workflow.
 
 Existing Clubhouse Admin previously accepted the literal `admin` / `admin` credentials and a fallback session secret. CGL refuses that legacy fallback. Configure all three `CGS_ADMIN_USERNAME`, `CGS_ADMIN_PASSWORD` and `CGS_ADMIN_SECRET` for the shared login before using it for CGL. Alternatively, use a verified Supabase Auth user whose server-managed `app_metadata.cgl_role` is `super_admin`, `league_admin` or `results_admin`. The profile table's editable `role` field and Auth `user_metadata` are never CGL authority.
 
@@ -51,6 +51,7 @@ All routes return `Cache-Control: no-store`. An unavailable schema/configuration
 | `POST /api/cgl/admin`                | Same, permission checked per action                  | League management commands below                                                                                          |
 | `GET /api/cgl/admin?export=payments` | League/super administrator                           | CSV export; also supports `credit_transactions`, `orders`, `gifts`, `prizes`, `audit_events`                              |
 | `POST /api/cgl/jobs`                 | `Authorization: Bearer <CGL_JOB_SECRET>`             | Credit expiry, physical-prize expiry and Square cancellation review                                                       |
+| `POST /api/cgl/sgt/sync`             | `Authorization: Bearer <CGL_SGT_SYNC_SECRET>`        | Refresh the protected read-only SGT cache; called by Supabase Cron every 30 minutes                                        |
 
 Public projections omit contact information, Auth IDs, long SGT IDs, private notes, payment records, fulfilment costs and arbitrary raw import metadata. Public identities use SGT usernames. Only explicitly permitted numeric statistics and verified CTP timestamps leave the public API. Member requests bind ownership to the verified token, ignoring a supplied member ID. Request origins are checked for mutation CSRF; authenticated roles are checked on the server. Financial CSV cells neutralise spreadsheet formula injection.
 
@@ -82,12 +83,17 @@ Every admin command requires `action` and a reason of at least five characters. 
 - `fulfil_gift` / `fulfil_order`: `id`, `state: "ready" | "dispatched" | "collected"`. `cancel_order` reverses only unfulfilled orders.
 - `notification`: `record` with `member_id`, kind, title, body and unique `source_key`. Creates dashboard notice/email preview; does not send email.
 - `save_settings`: `record: { key, value }`. Keys are `legal`, `cancellation_policy`, `annual_formula`, `divisions`, `rewards`, `prizes`, `gifts`, `financial`, `sgt`, `points`.
+- `connect_sgt`: SGT club administrator `username` and `password`. Exchanges the password once for a rotating API key, stores only that key in Vault, and runs the first sync. Requires settings permission.
+- `sync_sgt`: forces a fresh official Club API read. Requires results permission.
+- `set_sgt_sync`: `enabled: boolean`. Pauses or resumes scheduled refresh without deleting cached display data. Requires settings permission.
 
 The default settings intentionally leave legal approval, cancellation-policy approval, annual rankings and production prize approval false. `points.value` uses `{version, source, approved, table}`. `annual_formula.value` uses `{approved, method: null | "sum" | "best_seasons", counted_seasons?}`. `gifts.value` uses `{annual_release_week:5, monthly_payments:2, weekly_payments:5, midseason_review_required:true}`. `rewards.value` uses `{credit_expiry_months:18, credits_per_aud:2, payment_redemption_enabled:false, weekly_priority:["net","gross","ctp"], full:{net:20,gross:20,ctp:10}, casual:{net:10,gross:10,ctp:5}}`. The internal credit/AUD conversion is an admin accounting setting, excluded from public/member API projections.
 
-## Verified manual SGT imports
+## Official SGT Club API and reviewed CGL publication
 
-An SGT iframe is not a data API. Until CGS has a documented official feed/export, an authorised administrator must verify the official source and submit the records below. Source and scorecard URLs must be HTTPS on `simulatorgolftour.com`. A configured tournament ID must match the source URL. The official completion timestamp must be within the fixture's published play window, never in the future. Different fixtures cannot reuse an imported official result or nine-hole attempt ID.
+The protected Club API cache is the website display source for `/cgl/live`; SGT remains the playing-data source of truth. Public responses remove contact details, provider identifiers, credentials and raw administrative metadata. If SGT is temporarily unavailable, the last successful cache remains visible and the next scheduled run retries. Connecting or renewing the API requires an intentional administrator action because a fully expired provider key cannot be recreated without the SGT login.
+
+Automatic display sync does not silently publish CGL points or prizes. An authorised administrator must still review the relevant official source and use the existing result workflow. Source and scorecard URLs must be HTTPS on `simulatorgolftour.com`. A configured tournament ID must match the source URL. The official completion timestamp must be within the fixture's published play window, never in the future. Different fixtures cannot reuse an imported official result or nine-hole attempt ID.
 
 Each import row represents **one combined weekly result**. Supply the two genuine official nine-hole attempts. For Aggregate the courses match; for Redemption the best eligible attempt counts; World Tour requires different courses; Elements also requires different verified conditions. The scoring engine derives gross/net/counting attempts; browser-supplied combined totals are not accepted.
 
@@ -156,7 +162,7 @@ Existing server configuration: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE
 
 Shared administrator configuration: `CGS_ADMIN_USERNAME` (non-default), `CGS_ADMIN_PASSWORD` (at least 16 characters), `CGS_ADMIN_SECRET` (at least 32 random characters). Prefer a verified Auth role for attributable individual administration. Never copy `admin` credentials into a deployment checklist.
 
-Scheduler: `CGL_JOB_SECRET` (at least 32 random characters). Configure an approved scheduler to POST `/api/cgl/jobs` with the bearer secret. No live scheduler was installed by this work. Notifications stay previews until an approved transactional email provider is integrated. No emails are represented as sent.
+Schedulers: `CGL_JOB_SECRET` protects the existing maintenance job. `CGL_SGT_SYNC_SECRET` is an independent random value used only by Supabase Cron to POST `/api/cgl/sgt/sync`; the same value is stored in Vercel and Supabase Vault. `CGL_SGT_CLUB_SLUG` defaults to `CGSBunker`. Notifications stay previews until an approved transactional email provider is integrated. No emails are represented as sent.
 
 For Square environment variables, Sandbox merchant/location/plan setup and remaining provider limitations, see the Square integration guide. No real charges, live subscriptions, hosting changes or account invitations were made by this build.
 
@@ -179,4 +185,4 @@ Preferred recovery is to roll back the application release or disable CGL routin
 
 `npm run test:cgl` executes isolated pure-rules, server-contract, credit/database and Square tests using pinned PGlite; it never connects to hosted Supabase. Database tests execute both SQL migrations in a fresh in-memory PostgreSQL instance. They cover transaction rollback, replay safety, FEFO expiry, immutable history, account ownership/RBAC, public redaction, import revisions, publication snapshots, membership rules, gifts and payment reconciliation. Run `npx tsc --noEmit`, targeted ESLint and `npm run build` as part of staging validation.
 
-These local tests do not prove an external Square/SGT/email credential works. Hosted migrations, Square end-to-end Sandbox checkout, documented SGT automation, provider-safe exact season-boundary cancellation, upgrade/prorated provider settlement, cash-plus-credit settlement, payment-fee credit redemption, transactional email delivery and legal approval remain explicit launch gates. Pure quote/rule calculations and fail-closed interfaces exist for the blocked mechanisms; they do not claim successful provider execution.
+These local tests do not prove an external Square/SGT/email credential works. The hosted SGT connection must be completed once by a club administrator and its first sync visually checked before being treated as live. Square end-to-end checkout, provider-safe exact season-boundary cancellation, upgrade/prorated provider settlement, cash-plus-credit settlement, payment-fee credit redemption, transactional email delivery and legal approval remain separate launch gates. Pure quote/rule calculations and fail-closed interfaces exist for blocked mechanisms; they do not claim successful provider execution.

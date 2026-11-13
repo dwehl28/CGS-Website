@@ -15,6 +15,7 @@ import { financialScenario, CGL_DEFAULT_PLANS } from "@/lib/cgl-engine";
 import { CglHeading, CglEmpty } from "./CglPublicExperience";
 import {
   aud,
+  date,
   num,
   row,
   rows,
@@ -348,6 +349,7 @@ function exportCsv(items: CglRow[], name: string) {
 }
 const sections = [
   "Overview",
+  "SGT live sync",
   "Members",
   "Seasons & fixtures",
   "Results & imports",
@@ -358,6 +360,188 @@ const sections = [
   "Settings",
   "Audit log",
 ];
+
+function SgtLiveSync({
+  data,
+  send,
+  busy,
+}: {
+  data: CglSnapshot;
+  send: Send;
+  busy: boolean;
+}) {
+  const connection = rows(data.sgt_connections)[0] ?? {};
+  const tours = rows(data.sgt_tours);
+  const tournaments = rows(data.sgt_tournaments);
+  const runs = rows(data.sgt_sync_runs).sort((a, b) =>
+    str(b.started_at, "").localeCompare(str(a.started_at, "")),
+  );
+  const connected = connection.status === "connected";
+  const enabled = connection.sync_enabled === true;
+  const canConfigure = data.role !== "results_admin";
+  const [formError, setFormError] = useState("");
+
+  async function connect(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFormError("");
+    const form = event.currentTarget;
+    const values = new FormData(form);
+    const completed = await send("connect_sgt", {
+      username: values.get("username"),
+      password: values.get("password"),
+      reason: values.get("reason"),
+    });
+    if (completed) form.reset();
+  }
+
+  return (
+    <div className={s.vertical}>
+      <div className={s.miniStats}>
+        <article className={s.metric}>
+          <span>Club connection</span>
+          <strong>{connected ? "Live" : str(connection.status, "Not connected")}</strong>
+          <small>CGSBunker · official SGT Club API</small>
+        </article>
+        <article className={s.metric}>
+          <span>Last successful sync</span>
+          <strong>{connection.last_success_at ? date(connection.last_success_at, true) : "Not yet"}</strong>
+          <small>{enabled ? "Automatic refresh every 30 minutes" : "Automatic refresh paused"}</small>
+        </article>
+        <article className={s.metric}>
+          <span>Tracked tours</span>
+          <strong>{tours.length}</strong>
+          <small>{tournaments.length} tournaments cached</small>
+        </article>
+        <article className={s.metric}>
+          <span>API key renewal</span>
+          <strong>{connection.api_key_expires_at ? date(connection.api_key_expires_at, true) : "Awaiting connection"}</strong>
+          <small>The key is encrypted and never sent to the browser</small>
+        </article>
+      </div>
+
+      <div className={s.notice}>
+        SGT remains the official source. This page copies read-only club,
+        tournament, scorecard and statistics data into CGL for reliable public
+        display. CGL awards still require the existing review and publish step.
+      </div>
+
+      {canConfigure ? (
+        <form className={s.panel} onSubmit={connect}>
+          <h3>{connected ? "Renew the SGT connection" : "Connect CGSBunker"}</h3>
+          <p>
+            Enter the SGT club administrator login once. The password is sent
+            directly to SGT to create a rotating key and is never saved by CGS.
+          </p>
+          <div className={s.formGrid}>
+            <label className={s.field}>
+              SGT administrator username
+              <input name="username" required autoComplete="username" />
+            </label>
+            <label className={s.field}>
+              SGT administrator password
+              <input
+                name="password"
+                type="password"
+                required
+                minLength={6}
+                autoComplete="current-password"
+              />
+            </label>
+            <label className={`${s.field} ${s.full}`}>
+              Reason for this connection
+              <input
+                name="reason"
+                required
+                minLength={5}
+                maxLength={1000}
+                defaultValue="Connect the official CGSBunker Club API and run the first sync"
+              />
+            </label>
+          </div>
+          {formError ? <div className={`${s.notice} ${s.error}`}>{formError}</div> : null}
+          <div className={s.actions}>
+            <button className={s.primary} disabled={busy}>
+              {busy ? "Connecting…" : connected ? "Renew connection" : "Connect & sync now"}
+              <ArrowRight size={13} />
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      <article className={s.panel}>
+        <h3>Automatic data refresh</h3>
+        <p>
+          A manual sync refreshes the same protected cache used by the public
+          Live SGT page. If SGT is briefly unavailable, the last successful data
+          remains on screen.
+        </p>
+        {connection.last_error ? (
+          <div className={`${s.notice} ${s.error}`}>{str(connection.last_error)}</div>
+        ) : null}
+        <div className={s.actions}>
+          <button
+            type="button"
+            className={s.primary}
+            disabled={busy || !connected || !enabled}
+            onClick={() =>
+              void send("sync_sgt", {
+                reason: "Refresh the official SGT club data from the admin control centre",
+              })
+            }
+          >
+            <RefreshCw size={13} />
+            Sync now
+          </button>
+          {canConfigure ? (
+            <button
+              type="button"
+              className={s.secondary}
+              disabled={busy || (!connected && !connection.api_key_expires_at)}
+              onClick={() =>
+                void send("set_sgt_sync", {
+                  enabled: !enabled,
+                  reason: enabled
+                    ? "Pause automatic SGT refresh from the admin control centre"
+                    : "Resume automatic SGT refresh from the admin control centre",
+                })
+              }
+            >
+              {enabled ? "Pause automatic sync" : "Resume automatic sync"}
+            </button>
+          ) : null}
+          <Link className={s.textLink} href="/cgl/live" target="_blank">
+            Open public Live SGT page
+            <ArrowRight size={13} />
+          </Link>
+        </div>
+      </article>
+
+      <div className={s.grid2}>
+        <article className={s.panel}>
+          <h3>Official tours</h3>
+          <RecordList
+            items={tours}
+            columns={["name", "start_date", "end_date", "synced_at"]}
+          />
+        </article>
+        <article className={s.panel}>
+          <h3>Tournaments</h3>
+          <RecordList
+            items={tournaments}
+            columns={["name", "course_name", "status", "synced_at"]}
+          />
+        </article>
+      </div>
+      <article className={s.panel}>
+        <h3>Recent sync history</h3>
+        <RecordList
+          items={runs.slice(0, 30)}
+          columns={["started_at", "trigger", "state", "error"]}
+        />
+      </article>
+    </div>
+  );
+}
 
 function Finance({
   data,
@@ -853,6 +1037,9 @@ export default function CglAdminCentre() {
               </div>
             </>
           ) : null}
+          {tab === "SGT live sync" ? (
+            <SgtLiveSync data={data} send={send} busy={busy} />
+          ) : null}
           {tab === "Members" ? (
             <div className={s.vertical}>
               <h3 style={{ fontSize: 22, fontWeight: 800 }}>
@@ -1132,10 +1319,10 @@ export default function CglAdminCentre() {
           {tab === "Results & imports" ? (
             <div className={s.vertical}>
               <div className={s.notice}>
-                SGT embeds are available now. No automatic SGT API feed is
-                configured. Import only verified source data; changed verified
-                results require a reviewed correction. Do not invent scorecard
-                details to resolve ties.
+                The official SGT Club API is available in SGT live sync. Its
+                read-only scorecards and statistics can assist review, but CGL
+                results remain unpublished until an administrator verifies and
+                publishes them. Do not invent scorecard details to resolve ties.
               </div>
               <RecordList
                 items={list("results")}

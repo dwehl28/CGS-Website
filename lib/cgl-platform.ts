@@ -8,6 +8,13 @@ import {
 } from "@/lib/admin-auth";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import {
+  CglSgtError,
+  connectCglSgt,
+  runCglSgtSync,
+  sanitizeSgtPublic,
+  setCglSgtSyncEnabled,
+} from "@/lib/cgl-sgt";
+import {
   CGL_DEFAULT_POINTS_TABLE,
   CGL_RULES_VERSION,
   annualRanking,
@@ -163,6 +170,12 @@ async function rows(
               ? "event_id"
               : table === "cgl_square_season_entitlements"
                 ? "checkout_id"
+              : table === "cgl_sgt_connections"
+                ? "club_slug"
+                : table === "cgl_sgt_tours"
+                  ? "sgt_tour_id"
+                  : table === "cgl_sgt_tournaments"
+                    ? "sgt_tournament_id"
             : "id",
       );
     for (const [key, value] of Object.entries(filters))
@@ -191,6 +204,8 @@ export function cglApiFailure(error: unknown) {
   const failure =
     error instanceof CglApiError
       ? error
+      : error instanceof CglSgtError
+        ? new CglApiError(error.message, error.status, error.code)
       : error instanceof z.ZodError
         ? new CglApiError(
             error.issues
@@ -519,6 +534,9 @@ export async function getCglPublicSnapshot() {
     members,
     prizes,
     catalogue,
+    sgtConnections,
+    sgtTours,
+    sgtTournaments,
   ] = await Promise.all([
     rows("cgl_settings"),
     rows("cgl_plans", { active: true }),
@@ -529,6 +547,13 @@ export async function getCglPublicSnapshot() {
     rows("cgl_members", {}, "id,sgt_username,handicap"),
     rows("cgl_prizes"),
     rows("cgl_catalogue", { active: true }),
+    rows(
+      "cgl_sgt_connections",
+      {},
+      "club_slug,club_id,source_url,status,sync_enabled,last_sync_at,last_success_at,last_error,updated_at",
+    ),
+    rows("cgl_sgt_tours"),
+    rows("cgl_sgt_tournaments"),
   ]);
   const visibleSeasons = seasons.filter((s) => s.status !== "draft");
   const seasonIds = new Set(visibleSeasons.map((s) => s.id));
@@ -725,6 +750,52 @@ export async function getCglPublicSnapshot() {
         legal_approved: config.prizes?.legal_approved,
       },
       legal: { approved: config.legal?.approved === true },
+    },
+    sgt: {
+      connection: sgtConnections[0]
+        ? {
+            club_slug: sgtConnections[0].club_slug,
+            club_id: sgtConnections[0].club_id,
+            source_url: sgtConnections[0].source_url,
+            status: sgtConnections[0].status,
+            sync_enabled: sgtConnections[0].sync_enabled,
+            last_sync_at: sgtConnections[0].last_sync_at,
+            last_success_at: sgtConnections[0].last_success_at,
+          }
+        : null,
+      tours: sgtTours.map((tour) => ({
+        sgt_tour_id: tour.sgt_tour_id,
+        name: tour.name,
+        start_date: tour.start_date,
+        end_date: tour.end_date,
+        team_tour: tour.team_tour,
+        active: tour.active,
+        members: sanitizeSgtPublic(tour.members),
+        teams: sanitizeSgtPublic(tour.teams),
+        standings_gross: sanitizeSgtPublic(tour.standings_gross),
+        standings_net: sanitizeSgtPublic(tour.standings_net),
+        stats: sanitizeSgtPublic(tour.stats),
+        synced_at: tour.synced_at,
+      })),
+      tournaments: sgtTournaments.map((tournament) => ({
+        sgt_tournament_id: tournament.sgt_tournament_id,
+        sgt_tour_id: tournament.sgt_tour_id,
+        name: tournament.name,
+        status: tournament.status,
+        start_date: tournament.start_date,
+        end_date: tournament.end_date,
+        registration_start_date: tournament.registration_start_date,
+        registration_end_date: tournament.registration_end_date,
+        course_name: tournament.course_name,
+        number_rounds: tournament.number_rounds,
+        number_holes: tournament.number_holes,
+        gameplay: tournament.gameplay,
+        stableford: tournament.stableford,
+        registrations: sanitizeSgtPublic(tournament.registrations),
+        scorecards: sanitizeSgtPublic(tournament.scorecards),
+        stats: sanitizeSgtPublic(tournament.stats),
+        synced_at: tournament.synced_at,
+      })),
     },
     updated_at: new Date().toISOString(),
   };
@@ -1272,11 +1343,22 @@ export async function getCglAdminSnapshot(actor: CglActor) {
     "square_webhook_events",
     "square_invoice_states",
     "square_season_entitlements",
+    "sgt_tours",
+    "sgt_tournaments",
+    "sgt_sync_runs",
   ];
-  const values = await Promise.all(names.map((name) => rows(`cgl_${name}`)));
+  const [values, sgtConnections] = await Promise.all([
+    Promise.all(names.map((name) => rows(`cgl_${name}`))),
+    rows(
+      "cgl_sgt_connections",
+      {},
+      "club_slug,club_id,source_url,status,api_key_expires_at,sync_enabled,sync_interval_minutes,last_refresh_at,last_sync_started_at,last_sync_at,last_success_at,last_error,updated_at",
+    ),
+  ]);
   const snapshot = Object.fromEntries(
     names.map((name, index) => [name, values[index]]),
   );
+  snapshot.sgt_connections = sgtConnections;
   if (actor.role === "results_admin") {
     return {
       status: "ready",
@@ -1307,6 +1389,10 @@ export async function getCglAdminSnapshot(actor: CglActor) {
       settings: snapshot.settings.filter((s) =>
         ["points", "divisions", "sgt"].includes(String(s.key)),
       ),
+      sgt_connections: snapshot.sgt_connections,
+      sgt_tours: snapshot.sgt_tours,
+      sgt_tournaments: snapshot.sgt_tournaments,
+      sgt_sync_runs: snapshot.sgt_sync_runs,
     };
   }
   const now = Date.now(),
@@ -1918,6 +2004,31 @@ export async function executeCglAdminAction(actor: CglActor, body: CglData) {
       p_record: record,
       p_actor: actor.id,
       p_reason: reason,
+    });
+  }
+  if (action === "connect_sgt") {
+    permission(actor, "manage_settings");
+    return connectCglSgt({
+      username: body.username,
+      password: body.password,
+      actor: actor.id,
+      reason,
+    });
+  }
+  if (action === "sync_sgt") {
+    permission(actor, "manage_results");
+    return runCglSgtSync({
+      force: true,
+      trigger: "manual",
+      actor: actor.id,
+    });
+  }
+  if (action === "set_sgt_sync") {
+    permission(actor, "manage_settings");
+    return setCglSgtSyncEnabled({
+      enabled: z.boolean().parse(body.enabled),
+      actor: actor.id,
+      reason,
     });
   }
   if (action === "save_settings") {

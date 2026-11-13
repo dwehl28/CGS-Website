@@ -857,12 +857,12 @@ export default function CglPublicExperience({
               you play GSPro.
             </p>
             <div className={s.actions}>
-              <Link className={s.primary} href="/cgl/trial">
-                Explore the trial league
+              <Link className={s.primary} href="/cgl/live">
+                Open Live SGT clubhouse
                 <ArrowRight size={15} />
               </Link>
-              <Link className={s.secondary} href="/cgl/memberships">
-                Find your membership
+              <Link className={s.secondary} href="/cgl/trial">
+                Explore the trial league
               </Link>
             </div>
           </div>
