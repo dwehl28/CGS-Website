@@ -23,14 +23,15 @@ export async function POST(request: Request) {
       request.headers.get("square-environment"),
     );
     // Acknowledge only after durable receipt; provider calls run outside Square's ten-second response window.
-    after(async () => {
-      try {
-        await processQueuedCglSquareEvents({ eventId: result.eventId, limit: 1 });
-      } catch {
-        // The saved event and expiring worker lease remain recoverable by the maintenance job.
-        console.error("CGL Square event is pending recovery.");
-      }
-    });
+    if (result.test !== true)
+      after(async () => {
+        try {
+          await processQueuedCglSquareEvents({ eventId: result.eventId, limit: 1 });
+        } catch {
+          // The saved event and expiring worker lease remain recoverable by the maintenance job.
+          console.error("CGL Square event is pending recovery.");
+        }
+      });
     return Response.json(
       { received: true, result },
       { headers: { "Cache-Control": "no-store" } },

@@ -176,6 +176,37 @@ test("wrong environment, merchant and forged signatures never enter the queue", 
   await assert.rejects(square.receiveCglSquareWebhook(raw, sig, "Production"));
   assert.equal(rpcCalls.length, 0); assert.equal(requests.length, 0);
 });
+test("Square's signed subscription test fixture is acknowledged without entering the payment queue", async () => {
+  const fixture = {
+    merchant_id: "square-test-merchant",
+    type: "payment.created",
+    event_id: "square-test-event",
+    created_at: "2022-01-11T00:06:48.322Z",
+    data: {
+      type: "payment",
+      id: "KkAkhdMsgzn59SM8A89WgKwekxLZY",
+      object: {
+        payment: {
+          id: "hYy9pRFVxpDsO1FB05SunFWUe9JZY",
+          location_id: "S8GWD5R9QB376",
+          order_id: "03O3USaPaAaFnI6kkwB1JxGgBsUZY",
+          amount_money: { amount: 100, currency: "USD" },
+        },
+      },
+    },
+  };
+  const raw = JSON.stringify(fixture);
+  const signature = createHmac("sha256", "unit-test-key").update(fakeEnv.CGL_SQUARE_WEBHOOK_URL + raw).digest("base64");
+  const result = await square.receiveCglSquareWebhook(raw, signature, "Sandbox");
+  assert.equal(result.test, true); assert.equal(result.eventId, "square-test-event");
+  assert.equal(rpcCalls.length, 0); assert.equal(requests.length, 0);
+
+  fixture.data.object.payment.id = "altered-payment";
+  const altered = JSON.stringify(fixture);
+  const alteredSignature = createHmac("sha256", "unit-test-key").update(fakeEnv.CGL_SQUARE_WEBHOOK_URL + altered).digest("base64");
+  await assert.rejects(square.receiveCglSquareWebhook(altered, alteredSignature, "Sandbox"));
+  assert.equal(rpcCalls.length, 0);
+});
 test("subscription-first delivery recovers original template, invoices and verified payments", async () => {
   await receive();
   const result = await square.processQueuedCglSquareEvents({ eventId: "event" });

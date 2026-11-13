@@ -27,7 +27,7 @@ function harness(options={}) {
     getCglSquareOperationalReadiness:async()=>({ready:options.ready!==false,configured:true,environment:options.environment??'sandbox',subscriptionActionsEnabled:options.subscriptionActionsEnabled===true}),
     async createCglSquareCheckout(...args){calls.checkout.push(args);return'https://sandbox.square.link/test';},
     async syncCglSquareMember(...args){calls.sync.push(args);return{status:'pending',checkouts:[{id:args[1],state:'pending'}]};},
-    async receiveCglSquareWebhook(...args){calls.receipt.push(args);if(options.badSignature)throw new BillingError('Invalid signature',401);return{eventId:'event',queued:true};},
+    async receiveCglSquareWebhook(...args){calls.receipt.push(args);if(options.badSignature)throw new BillingError('Invalid signature',401);return options.testEvent?{eventId:'test-event',event_id:'test-event',test:true}:{eventId:'event',queued:true};},
     async processQueuedCglSquareEvents(...args){calls.worker.push(args);return{processed:0};},
   };
   const mocks={
@@ -75,6 +75,7 @@ test('webhook durably receives exact raw bytes before responding and defers prov
   const h=harness();const raw='{ "event_id": "event" }';const response=await h.webhook.POST(new Request('https://example.test/api/cgl/square-webhook',{method:'POST',headers:{'x-square-hmacsha256-signature':'signature','square-environment':'sandbox'},body:raw}));
   assert.equal(response.status,200);assert.deepEqual(h.calls.receipt,[[raw,'signature','sandbox']]);assert.equal(h.calls.worker.length,0);assert.equal(h.calls.after.length,1);
   await h.calls.after[0]();assert.deepEqual(h.calls.worker,[[{eventId:'event',limit:1}]]);
+  const testEvent=harness({testEvent:true});assert.equal((await testEvent.webhook.POST(post('/api/cgl/square-webhook',{}))).status,200);assert.equal(testEvent.calls.after.length,0);assert.equal(testEvent.calls.worker.length,0);
   const invalid=harness({badSignature:true});assert.equal((await invalid.webhook.POST(post('/api/cgl/square-webhook',{}))).status,401);assert.equal(invalid.calls.after.length,0);
 });
 test('recovery job rejects missing or incorrect secrets before processing any queue',async()=>{

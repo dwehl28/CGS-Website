@@ -30,6 +30,17 @@ function canonicalTimezone(value: unknown) {
   if (typeof value !== "string" || !value) return null;
   try { return new Intl.DateTimeFormat("en-AU", { timeZone: value }).resolvedOptions().timeZone; } catch { return null; }
 }
+function isSquareSubscriptionTestEvent(event: Data) {
+  const data = object(event.data), payment = object(object(data.object).payment), amount = object(payment.amount_money);
+  return event.type === "payment.created" &&
+    data.type === "payment" &&
+    data.id === "KkAkhdMsgzn59SM8A89WgKwekxLZY" &&
+    payment.id === "hYy9pRFVxpDsO1FB05SunFWUe9JZY" &&
+    payment.location_id === "S8GWD5R9QB376" &&
+    payment.order_id === "03O3USaPaAaFnI6kkwB1JxGgBsUZY" &&
+    amount.amount === 100 &&
+    amount.currency === "USD";
+}
 
 function configuredEnvironment(env: NodeJS.ProcessEnv): CglSquareEnvironment {
   return env.CGL_SQUARE_ENVIRONMENT === "production" ? "production" : "sandbox";
@@ -567,7 +578,13 @@ export async function receiveCglSquareWebhook(rawBody: string, signature: string
   let parsed: unknown;
   try { parsed = JSON.parse(rawBody); } catch { throw new CglSquareError("Invalid Square notification.", 400, "square_invalid_event"); }
   const event = object(parsed), data = object(event.data);
-  if (event.merchant_id !== config.merchantId || !string(event.event_id) || String(event.event_id).length > 200 || !string(event.type) || !string(event.created_at) || !Number.isFinite(Date.parse(String(event.created_at)))) invalid("The Square merchant or event identity does not match.");
+  if (!string(event.event_id) || String(event.event_id).length > 200 || !string(event.type) || !string(event.created_at) || !Number.isFinite(Date.parse(String(event.created_at)))) invalid("The Square event identity does not match.");
+  // Square's signed subscription test uses a fixed US sample payment rather than
+  // the connected seller. Acknowledge that exact fixture without storing it.
+  if (event.merchant_id !== config.merchantId) {
+    if (isSquareSubscriptionTestEvent(event)) return { event_id: String(event.event_id), eventId: String(event.event_id), test: true };
+    invalid("The Square merchant or event identity does not match.");
+  }
   const enqueueRpc = config.environment === "sandbox" ? "cgl_enqueue_square_event" : "cgl_enqueue_square_live_event";
   const { data: result, error } = await deadline(getSupabaseAdmin().rpc(enqueueRpc, { p_event_id: event.event_id, p_event_type: event.type, p_occurred_at: event.created_at, p_body_hash: createHash("sha256").update(rawBody).digest("hex"), p_event_data: { environment: config.environment, merchant_id: config.merchantId, object_id: string(data.id), object_type: string(data.type) } }), 6000);
   if (error || !result) throw new CglSquareError("The Square event could not be saved. Square will retry safely.", 503, "square_queue_unavailable");
