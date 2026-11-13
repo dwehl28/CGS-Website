@@ -54,6 +54,10 @@ export function cglCheckoutStorageKey(accountId: string, planCode: string, seaso
   return `cgl-square:v1:${accountId}:${planCode}:${seasonId || "none"}`;
 }
 
+export function cglPlanRequiresSeason(planCode: string) {
+  return planCode === "casual_season";
+}
+
 export function getCglCheckoutRequestKey(
   storage: Pick<Storage, "getItem" | "setItem"> | null,
   scope: string,
@@ -175,6 +179,7 @@ export function CglSquareQuoteSummary({ quote }: { quote: CglSnapshot }) {
     <div className={s.notice}>
       <strong>Payment summary{isTest ? " · TEST" : ""}</strong>
       <p>{isTest ? "Initial test charge" : "Charge today"}: {aud(quote.amountCents)}</p>
+      <p>Currency: AUD</p>
       <p>{quote.recurring === true
         ? `Automatic ${isTest ? "test " : ""}renewal: ${aud(quote.amountCents)} every ${intervals[str(quote.billingInterval)] ?? "confirmed billing period"}. Square shows the exact next billing date before authorisation.`
         : `One-off ${isTest ? "test " : ""}payment. This purchase does not automatically renew.`}</p>
@@ -206,6 +211,7 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
   const [redeemItem, setRedeemItem] = useState("");
   const [redemptionKey, setRedemptionKey] = useState("");
   const [selectedPlan, setSelectedPlan] = useState("annual");
+  const [selectedSeason, setSelectedSeason] = useState("");
   const loadSequence = useRef(0);
   const load = useCallback(async (token: string, signal?: AbortSignal) => {
     const sequence = ++loadSequence.current;
@@ -281,6 +287,7 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
     )
       setTimeout(() => {
         setSelectedPlan(requestedPlan);
+        if (!cglPlanRequiresSeason(requestedPlan)) setSelectedSeason("");
         setTab("Membership");
       }, 0);
     if (requested)
@@ -472,7 +479,10 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
     try {
       const planCode = String(form.get("plan"));
       const seasonId =
-        planCode === "casual_season" ? String(form.get("season") ?? "") : "";
+        cglPlanRequiresSeason(planCode) ? String(form.get("season") ?? "") : "";
+      if (cglPlanRequiresSeason(planCode) && !uuidPattern.test(seasonId)) {
+        throw new Error("Choose an open season for the $100 Season Pass.");
+      }
       if (checkoutQuote && row(checkoutQuote.readiness).ready !== true) {
         throw new Error("Square setup or the required payment disclosures are still pending. No payment has been taken.");
       }
@@ -1171,8 +1181,8 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
             </h2>
             <form className={s.panel} onSubmit={checkout}>
               <div className={s.notice}>{billingIsTest
-                ? "Square Sandbox only. Test payments do not activate real membership access."
-                : "Secure live Square checkout. Recurring memberships remain unavailable until their renewal flow completes final verification."}</div>
+                ? "Square Sandbox only. All test prices are AUD. Test payments do not activate real membership access."
+                : "Secure live Square checkout in AUD. Recurring memberships remain unavailable until their renewal flow completes final verification."}</div>
               <div className={s.formGrid}>
                 <label className={s.field}>
                   Plan
@@ -1180,7 +1190,9 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
                     name="plan"
                     value={selectedPlan}
                     onChange={(e) => {
-                      setSelectedPlan(e.target.value);
+                      const planCode = e.target.value;
+                      setSelectedPlan(planCode);
+                      if (!cglPlanRequiresSeason(planCode)) setSelectedSeason("");
                       setCheckoutQuote(null);
                     }}
                   >
@@ -1192,23 +1204,33 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
                     ))}
                   </select>
                 </label>
-                <label className={s.field}>
-                  Season (for casual season entry)
-                  <select
-                    name="season"
-                    onChange={() => {
-                      setCheckoutQuote(null);
-                    }}
-                  >
-                    <option value="">Choose a published season</option>
-                    {rows(data.seasons).map((se) => (
-                      <option key={str(se.id)} value={str(se.id)}>
-                        {str(se.name)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                {cglPlanRequiresSeason(selectedPlan) ? (
+                  <label className={s.field}>
+                    Season for the $100 Season Pass
+                    <select
+                      required
+                      name="season"
+                      value={selectedSeason}
+                      onChange={(e) => {
+                        setSelectedSeason(e.target.value);
+                        setCheckoutQuote(null);
+                      }}
+                    >
+                      <option value="">Choose an open season</option>
+                      {rows(data.seasons).map((se) => (
+                        <option key={str(se.id)} value={str(se.id)}>
+                          {str(se.name)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
               </div>
+              <p className={s.fine}>
+                {cglPlanRequiresSeason(selectedPlan)
+                  ? "The $100 Season Pass is the only purchase linked to a specific season. A current Casual Registration is also required."
+                  : "This membership can be purchased at any time and is not linked to a specific season."}
+              </p>
               {checkoutQuote ? <CglSquareQuoteSummary quote={checkoutQuote} /> : null}
               <div className={s.actions}>
                 <button

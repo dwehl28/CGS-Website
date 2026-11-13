@@ -651,14 +651,16 @@ export function CglPricing({ data }: { data: CglSnapshot }) {
       name: "Monthly",
       price_cents: 2995,
       interval: "/ month",
-      detail: "Monthly payments. Proposed season commitment applies.",
+      detail:
+        "Join at any time. Billed monthly, with cancellation at the next published season boundary.",
     },
     {
       id: "weekly",
       name: "Weekly",
       price_cents: 895,
       interval: "/ week",
-      detail: "Weekly payments. Proposed season commitment applies.",
+      detail:
+        "Join at any time. Billed weekly, with cancellation at the next published season boundary.",
     },
     {
       id: "casual_registration",
@@ -666,7 +668,7 @@ export function CglPricing({ data }: { data: CglSnapshot }) {
       price_cents: 2900,
       interval: "registration / year",
       detail:
-        "Plus $100 for each season you choose. Both are one-off payments.",
+        "Purchase at any time. Add a separate $100 Season Pass only for a season you choose.",
     },
   ];
   const plans = rows(data.plans);
@@ -690,7 +692,7 @@ export function CglPricing({ data }: { data: CglSnapshot }) {
               </div>
               <p>
                 {p.id === "casual_registration"
-                  ? `Plus ${aud(plans.find((plan) => plan.code === "casual_season")?.price_cents ?? 10000)} for each season you choose. Both are one-off payments.`
+                  ? `Purchase at any time. Add a separate ${aud(plans.find((plan) => plan.code === "casual_season")?.price_cents ?? 10000)} Season Pass only for a season you choose.`
                   : p.detail}
               </p>
               <ul>
@@ -723,10 +725,10 @@ export function CglPricing({ data }: { data: CglSnapshot }) {
         })}
       </div>
       <p className={s.fine}>
-        AUD. Proposed launch pricing, subject to CGS approval. Simulator hire
-        and SGT access are separate. Your exact charge, renewal terms and
-        cancellation date must be shown before payment. Live membership sales
-        are not open.
+        All prices and Square charges are in AUD. Annual, monthly, weekly and
+        casual registration can be purchased at any time; only the $100 Season
+        Pass is linked to a specific season. Simulator hire and SGT access are
+        separate.
       </p>
     </>
   );
@@ -1089,10 +1091,11 @@ export default function CglPublicExperience({
             <p>
               Annual, monthly and weekly memberships renew automatically under
               the final approved terms. Casual registration lasts one year and
-              is manually renewed; each casual season entry is a separate
-              one-off purchase. Initial charges, any prorated amount, future
-              payments and effective cancellation dates must be disclosed before
-              payment.
+              is manually renewed. These memberships can be purchased at any
+              time and are not tied to one season. Only the separate $100 Season
+              Pass is linked to a selected season. All prices and Square charges
+              are in AUD, and effective cancellation dates must be disclosed
+              before payment.
             </p>
             <Link className={s.textLink} href="/cgl/terms">
               Review pricing and policy status

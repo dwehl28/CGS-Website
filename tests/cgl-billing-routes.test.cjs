@@ -51,6 +51,21 @@ test('checkout binds the verified account and confirmed price to one atomic prep
   assert.equal(h.calls.checkout.length,1);
   const changed=harness({rpcFailure:true});assert.equal((await changed.checkout.POST(post('/api/cgl/checkout',purchase))).status,409);assert.equal(changed.calls.checkout.length,0);
 });
+test('only the $100 season pass carries a season into checkout',async()=>{
+  const seasonId='33333333-3333-4333-8333-333333333333';
+  const ordinary=harness();
+  assert.equal((await ordinary.checkout.POST(post('/api/cgl/checkout',{...purchase,seasonId}))).status,200);
+  assert.equal(ordinary.calls.rpc[0][1].p_season_id,null);
+
+  const missing=harness();
+  const seasonPass={planCode:'casual_season',requestKey:checkoutId,termsAccepted:true,acceptedAmountCents:10000};
+  assert.equal((await missing.checkout.POST(post('/api/cgl/checkout',seasonPass))).status,400);
+  assert.equal(missing.calls.rpc.length,0);
+
+  const selected=harness({intent:{id:checkoutId,member_id:memberId,amount_cents:10000,recurring:false,environment:'sandbox'}});
+  assert.equal((await selected.checkout.POST(post('/api/cgl/checkout',{...seasonPass,seasonId}))).status,200);
+  assert.equal(selected.calls.rpc[0][1].p_season_id,seasonId);
+});
 test('production checkout uses the live one-off RPC and keeps recurring plans locked',async()=>{
   const oneOff={planCode:'casual_registration',requestKey:checkoutId,termsAccepted:true,acceptedAmountCents:2900};
   const live=harness({environment:'production',intent:{id:checkoutId,member_id:memberId,amount_cents:2900,recurring:false,environment:'production'}});

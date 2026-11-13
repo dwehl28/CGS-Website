@@ -6,12 +6,12 @@ const documents = [
   {
     title: "Confirmed pricing",
     status: "CGS confirmed",
-    text: "Annual membership is $249 per year, monthly is $29.95 per month and weekly is $8.95 per week. Casual registration is a $29 one-off purchase lasting one year, and casual season entry is a separate $100 one-off purchase.",
+    text: "All prices are AUD. Annual membership is $249 per year, monthly is $29.95 per month and weekly is $8.95 per week. Casual registration is a $29 one-off purchase lasting one year, and the Season Pass is a separate $100 one-off purchase.",
   },
   {
     title: "Membership terms",
     status: "Final document pending",
-    text: "Full membership provides access during the paid membership period. Casual registration and season entry are separate purchases. Final eligibility, season dates, inclusions and the complete customer contract still require publication and approval before live sales open.",
+    text: "Annual, monthly, weekly and casual registration can be purchased at any time and are not linked to one specific season. Only the separate $100 Season Pass requires an open season to be selected. Final eligibility, season dates, inclusions and the complete customer contract still require publication and approval before live sales open.",
   },
   {
     title: "Automatic renewal disclosure",

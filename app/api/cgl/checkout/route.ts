@@ -53,8 +53,11 @@ export async function GET(request: Request) {
         readiness,
         prorationAvailable: false,
         creditsAvailable: false,
+        seasonRequired: plan.code === "casual_season",
         notice:
-          "This quote covers the standard billing period. Prorated upgrades and credit-funded subscription invoices require CGS reconciliation before checkout.",
+          plan.code === "casual_season"
+            ? "This AUD quote is for a one-off Season Pass linked to the season you select."
+            : "This AUD quote is not linked to a specific season. Prorated upgrades and credit-funded subscription invoices require CGS reconciliation before checkout.",
       },
       { headers: { "Cache-Control": "no-store" } },
     );
@@ -101,6 +104,13 @@ export async function POST(request: Request) {
         409,
         "square_recurring_disabled",
       );
+    const seasonId =
+      body.data.planCode === "casual_season" ? body.data.seasonId ?? null : null;
+    if (body.data.planCode === "casual_season" && !seasonId)
+      return Response.json(
+        { error: "Choose an open season for the $100 Season Pass." },
+        { status: 400 },
+      );
     const { data, error } = await getSupabaseAdmin().rpc(
       readiness.environment === "production"
         ? "cgl_prepare_square_live_checkout"
@@ -108,7 +118,7 @@ export async function POST(request: Request) {
       {
         p_member_id: member.id,
         p_plan_code: body.data.planCode,
-        p_season_id: body.data.seasonId ?? null,
+        p_season_id: seasonId,
         p_request_key: body.data.requestKey,
         p_accepted_amount_cents: body.data.acceptedAmountCents,
       },

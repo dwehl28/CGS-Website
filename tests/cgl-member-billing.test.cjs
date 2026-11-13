@@ -37,6 +37,12 @@ const portal = portalModule();
 const render = (View, props) => renderToStaticMarkup(React.createElement(View, props));
 const TEST_PAYMENT = "square:sandbox-payment";
 
+test("only the $100 Season Pass requires a season", () => {
+  for (const plan of ["annual", "monthly", "weekly", "casual_registration"])
+    assert.equal(portal.cglPlanRequiresSeason(plan), false);
+  assert.equal(portal.cglPlanRequiresSeason("casual_season"), true);
+});
+
 test("Sandbox billing is visibly TEST, includes confirmed dates and never promises a receipt or real eligibility", () => {
   const html = render(portal.CglSandboxBilling, {
     ready: true, busy: false, syncing: false, message: "", onRefresh() {},
@@ -79,6 +85,7 @@ test("recurring quote discloses the exact amount and correct interval; one-off q
   }
   const html = render(portal.CglSquareQuoteSummary, { quote: { amountCents: 2900, recurring: false, readiness: { ready: false } } });
   assert.match(html, /Initial test charge: \$29/);
+  assert.match(html, /Currency: AUD/);
   assert.match(html, /One-off test payment. This purchase does not automatically renew/);
   assert.match(html, /payment confirmation is unavailable/);
   assert.match(html, /required=""[^>]*name="terms"/);
@@ -175,6 +182,39 @@ test("a completed Sandbox membership never replaces real membership status or th
   assert.equal(html.split(TEST_PAYMENT).length - 1, 1);
   assert.match(html, /confirmed cancellation policy has not yet been published/);
   assert.match(html, /<button[^>]*disabled=""[^>]*>Review cancellation<\/button>/);
+  assert.doesNotMatch(html, /name="season"/);
+  assert.match(html, /can be purchased at any time and is not linked to a specific season/);
+});
+
+test("the season picker appears only when the $100 Season Pass is selected", () => {
+  let stateIndex = 0;
+  const snapshot = {
+    status: "ready",
+    joined: true,
+    memberships: [],
+    payments: [],
+    seasons: [{ id: "33333333-3333-4333-8333-333333333333", name: "Season One" }],
+    plans: [{ code: "casual_season", name: "Season Pass", price_cents: 10000, billing_interval: "once" }],
+    billing: { environment: "production", readiness: { ready: true } },
+  };
+  const state = [{ user: { id: "fixture-account" }, access_token: "fixture-token" }, true, snapshot, "Membership"];
+  const { default: Portal } = portalModule({
+    ...React,
+    useEffect() {},
+    useState(initial) {
+      const current = stateIndex++;
+      const value = current < state.length
+        ? state[current]
+        : initial === "annual"
+          ? "casual_season"
+          : initial;
+      return React.useState(value);
+    },
+  });
+  const html = render(Portal, {});
+  assert.match(html, /Season for the \$100 Season Pass/);
+  assert.match(html, /required=""[^>]*name="season"/);
+  assert.match(html, /only purchase linked to a specific season/);
 });
 
 test("checkout return checks require a UUID, stop after confirmation and poll pending payments at most six times", async () => {
