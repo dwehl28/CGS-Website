@@ -282,7 +282,7 @@ test("CGL administrator roles are accepted only from verified app metadata", asy
   }
 });
 
-test("legacy cookies and app tokens need an explicitly configured strong CGS secret", async () => {
+test("existing Clubhouse Admin sessions and app tokens require the configured strong CGS session secret", async () => {
   const { platform } = platformHarness({}, { cookieAdmin: true });
   await withAdminSecret(null, async () => {
     await assert.rejects(platform.getCglAdminActor(), { status: 403 });
@@ -293,19 +293,12 @@ test("legacy cookies and app tokens need an explicitly configured strong CGS sec
   await withAdminSecret(
     "test-only-strong-admin-secret-at-least-32-characters",
     async () => {
-      await assert.rejects(platform.getCglAdminActor(), { status: 403 });
-    },
-  );
-  await withAdminSecret(
-    "test-only-strong-admin-secret-at-least-32-characters",
-    async () => {
       assert.equal((await platform.getCglAdminActor()).role, "super_admin");
       assert.equal(
         (await platform.getCglAdminActor(request("legacy-token"))).role,
         "super_admin",
       );
     },
-    true,
   );
 });
 

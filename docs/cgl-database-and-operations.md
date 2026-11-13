@@ -160,7 +160,7 @@ CGL can enforce acceptance of results and member UI access. Without a supported 
 
 Existing server configuration: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`. Use a dedicated staging project; never expose the service key to the browser.
 
-Shared administrator configuration: `CGS_ADMIN_USERNAME` (non-default), `CGS_ADMIN_PASSWORD` (at least 16 characters), `CGS_ADMIN_SECRET` (at least 32 random characters). Prefer a verified Auth role for attributable individual administration. Never copy `admin` credentials into a deployment checklist.
+Shared administrator configuration reuses the existing Clubhouse Admin login and its signed cookie. `CGS_ADMIN_SECRET` must be at least 32 random characters before CGL accepts that session or its server app token. `CGS_ADMIN_USERNAME` and `CGS_ADMIN_PASSWORD` remain owned by the existing admin login rather than being duplicated by CGL. Prefer a verified Auth role for attributable individual administration. Never copy administrator credentials into a deployment checklist.
 
 Schedulers: `CGL_JOB_SECRET` protects the existing maintenance job. `CGL_SGT_SYNC_SECRET` is an independent random value used only by Supabase Cron to POST `/api/cgl/sgt/sync`; the same value is stored in Vercel and Supabase Vault. `CGL_SGT_CLUB_SLUG` defaults to `CGSBunker`. Notifications stay previews until an approved transactional email provider is integrated. No emails are represented as sent.
 

@@ -288,17 +288,10 @@ export async function getCglMemberIdentity(
 }
 export function isConfiguredCglLegacyAdmin() {
   const secret = process.env.CGS_ADMIN_SECRET?.trim();
-  const username = process.env.CGS_ADMIN_USERNAME?.trim();
-  const password = process.env.CGS_ADMIN_PASSWORD;
   return Boolean(
     secret &&
       secret.length >= 32 &&
-      !["cgs-admin-session-admin", "admin"].includes(secret) &&
-      username &&
-      username.toLowerCase() !== "admin" &&
-      password &&
-      password.length >= 16 &&
-      password.toLowerCase() !== "admin",
+      !["cgs-admin-session-admin", "admin"].includes(secret),
   );
 }
 export async function getCglAdminActor(request?: Request): Promise<CglActor> {
