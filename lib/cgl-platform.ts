@@ -295,6 +295,8 @@ export function isConfiguredCglLegacyAdmin() {
   );
 }
 export async function getCglAdminActor(request?: Request): Promise<CglActor> {
+  const legacyAdmin =
+    isConfiguredCglLegacyAdmin() && (await isAdminAuthenticated());
   if (request?.headers.get("authorization")) {
     const token = (request.headers.get("authorization") ?? "").replace(
       /^Bearer\s+/,
@@ -302,17 +304,27 @@ export async function getCglAdminActor(request?: Request): Promise<CglActor> {
     );
     if (isConfiguredCglLegacyAdmin() && isValidAdminAppAccessToken(token))
       return { id: "legacy-configured-admin", role: "super_admin" };
-    const identity = await getCglMemberIdentity(request);
-    const role = identity.appMetadata.cgl_role;
-    if (["super_admin", "league_admin", "results_admin"].includes(String(role)))
-      return { id: identity.id, role: role as CglRole };
+    try {
+      const identity = await getCglMemberIdentity(request);
+      const role = identity.appMetadata.cgl_role;
+      if (
+        ["super_admin", "league_admin", "results_admin"].includes(
+          String(role),
+        )
+      )
+        return { id: identity.id, role: role as CglRole };
+    } catch (error) {
+      if (!legacyAdmin) throw error;
+    }
+    if (legacyAdmin)
+      return { id: "legacy-configured-admin", role: "super_admin" };
     throw new CglApiError(
       "A CGL administrator role is required.",
       403,
       "forbidden",
     );
   }
-  if (isConfiguredCglLegacyAdmin() && (await isAdminAuthenticated()))
+  if (legacyAdmin)
     return { id: "legacy-configured-admin", role: "super_admin" };
   throw new CglApiError(
     "Sign in with an authorised CGS administrator account. CGL administration requires a configured strong admin session secret.",

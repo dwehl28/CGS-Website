@@ -302,6 +302,22 @@ test("existing Clubhouse Admin sessions and app tokens require the configured st
   );
 });
 
+test("a valid Clubhouse Admin session remains usable when the browser also has an ordinary member token", async () => {
+  const { platform } = platformHarness(
+    {},
+    { cookieAdmin: true, users: { member: user() } },
+  );
+  await withAdminSecret(
+    "test-only-strong-admin-secret-at-least-32-characters",
+    async () => {
+      assert.deepEqual(await platform.getCglAdminActor(request("member")), {
+        id: "legacy-configured-admin",
+        role: "super_admin",
+      });
+    },
+  );
+});
+
 test("member commands bind account ownership to the verified identity rather than a supplied member ID", async () => {
   const { platform, calls } = platformHarness();
   const identity = {
