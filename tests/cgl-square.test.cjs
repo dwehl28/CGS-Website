@@ -9,8 +9,9 @@ const ts = require("typescript");
 let rpcCalls, queue, dbRows, queryCalls, rpcOverride, requests, overrides;
 const originalFetch = global.fetch;
 const savedEnv = { ...process.env };
+const TERMS_VERSION = "cgl-membership-terms-2026-11-14";
 const fakeEnv = { CGL_SQUARE_ENVIRONMENT: "sandbox", CGL_SQUARE_ACCESS_TOKEN: "unit-test-token", CGL_SQUARE_MERCHANT_ID: "merchant", CGL_SQUARE_LOCATION_ID: "location", CGL_SQUARE_WEBHOOK_SIGNATURE_KEY: "unit-test-key", CGL_SQUARE_WEBHOOK_URL: "https://example.test/api/cgl/square-webhook", CGL_SQUARE_CHECKOUT_ENABLED: "true", CGL_SQUARE_SANDBOX_TESTING_ENABLED: "true", CGL_SQUARE_TERMS_APPROVED: "false", CGL_SQUARE_APPLICATION_ID: "sandbox-sq0idb-coifDq2jybhW8YXqBoxAyw" };
-const liveEnv = { CGL_SQUARE_ENVIRONMENT: "production", CGL_SQUARE_PRODUCTION_ACCESS_TOKEN: "live-unit-test-token", CGL_SQUARE_PRODUCTION_MERCHANT_ID: "live-merchant", CGL_SQUARE_PRODUCTION_LOCATION_ID: "live-location", CGL_SQUARE_PRODUCTION_WEBHOOK_SIGNATURE_KEY: "live-unit-test-key", CGL_SQUARE_PRODUCTION_WEBHOOK_URL: "https://example.test/api/cgl/square-webhook", CGL_SQUARE_PRODUCTION_APPLICATION_ID: "sq0idp-unit-test", CGL_SQUARE_CHECKOUT_ENABLED: "true", CGL_SQUARE_LIVE_PAYMENTS_ENABLED: "true", CGL_SQUARE_LIVE_RECURRING_ENABLED: "false", CGL_SQUARE_TERMS_APPROVED: "true", CGL_SQUARE_TERMS_VERSION: "cgl-terms-unit-test" };
+const liveEnv = { CGL_SQUARE_ENVIRONMENT: "production", CGL_SQUARE_PRODUCTION_ACCESS_TOKEN: "live-unit-test-token", CGL_SQUARE_PRODUCTION_MERCHANT_ID: "live-merchant", CGL_SQUARE_PRODUCTION_LOCATION_ID: "live-location", CGL_SQUARE_PRODUCTION_WEBHOOK_SIGNATURE_KEY: "live-unit-test-key", CGL_SQUARE_PRODUCTION_WEBHOOK_URL: "https://example.test/api/cgl/square-webhook", CGL_SQUARE_PRODUCTION_APPLICATION_ID: "sq0idp-unit-test", CGL_SQUARE_CHECKOUT_ENABLED: "true", CGL_SQUARE_LIVE_PAYMENTS_ENABLED: "true", CGL_SQUARE_LIVE_RECURRING_ENABLED: "false", CGL_SQUARE_TERMS_APPROVED: "true", CGL_SQUARE_TERMS_VERSION: TERMS_VERSION };
 const intent = { id: "bc403e80-2279-46de-89f5-7a036d3f5c74", member_id: "b83e731e-7613-4249-9684-e41c587ea305", membership_id: "f3b9af69-323f-443f-a451-ce8e7782ab1b", plan_code: "monthly", amount_cents: 2995, recurring: true, square_plan_variation_id: "variation", payment_link_url: null, square_order_id: "template", season_id: null, environment: "sandbox" };
 const variation = { id: "variation", type: "SUBSCRIPTION_PLAN_VARIATION", present_at_all_locations: true, subscription_plan_variation_data: { subscription_plan_id: "plan", phases: [{ cadence: "MONTHLY", pricing: { type: "STATIC", price: { amount: 2995, currency: "AUD" } } }] } };
 const subscription = { id: "subscription", location_id: "location", customer_id: "customer", plan_variation_id: "variation", start_date: "2027-01-31", charged_through_date: "2027-03-30", status: "ACTIVE", timezone: "UTC", version: 3, monthly_billing_anchor_date: 31, invoice_ids: ["invoice2", "invoice1"], phases: [{ ordinal: 0, order_template_id: "template" }] };
@@ -40,6 +41,7 @@ loaded.filename = sourcePath;
 loaded.paths = module.paths;
 loaded.require = name => {
   if (name === "server-only") return {};
+  if (name === "@/lib/cgl-terms") return { CGL_MEMBERSHIP_TERMS_VERSION: TERMS_VERSION };
   if (name === "@/lib/supabase-admin") return { getSupabaseAdmin: () => ({ rpc, from(table) {
     const call = { table, filters: [], limit: null }; queryCalls.push(call);
     const builder = { select() { return builder; }, eq(key, value) { call.filters.push([key, value]); return builder; }, order() { return builder; }, limit(value) { call.limit = value; return builder; }, maybeSingle() { const rows = dbRows.filter(row => call.filters.every(([key, value]) => row[key] === value)); return Promise.resolve({ data: rows[0] ?? null, error: rows.length > 1 ? { message: "multiple rows" } : null }); }, then(resolve, reject) { const rows = dbRows.filter(row => call.filters.every(([key, value]) => row[key] === value)); return Promise.resolve({ data: rows.slice(0, call.limit ?? rows.length), error: null }).then(resolve, reject); } };
@@ -97,7 +99,9 @@ test("Sandbox and production require separate credentials, approvals and recurri
   for (const change of [{ CGL_SQUARE_ENVIRONMENT: "production" }, { CGL_SQUARE_APPLICATION_ID: "sq0idp-D7j5iaD6eNFS0_KiNk3YEA" }, { CGL_SQUARE_SANDBOX_TESTING_ENABLED: "false", CGL_SQUARE_TERMS_APPROVED: "true" }, { CGL_SQUARE_WEBHOOK_URL: "http://example.test/hook" }]) assert.equal(square.getCglSquareReadiness({ ...fakeEnv, ...change }).ready, false);
   const live = square.getCglSquareReadiness(liveEnv);
   assert.equal(live.ready, true); assert.equal(live.oneOffActionsEnabled, true); assert.equal(live.subscriptionActionsEnabled, false);
+  assert.equal(live.termsVersionMatches, true);
   assert.equal(square.getCglSquareReadiness({ ...liveEnv, CGL_SQUARE_LIVE_RECURRING_ENABLED: "true" }).subscriptionActionsEnabled, true);
+  assert.equal(square.getCglSquareReadiness({ ...liveEnv, CGL_SQUARE_TERMS_VERSION: "outdated-terms" }).ready, false);
   for (const key of ["CGL_SQUARE_PRODUCTION_ACCESS_TOKEN", "CGL_SQUARE_LIVE_PAYMENTS_ENABLED", "CGL_SQUARE_TERMS_VERSION"]) {
     const missing = { ...liveEnv }; delete missing[key];
     assert.equal(square.getCglSquareReadiness(missing).ready, false);
@@ -105,19 +109,29 @@ test("Sandbox and production require separate credentials, approvals and recurri
 });
 test("production checkout requires the independent database launch approval", async () => {
   Object.assign(process.env, liveEnv);
-  dbRows = [{ key: "square_production", value: { checkout_enabled: false, launch_approved: false, recurring_enabled: false } }];
+  dbRows = [
+    { key: "square_production", value: { checkout_enabled: false, launch_approved: false, recurring_enabled: false } },
+    { key: "legal", value: { approved: true, version: TERMS_VERSION } },
+  ];
   const locked = await square.getCglSquareOperationalReadiness();
   assert.equal(locked.databaseApproved, false);
+  assert.equal(locked.databaseTermsApproved, true);
   assert.equal(locked.ready, false);
   assert.equal(locked.livePaymentsEnabled, false);
   assert.equal(locked.oneOffActionsEnabled, false);
 
-  dbRows = [{ key: "square_production", value: { checkout_enabled: true, launch_approved: true, recurring_enabled: false } }];
+  dbRows[0].value = { checkout_enabled: true, launch_approved: true, recurring_enabled: false };
   const oneOff = await square.getCglSquareOperationalReadiness();
   assert.equal(oneOff.databaseApproved, true);
   assert.equal(oneOff.ready, true);
   assert.equal(oneOff.livePaymentsEnabled, true);
   assert.equal(oneOff.subscriptionActionsEnabled, false);
+
+  dbRows[1].value.version = "outdated-terms";
+  const outdated = await square.getCglSquareOperationalReadiness();
+  assert.equal(outdated.databaseTermsApproved, false);
+  assert.equal(outdated.ready, false);
+  dbRows[1].value.version = TERMS_VERSION;
 
   process.env.CGL_SQUARE_LIVE_RECURRING_ENABLED = "true";
   dbRows[0].value.recurring_enabled = true;

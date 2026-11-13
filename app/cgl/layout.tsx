@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import CglShell from "@/components/cgl/CglShell";
+import { getCglSquareOperationalReadiness } from "@/lib/cgl-square";
 
 export const metadata: Metadata = {
   title: { default: "CGL — Crossodog Golf League", template: "%s | CGL" },
@@ -8,6 +10,12 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function CglLayout({ children }: { children: React.ReactNode }) {
-  return <CglShell>{children}</CglShell>;
+export default async function CglLayout({ children }: { children: React.ReactNode }) {
+  await connection();
+  const readiness = await getCglSquareOperationalReadiness().catch(() => null);
+  return (
+    <CglShell oneOffSalesOpen={readiness?.oneOffActionsEnabled === true}>
+      {children}
+    </CglShell>
+  );
 }

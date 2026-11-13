@@ -78,12 +78,12 @@ test("failed Sandbox payment offers review help without promising card replaceme
 
 test("recurring quote discloses the exact amount and correct interval; one-off quotes never suggest automatic renewal", () => {
   for (const [billingInterval, label] of [["annual", "year"], ["monthly", "month"], ["weekly", "week"]]) {
-    const html = render(portal.CglSquareQuoteSummary, { quote: { amountCents: 2995, recurring: true, billingInterval, readiness: { ready: true } } });
+    const html = render(portal.CglSquareQuoteSummary, { quote: { amountCents: 2995, recurring: true, billingInterval, purchaseEnabled: true, termsVersion: "test-terms", readiness: { ready: true } } });
     assert.match(html, new RegExp(`Automatic test renewal: \\$29\\.95 every ${label}`));
     assert.doesNotMatch(html, /does not automatically renew/);
     assert.doesNotMatch(html, /payment confirmation is unavailable/);
   }
-  const html = render(portal.CglSquareQuoteSummary, { quote: { amountCents: 2900, recurring: false, readiness: { ready: false } } });
+  const html = render(portal.CglSquareQuoteSummary, { quote: { amountCents: 2900, recurring: false, purchaseEnabled: false, termsVersion: "test-terms", readiness: { ready: false } } });
   assert.match(html, /Initial test charge: \$29/);
   assert.match(html, /Currency: AUD/);
   assert.match(html, /One-off test payment. This purchase does not automatically renew/);
@@ -132,7 +132,7 @@ test("the actual checkout form redirects to sandbox.square.link and rejects look
       const state = [
         { user: { id: "fixture-account" }, access_token: "fixture-token" }, true,
         { status: "ready", joined: true }, "Membership", "login", false, "", false, null,
-        { planCode: "monthly", amountCents: 2995, recurring: true, billingInterval: "monthly", readiness: { ready: true } },
+        { planCode: "monthly", amountCents: 2995, recurring: true, billingInterval: "monthly", purchaseEnabled: true, termsVersion: "test-terms", readiness: { ready: true } },
       ];
       const { default: Portal } = portalModule({
         ...React, useEffect() {}, useCallback(callback) { return callback; },
@@ -145,6 +145,7 @@ test("the actual checkout form redirects to sandbox.square.link and rejects look
       global.fetch = async (_url, options) => {
         assert.equal(options.headers.Authorization, "Bearer fixture-token");
         assert.equal(JSON.parse(options.body).acceptedAmountCents, 2995);
+        assert.equal(JSON.parse(options.body).termsVersion, "test-terms");
         return { ok: true, json: async () => ({ url }) };
       };
       const form = findCheckout(Portal({}));
@@ -205,7 +206,7 @@ test("the season picker appears only when the $100 Season Pass is selected", () 
       const current = stateIndex++;
       const value = current < state.length
         ? state[current]
-        : initial === "annual"
+        : initial === "casual_registration"
           ? "casual_season"
           : initial;
       return React.useState(value);

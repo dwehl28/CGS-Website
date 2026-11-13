@@ -122,6 +122,23 @@ function platformHarness(tables = {}, options = {}) {
       },
     },
     "@/lib/cgl-square": {
+      auditCglSquareCatalogMappings: async (plans) => {
+        calls.square.push(["audit", plans]);
+        return {
+          environment: "production",
+          timezone: "Australia/Brisbane",
+          mappings: plans.map((plan) => ({
+            code: plan.code,
+            amountCents: plan.amountCents,
+            currency: "AUD",
+            cadence: {
+              annual: "ANNUAL",
+              monthly: "MONTHLY",
+              weekly: "WEEKLY",
+            }[plan.code],
+          })),
+        };
+      },
       verifyCglSquareConnection: async () => {
         calls.square.push(["verify"]);
         return {
@@ -460,6 +477,43 @@ test("Square connection verification is read-only and restricted to billing admi
     { status: 403 },
   );
   assert.equal(restricted.calls.square.length, 0);
+});
+
+test("Square catalogue audit checks mapped recurring prices without exposing provider IDs", async () => {
+  const plans = [
+    { code: "annual", price_cents: 24900, active: true, config: { square_plan_variation_id: "annual-variation" } },
+    { code: "monthly", price_cents: 2995, active: true, config: { square_plan_variation_id: "monthly-variation" } },
+    { code: "weekly", price_cents: 895, active: true, config: { square_plan_variation_id: "weekly-variation" } },
+  ];
+  const owner = platformHarness({ cgl_plans: plans });
+  const result = await owner.platform.executeCglAdminAction(
+    { id: MEMBER, role: "super_admin" },
+    {
+      action: "audit_square_catalog",
+      reason: "Verify exact mapped AUD prices and billing cadence",
+    },
+  );
+  assert.equal(owner.calls.square[0][0], "audit");
+  assert.deepEqual(owner.calls.square[0][1], [
+    { code: "annual", amountCents: 24900, variationId: "annual-variation" },
+    { code: "monthly", amountCents: 2995, variationId: "monthly-variation" },
+    { code: "weekly", amountCents: 895, variationId: "weekly-variation" },
+  ]);
+  assert.deepEqual(result.mappings.map((mapping) => mapping.amountCents), [24900, 2995, 895]);
+  assert.equal(JSON.stringify(result).includes("variation"), false);
+
+  const incomplete = platformHarness({ cgl_plans: plans.slice(0, 2) });
+  await assert.rejects(
+    incomplete.platform.executeCglAdminAction(
+      { id: MEMBER, role: "super_admin" },
+      {
+        action: "audit_square_catalog",
+        reason: "Reject incomplete provider mappings",
+      },
+    ),
+    { status: 409 },
+  );
+  assert.equal(incomplete.calls.square.length, 0);
 });
 
 test("CGL mutations reject cross-origin requests and oversized or invalid JSON", async () => {

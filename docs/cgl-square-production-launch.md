@@ -10,20 +10,20 @@ The CGL billing code supports two deliberately separate Square environments:
 - Production credentials use dedicated environment variables. Sandbox credentials cannot satisfy production readiness.
 - The production application, merchant, AUD location, access token and webhook signature are stored as production-only Vercel settings.
 - The production webhook is enabled for `payment.created`, `payment.updated`, `refund.created` and `refund.updated` at the exact production notification URL.
-- Database production checkout and the Vercel live-payment gate both start disabled.
+- Database production checkout and the Vercel live-payment gate remain disabled until the controlled real-payment check.
 - A completed, verified Square payment is required before access is granted. A browser return, open order, webhook note or customer email is not proof of payment.
 
-CGS confirmed the pricing and cancellation model on 11 November 2026. Monthly and weekly cancellation takes effect at the next published 13-week season boundary. Annual cancellation takes effect at the end of the paid annual term. The complete customer contract, privacy wording, refund wording and recurring-payment disclosure still need a final published version.
+CGS confirmed the pricing and cancellation model on 11 November 2026. The one-off purchase terms are published as `cgl-membership-terms-2026-11-14`, with privacy, payment, access, refund-support and Australian Consumer Law wording. Monthly and weekly cancellation is intended to take effect at the next published 13-week season boundary, while annual cancellation is intended to take effect at the end of the paid annual term. Square hosted subscriptions currently cancel at the end of the active billing period, so recurring production sales must remain disabled until the provider workflow can honour the published CGS timing.
 
 ## Launch gates
 
 Complete these in order:
 
 1. Sign in to the Square Developer Console using the CGS production seller account. **Completed 12 November 2026.**
-2. Confirm the production merchant is active in Australia and the selected location uses AUD. Before recurring billing is considered, change the Square location timezone from its current `Australia/Sydney` setting to the intended `Australia/Brisbane` setting and re-verify cancellation boundaries.
+2. Confirm the production merchant is active in Australia and the selected location uses AUD and `Australia/Brisbane`. **Completed 13 November 2026.**
 3. Record the dedicated production application, access token, merchant and location IDs in Vercel. Never reuse Sandbox values. **Completed 12 November 2026.**
 4. Create a production webhook subscription for `https://crossodoggolf.com/api/cgl/square-webhook?environment=production`, record its production signature key and enable `payment.created`, `payment.updated`, `refund.created` and `refund.updated`. **Completed 12 November 2026.**
-5. Publish and approve a versioned customer terms document. Set the same version in the CGL database and `CGL_SQUARE_TERMS_VERSION`.
+5. Publish a versioned customer terms document. **Published in code as `cgl-membership-terms-2026-11-14`; production database and environment approval remain part of the controlled launch switch.**
 6. Confirm the first CGL season dates before offering the $100 casual season entry.
 7. Verify the production merchant/location connection read-only. **Completed 12 November 2026; merchant and AUD location identities matched.**
 8. Enable one-off production checkout in a controlled window. Keep recurring checkout disabled.
@@ -45,10 +45,10 @@ CGL_SQUARE_CHECKOUT_ENABLED=false
 CGL_SQUARE_LIVE_PAYMENTS_ENABLED=false
 CGL_SQUARE_LIVE_RECURRING_ENABLED=false
 CGL_SQUARE_TERMS_APPROVED=false
-CGL_SQUARE_TERMS_VERSION=
+CGL_SQUARE_TERMS_VERSION=cgl-membership-terms-2026-11-14
 ```
 
-The application deliberately requires both `CGL_SQUARE_CHECKOUT_ENABLED` and `CGL_SQUARE_LIVE_PAYMENTS_ENABLED`. Recurring checkout additionally requires `CGL_SQUARE_LIVE_RECURRING_ENABLED`, but that final gate must remain false until the provider evidence is complete.
+The application deliberately requires both `CGL_SQUARE_CHECKOUT_ENABLED` and `CGL_SQUARE_LIVE_PAYMENTS_ENABLED`. The environment terms version and approved database terms version must both exactly match the version compiled into the deployment. Recurring checkout additionally requires `CGL_SQUARE_LIVE_RECURRING_ENABLED`, but that final gate must remain false until the provider evidence is complete.
 
 ## Rollback
 
@@ -56,7 +56,5 @@ Set `CGL_SQUARE_LIVE_PAYMENTS_ENABLED=false` and redeploy. Existing payment reco
 
 ## Remaining owner input
 
-- Approval to change the Square production location timezone from `Australia/Sydney` to `Australia/Brisbane`.
 - The first 2027 season start and end dates.
-- Final version identifier for the published customer terms.
 - Explicit confirmation immediately before any real charge or refund.

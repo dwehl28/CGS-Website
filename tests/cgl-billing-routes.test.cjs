@@ -14,6 +14,7 @@ function compile(file, mocks) {
 class BillingError extends Error { constructor(message,status=503){super(message);this.status=status;} }
 const memberId='11111111-1111-4111-8111-111111111111';
 const checkoutId='22222222-2222-4222-8222-222222222222';
+const termsVersion='cgl-membership-terms-2026-11-14';
 function harness(options={}) {
   const calls={rpc:[],checkout:[],sync:[],receipt:[],worker:[],after:[]};
   const platform={
@@ -23,22 +24,22 @@ function harness(options={}) {
   };
   const square={
     CglSquareError:BillingError,
-    getCglSquareReadiness:()=>({ready:options.ready!==false,configured:true,environment:options.environment??'sandbox',subscriptionActionsEnabled:options.subscriptionActionsEnabled===true}),
-    getCglSquareOperationalReadiness:async()=>({ready:options.ready!==false,configured:true,environment:options.environment??'sandbox',subscriptionActionsEnabled:options.subscriptionActionsEnabled===true}),
+    getCglSquareReadiness:()=>({ready:options.ready!==false,configured:true,environment:options.environment??'sandbox',oneOffActionsEnabled:options.ready!==false,subscriptionActionsEnabled:options.subscriptionActionsEnabled===true}),
+    getCglSquareOperationalReadiness:async()=>({ready:options.ready!==false,configured:true,environment:options.environment??'sandbox',oneOffActionsEnabled:options.ready!==false,subscriptionActionsEnabled:options.subscriptionActionsEnabled===true}),
     async createCglSquareCheckout(...args){calls.checkout.push(args);return'https://sandbox.square.link/test';},
     async syncCglSquareMember(...args){calls.sync.push(args);return{status:'pending',checkouts:[{id:args[1],state:'pending'}]};},
     async receiveCglSquareWebhook(...args){calls.receipt.push(args);if(options.badSignature)throw new BillingError('Invalid signature',401);return options.testEvent?{eventId:'test-event',event_id:'test-event',test:true}:{eventId:'event',queued:true};},
     async processQueuedCglSquareEvents(...args){calls.worker.push(args);return{processed:0};},
   };
   const mocks={
-    '@/lib/cgl-platform':platform,'@/lib/cgl-square':square,
+    '@/lib/cgl-platform':platform,'@/lib/cgl-square':square,'@/lib/cgl-terms':{CGL_MEMBERSHIP_TERMS_VERSION:termsVersion},
     '@/lib/supabase-admin':{getSupabaseAdmin:()=>({async rpc(...args){calls.rpc.push(args);return options.rpcFailure?{error:{message:'Changed price'}}:{data:options.intent??{id:checkoutId,member_id:memberId,amount_cents:2995,recurring:true,environment:options.environment??'sandbox'}};}})},
     'next/server':{after(fn){calls.after.push(fn);}},
   };
   return{calls,checkout:compile('app/api/cgl/checkout/route.ts',mocks),sync:compile('app/api/cgl/billing/sync/route.ts',mocks),webhook:compile('app/api/cgl/square-webhook/route.ts',mocks),recovery:compile('app/api/cgl/billing/reconcile/route.ts',mocks)};
 }
 function post(pathname,body,headers={}){return new Request('https://example.test'+pathname,{method:'POST',headers:{authorization:'Bearer member','content-type':'application/json',...headers},body:JSON.stringify(body)});}
-const purchase={planCode:'monthly',requestKey:checkoutId,termsAccepted:true,acceptedAmountCents:2995};
+const purchase={planCode:'monthly',requestKey:checkoutId,termsAccepted:true,termsVersion,acceptedAmountCents:2995};
 test('checkout rejects unauthenticated, cross-origin and client-account overrides before provider or database changes',async()=>{
   for(const [body,headers,status] of [[purchase,{authorization:'Bearer legacy-admin'},401],[purchase,{origin:'https://other.test'},403],[{...purchase,memberId:'other'}, {},400]]){
     const h=harness(); assert.equal((await h.checkout.POST(post('/api/cgl/checkout',body,headers))).status,status);
@@ -58,7 +59,7 @@ test('only the $100 season pass carries a season into checkout',async()=>{
   assert.equal(ordinary.calls.rpc[0][1].p_season_id,null);
 
   const missing=harness();
-  const seasonPass={planCode:'casual_season',requestKey:checkoutId,termsAccepted:true,acceptedAmountCents:10000};
+  const seasonPass={planCode:'casual_season',requestKey:checkoutId,termsAccepted:true,termsVersion,acceptedAmountCents:10000};
   assert.equal((await missing.checkout.POST(post('/api/cgl/checkout',seasonPass))).status,400);
   assert.equal(missing.calls.rpc.length,0);
 
@@ -67,7 +68,7 @@ test('only the $100 season pass carries a season into checkout',async()=>{
   assert.equal(selected.calls.rpc[0][1].p_season_id,seasonId);
 });
 test('production checkout uses the live one-off RPC and keeps recurring plans locked',async()=>{
-  const oneOff={planCode:'casual_registration',requestKey:checkoutId,termsAccepted:true,acceptedAmountCents:2900};
+  const oneOff={planCode:'casual_registration',requestKey:checkoutId,termsAccepted:true,termsVersion,acceptedAmountCents:2900};
   const live=harness({environment:'production',intent:{id:checkoutId,member_id:memberId,amount_cents:2900,recurring:false,environment:'production'}});
   assert.equal((await live.checkout.POST(post('/api/cgl/checkout',oneOff))).status,200);
   assert.deepEqual(live.calls.rpc[0],['cgl_prepare_square_live_checkout',{p_member_id:memberId,p_plan_code:'casual_registration',p_season_id:null,p_request_key:checkoutId,p_accepted_amount_cents:2900}]);

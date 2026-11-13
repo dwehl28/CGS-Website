@@ -755,6 +755,20 @@ function Finance({
             <ShieldCheck size={13} />
             Verify Square connection
           </button>
+          <button
+            type="button"
+            className={s.secondary}
+            disabled={busy}
+            onClick={() =>
+              void send("audit_square_catalog", {
+                reason:
+                  "Read-only verification of the mapped Square recurring products, AUD prices and billing cadence",
+              })
+            }
+          >
+            <ShieldCheck size={13} />
+            Audit Square plan prices
+          </button>
         </div>
         <h4>{billingIsTest ? "Test memberships" : "Square memberships"}</h4>
         <RecordList items={rows(testBilling.memberships)} columns={["member_id", "plan_code", "state", "paid_through", "next_billing_at"]} />

@@ -7,6 +7,7 @@ import {
   getCglSquareOperationalReadiness,
   type CglSquareCheckout,
 } from "@/lib/cgl-square";
+import { CGL_MEMBERSHIP_TERMS_VERSION } from "@/lib/cgl-terms";
 
 export const runtime = "nodejs";
 
@@ -22,6 +23,7 @@ const input = z
     seasonId: z.uuid().optional(),
     requestKey: z.uuid(),
     termsAccepted: z.literal(true),
+    termsVersion: z.literal(CGL_MEMBERSHIP_TERMS_VERSION),
     acceptedAmountCents: z.number().int().positive(),
   })
   .strict();
@@ -42,6 +44,9 @@ export async function GET(request: Request) {
         { status: 404 },
       );
     const readiness = await getCglSquareOperationalReadiness();
+    const purchaseEnabled = plan.auto_renew
+      ? readiness.subscriptionActionsEnabled
+      : readiness.oneOffActionsEnabled;
     return Response.json(
       {
         planCode: plan.code,
@@ -51,13 +56,17 @@ export async function GET(request: Request) {
         billingInterval: plan.billing_interval,
         environment: readiness.environment,
         readiness,
+        purchaseEnabled,
+        termsVersion: CGL_MEMBERSHIP_TERMS_VERSION,
         prorationAvailable: false,
         creditsAvailable: false,
         seasonRequired: plan.code === "casual_season",
         notice:
           plan.code === "casual_season"
             ? "This AUD quote is for a one-off Season Pass linked to the season you select."
-            : "This AUD quote is not linked to a specific season. Prorated upgrades and credit-funded subscription invoices require CGS reconciliation before checkout.",
+            : plan.auto_renew
+              ? "This recurring membership is not currently available for purchase. No payment or subscription will be created."
+              : "This one-off AUD purchase is not linked to a specific season and does not automatically renew.",
       },
       { headers: { "Cache-Control": "no-store" } },
     );

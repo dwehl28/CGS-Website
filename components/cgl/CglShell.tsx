@@ -18,7 +18,13 @@ const links = [
   { href: "/cgl/memberships", label: "Memberships" },
 ];
 
-export default function CglShell({ children }: { children: ReactNode }) {
+export default function CglShell({
+  children,
+  oneOffSalesOpen = false,
+}: {
+  children: ReactNode;
+  oneOffSalesOpen?: boolean;
+}) {
   const pathname = usePathname();
   const legacyPreview =
     pathname.startsWith("/cgl/preview") ||
@@ -112,9 +118,20 @@ export default function CglShell({ children }: { children: ReactNode }) {
         </div>
       ) : (
         <div className={styles.launch}>
-          <span>MEMBER REVIEW · MEMBERSHIP SALES ARE CLOSED</span>
-          <Link href="/cgl/preview/2027">
-            See example standings <ArrowUpRight size={12} />
+          <span>
+            {oneOffSalesOpen
+              ? "NOW OPEN · $29 CASUAL REGISTRATION"
+              : "MEMBER REVIEW · MEMBERSHIP SALES ARE CLOSED"}
+          </span>
+          <Link
+            href={
+              oneOffSalesOpen
+                ? "/cgl/join?plan=casual_registration"
+                : "/cgl/preview/2027"
+            }
+          >
+            {oneOffSalesOpen ? "Join CGL" : "See example standings"}{" "}
+            <ArrowUpRight size={12} />
           </Link>
         </div>
       )}

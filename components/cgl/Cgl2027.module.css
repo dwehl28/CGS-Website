@@ -533,6 +533,7 @@
   gap: 14px;
 }
 .plan {
+  position: relative;
   border: 1px solid #d4dfe6;
   border-radius: 4px;
   background: white;
@@ -581,7 +582,6 @@
 }
 .featuredPlan {
   border: 2px solid #1784ac;
-  position: relative;
 }
 .planLabel {
   position: absolute;

@@ -184,9 +184,10 @@ export function CglSquareQuoteSummary({ quote }: { quote: CglSnapshot }) {
         ? `Automatic ${isTest ? "test " : ""}renewal: ${aud(quote.amountCents)} every ${intervals[str(quote.billingInterval)] ?? "confirmed billing period"}. Square shows the exact next billing date before authorisation.`
         : `One-off ${isTest ? "test " : ""}payment. This purchase does not automatically renew.`}</p>
       <p>{str(quote.notice ?? quote.disclosure, `Review the amount and membership disclosures before authorising this ${isTest ? "test " : ""}payment.`)}</p>
-      {row(quote.readiness).ready !== true ? <p>Square {isTest ? "Sandbox " : "production "}configuration or approval is still pending. You can review this quote, but payment confirmation is unavailable.</p> : null}
+      <p>Terms: {str(quote.termsVersion, "Current published membership terms")}</p>
+      {quote.purchaseEnabled !== true ? <p>Square payment confirmation is unavailable for this product. You can review the quote, but no payment or subscription will be created.</p> : null}
       <label style={{ display: "flex", gap: 10 }}>
-        <input required type="checkbox" name="terms" />I have reviewed the displayed payment and membership terms.
+        <input required type="checkbox" name="terms" />I have reviewed the displayed payment and <Link href="/cgl/terms">membership terms</Link>.
       </label>
     </div>
   );
@@ -210,7 +211,7 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
   const returnSync = useRef({ owner: "", checkoutId: "", attempts: 0 });
   const [redeemItem, setRedeemItem] = useState("");
   const [redemptionKey, setRedemptionKey] = useState("");
-  const [selectedPlan, setSelectedPlan] = useState("annual");
+  const [selectedPlan, setSelectedPlan] = useState("casual_registration");
   const [selectedSeason, setSelectedSeason] = useState("");
   const loadSequence = useRef(0);
   const load = useCallback(async (token: string, signal?: AbortSignal) => {
@@ -483,7 +484,7 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
       if (cglPlanRequiresSeason(planCode) && !uuidPattern.test(seasonId)) {
         throw new Error("Choose an open season for the $100 Season Pass.");
       }
-      if (checkoutQuote && row(checkoutQuote.readiness).ready !== true) {
+      if (checkoutQuote && checkoutQuote.purchaseEnabled !== true) {
         throw new Error("Square setup or the required payment disclosures are still pending. No payment has been taken.");
       }
       const scope = cglCheckoutStorageKey(session.user.id, planCode, seasonId);
@@ -507,6 +508,7 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
                 seasonId: seasonId || undefined,
                 requestKey,
                 termsAccepted: form.get("terms") === "on",
+                termsVersion: checkoutQuote.termsVersion,
                 acceptedAmountCents: checkoutQuote.amountCents,
               }),
             }
@@ -549,6 +551,12 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
   const billing = row(data.billing);
   const billingIsTest = str(billing.environment, "sandbox") !== "production";
   const checkoutReadiness = row(checkoutQuote?.readiness ?? billing.readiness);
+  const recurringCheckoutEnabled = billingIsTest ||
+    checkoutReadiness.subscriptionActionsEnabled === true;
+  const purchaseSeasons = rows(data.seasons).filter((season) => {
+    const status = str(season.status, "");
+    return !status || ["registration", "published", "active"].includes(status);
+  });
   const cancellationPolicyApproved = billing.cancellationPolicyApproved === true;
   const memberships = rows(data.memberships);
   const membership =
@@ -561,6 +569,16 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
   const standings = rows(data.standings)[0];
   const available = rows(data.weeks).filter(availableWeek);
   const ready = data.status === "ready";
+  useEffect(() => {
+    if (
+      !recurringCheckoutEnabled &&
+      ["annual", "monthly", "weekly"].includes(selectedPlan)
+    ) {
+      setSelectedPlan("casual_registration");
+      setSelectedSeason("");
+      setCheckoutQuote(null);
+    }
+  }, [recurringCheckoutEnabled, selectedPlan]);
   const formula = row(row(data.settings).annual_formula);
   const annualYear = Math.max(
     2027,
@@ -1196,12 +1214,18 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
                       setCheckoutQuote(null);
                     }}
                   >
-                    {rows(data.plans).map((p) => (
-                      <option key={str(p.code)} value={str(p.code)}>
-                        {str(p.name)} · {aud(p.price_cents)} /{" "}
-                        {str(p.billing_interval)}
-                      </option>
-                    ))}
+                    {rows(data.plans).map((p) => {
+                      const code = str(p.code);
+                      const recurring = ["annual", "monthly", "weekly"].includes(code);
+                      const unavailable = (recurring && !recurringCheckoutEnabled) ||
+                        (code === "casual_season" && purchaseSeasons.length === 0);
+                      return (
+                        <option key={code} value={code} disabled={unavailable}>
+                          {str(p.name)} · {aud(p.price_cents)} / {str(p.billing_interval)}
+                          {unavailable ? " · not currently available" : ""}
+                        </option>
+                      );
+                    })}
                   </select>
                 </label>
                 {cglPlanRequiresSeason(selectedPlan) ? (
@@ -1217,7 +1241,7 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
                       }}
                     >
                       <option value="">Choose an open season</option>
-                      {rows(data.seasons).map((se) => (
+                      {purchaseSeasons.map((se) => (
                         <option key={str(se.id)} value={str(se.id)}>
                           {str(se.name)}
                         </option>
@@ -1235,7 +1259,7 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
               <div className={s.actions}>
                 <button
                   className={s.primary}
-                  disabled={busy || billingSyncing || !ready || data.joined !== true || (Boolean(checkoutQuote) && checkoutReadiness.ready !== true)}
+                  disabled={busy || billingSyncing || !ready || data.joined !== true || (checkoutQuote ? checkoutQuote.purchaseEnabled !== true : false)}
                 >
                   {busy
                     ? "Preparing…"

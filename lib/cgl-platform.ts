@@ -14,7 +14,10 @@ import {
   sanitizeSgtPublic,
   setCglSgtSyncEnabled,
 } from "@/lib/cgl-sgt";
-import { verifyCglSquareConnection } from "@/lib/cgl-square";
+import {
+  auditCglSquareCatalogMappings,
+  verifyCglSquareConnection,
+} from "@/lib/cgl-square";
 import {
   CGL_DEFAULT_POINTS_TABLE,
   CGL_RULES_VERSION,
@@ -2042,6 +2045,46 @@ export async function executeCglAdminAction(actor: CglActor, body: CglData) {
     return {
       ...connection,
       message: `Square ${connection.environment} connection verified for an active AUD location in ${connection.timezone}. No payment was created.`,
+    };
+  }
+  if (action === "audit_square_catalog") {
+    permission(actor, "manage_billing");
+    const recurringCodes = ["annual", "monthly", "weekly"];
+    const plans = (await rows(
+      "cgl_plans",
+      { active: true },
+      "code,price_cents,config",
+    )).filter((plan) => recurringCodes.includes(String(plan.code)));
+    const mappings = recurringCodes.map((code) => {
+      const plan = plans.find((candidate) => candidate.code === code);
+      const config = plan?.config && typeof plan.config === "object" &&
+        !Array.isArray(plan.config) ? plan.config as CglData : {};
+      const variationId = typeof config.square_plan_variation_id === "string"
+        ? config.square_plan_variation_id.trim()
+        : "";
+      if (!plan || !Number.isSafeInteger(plan.price_cents) || !variationId)
+        throw new CglApiError(
+          `The ${code} Square catalogue mapping is incomplete. No payment was created.`,
+          409,
+          "square_catalog_incomplete",
+        );
+      return {
+        code,
+        amountCents: Number(plan.price_cents),
+        variationId,
+      };
+    });
+    const audit = await auditCglSquareCatalogMappings(mappings);
+    return {
+      environment: audit.environment,
+      timezone: audit.timezone,
+      mappings: audit.mappings.map((mapping) => ({
+        code: mapping.code,
+        amountCents: mapping.amountCents,
+        currency: mapping.currency,
+        cadence: mapping.cadence,
+      })),
+      message: `Square ${audit.environment} catalogue verified for annual, monthly and weekly AUD pricing. No product or payment was created.`,
     };
   }
   if (action === "save_settings") {

@@ -1,6 +1,7 @@
 import "server-only";
 import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { CGL_MEMBERSHIP_TERMS_VERSION } from "@/lib/cgl-terms";
 
 const SQUARE_API = {
   sandbox: "https://connect.squareupsandbox.com/v2",
@@ -77,6 +78,7 @@ export function getCglSquareReadiness(env: NodeJS.ProcessEnv = process.env) {
   const recurringEnabled = env.CGL_SQUARE_LIVE_RECURRING_ENABLED === "true";
   const termsApproved = env.CGL_SQUARE_TERMS_APPROVED === "true";
   const termsVersion = env.CGL_SQUARE_TERMS_VERSION?.trim() ?? "";
+  const termsVersionMatches = termsVersion === CGL_MEMBERSHIP_TERMS_VERSION;
   let webhookUrlValid = false;
   try { const url = new URL(env[keys.notificationUrl] ?? ""); webhookUrlValid = url.protocol === "https:" && !url.username && !url.password && !url.hash; } catch { /* Stay unready. */ }
   const applicationMatches = environment === "sandbox"
@@ -86,7 +88,7 @@ export function getCglSquareReadiness(env: NodeJS.ProcessEnv = process.env) {
   const configured = apiConfigured && missing.length === 0 && webhookUrlValid;
   const ready = environment === "sandbox"
     ? configured && enabled && testingEnabled
-    : configured && enabled && livePaymentsEnabled && termsApproved && Boolean(termsVersion);
+    : configured && enabled && livePaymentsEnabled && termsApproved && termsVersionMatches;
   return {
     environment,
     applicationId,
@@ -98,6 +100,8 @@ export function getCglSquareReadiness(env: NodeJS.ProcessEnv = process.env) {
     recurringEnabled: environment === "production" && ready && recurringEnabled,
     termsApproved,
     termsVersion,
+    termsVersionMatches,
+    expectedTermsVersion: CGL_MEMBERSHIP_TERMS_VERSION,
     ready,
     oneOffActionsEnabled: ready,
     subscriptionActionsEnabled: environment === "production" && ready && recurringEnabled,
@@ -114,27 +118,32 @@ export async function getCglSquareOperationalReadiness(
       ...readiness,
       databaseApproved: true,
       databaseRecurringApproved: false,
+      databaseTermsApproved: true,
     };
 
-  let setting: Data = {};
+  let setting: Data = {}, legal: Data = {};
   try {
-    const { data, error } = await getSupabaseAdmin()
-      .from("cgl_settings")
-      .select("value")
-      .eq("key", "square_production")
-      .maybeSingle();
-    if (!error) setting = object(object(data).value);
+    const db = getSupabaseAdmin();
+    const [launchResult, legalResult] = await Promise.all([
+      db.from("cgl_settings").select("value").eq("key", "square_production").maybeSingle(),
+      db.from("cgl_settings").select("value").eq("key", "legal").maybeSingle(),
+    ]);
+    if (!launchResult.error) setting = object(object(launchResult.data).value);
+    if (!legalResult.error) legal = object(object(legalResult.data).value);
   } catch {
     // Missing or unavailable launch approval must fail closed.
   }
-  const databaseApproved = setting.checkout_enabled === true &&
-    setting.launch_approved === true;
+  const databaseTermsApproved = legal.approved === true &&
+    legal.version === CGL_MEMBERSHIP_TERMS_VERSION;
+  const databaseApproved = databaseTermsApproved &&
+    setting.checkout_enabled === true && setting.launch_approved === true;
   const databaseRecurringApproved = databaseApproved &&
     setting.recurring_enabled === true;
   return {
     ...readiness,
     databaseApproved,
     databaseRecurringApproved,
+    databaseTermsApproved,
     ready: readiness.ready && databaseApproved,
     livePaymentsEnabled: readiness.livePaymentsEnabled && databaseApproved,
     recurringEnabled: readiness.recurringEnabled && databaseRecurringApproved,

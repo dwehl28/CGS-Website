@@ -19,7 +19,7 @@ export const metadata: Metadata = buildMetadata({
   path: "/privacy",
 });
 
-const lastUpdated = "8 July 2026";
+const lastUpdated = "14 November 2026";
 
 export default function PrivacyPage() {
   return (
@@ -83,6 +83,17 @@ export default function PrivacyPage() {
                 CGS does not sell player data or use the app for cross-app
                 advertising tracking. Team join passwords are stored as hashes
                 rather than readable passwords.
+              </p>
+              <p>
+                When you choose a paid CGL product, Square hosts the payment
+                form and processes card details. CGS does not receive or store
+                your full card number. CGS receives and retains the minimum
+                payment and membership records needed to confirm the amount and
+                currency, activate access, issue support, prevent duplicate
+                activation, and reconcile a refund or dispute. Those records
+                can include Square transaction, order, customer, subscription
+                or receipt references and the membership terms version accepted
+                at checkout.
               </p>
               <p>
                 Signed-in CGS Golf players can delete their account inside the
