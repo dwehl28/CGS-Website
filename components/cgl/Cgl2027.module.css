@@ -503,6 +503,70 @@
   line-height: 1.8;
   margin: 20px 0;
 }
+.paymentReview {
+  scroll-margin-block: 18vh;
+  margin: 22px 0 0;
+  padding: 18px;
+  border: 1px solid #d7b14d;
+  border-radius: 5px;
+  background: linear-gradient(135deg, #fffdf5 0%, #f3fbff 100%);
+  box-shadow: 0 16px 35px rgba(16, 48, 67, 0.1);
+}
+.paymentReview:focus {
+  outline: 3px solid rgba(27, 174, 229, 0.3);
+  outline-offset: 3px;
+}
+.paymentReview .notice {
+  margin: 8px 0 0;
+  padding: 0;
+  border-left: 0;
+  background: transparent;
+}
+.reviewStep {
+  color: #167ba5;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.14em;
+}
+.reviewHint {
+  margin-top: 18px;
+  color: #526b7c;
+  font-size: 12px;
+  font-weight: 650;
+}
+.termsConfirmation {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin-top: 16px;
+  padding: 13px 14px;
+  border: 1px solid #c9dbe4;
+  border-radius: 4px;
+  background: #fff;
+  color: #17384a;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.55;
+}
+.termsConfirmation input {
+  flex: 0 0 auto;
+  width: 19px;
+  height: 19px;
+  margin-top: 1px;
+  accent-color: #159fd2;
+}
+.termsConfirmation a {
+  color: #126d94;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.termsPrompt {
+  margin-top: 12px;
+  color: #6c5318;
+  font-size: 12px;
+  font-weight: 750;
+}
 .error {
   background: #fff0ef;
   color: #972d2d;

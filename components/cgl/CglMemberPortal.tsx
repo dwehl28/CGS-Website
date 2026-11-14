@@ -172,7 +172,15 @@ export function CglSandboxBilling({ billing, ready, busy, syncing, message, onRe
   );
 }
 
-export function CglSquareQuoteSummary({ quote }: { quote: CglSnapshot }) {
+export function CglSquareQuoteSummary({
+  quote,
+  termsAccepted,
+  onTermsAcceptedChange,
+}: {
+  quote: CglSnapshot;
+  termsAccepted: boolean;
+  onTermsAcceptedChange: (accepted: boolean) => void;
+}) {
   const intervals: Record<string, string> = { annual: "year", monthly: "month", weekly: "week" };
   const isTest = str(quote.environment ?? row(quote.readiness).environment, "sandbox") !== "production";
   return (
@@ -186,8 +194,18 @@ export function CglSquareQuoteSummary({ quote }: { quote: CglSnapshot }) {
       <p>{str(quote.notice ?? quote.disclosure, `Review the amount and membership disclosures before authorising this ${isTest ? "test " : ""}payment.`)}</p>
       <p>Terms: {str(quote.termsVersion, "Current published membership terms")}</p>
       {quote.purchaseEnabled !== true ? <p>Square payment confirmation is unavailable for this product. You can review the quote, but no payment or subscription will be created.</p> : null}
-      <label style={{ display: "flex", gap: 10 }}>
-        <input required type="checkbox" name="terms" />I have reviewed the displayed payment and <Link href="/cgl/terms">membership terms</Link>.
+      <label className={s.termsConfirmation} htmlFor="cgl-checkout-terms">
+        <input
+          required
+          checked={termsAccepted}
+          id="cgl-checkout-terms"
+          name="terms"
+          type="checkbox"
+          onChange={(event) => onTermsAcceptedChange(event.currentTarget.checked)}
+        />
+        <span>
+          I have reviewed the displayed payment and <Link href="/cgl/terms">membership terms</Link>.
+        </span>
       </label>
     </div>
   );
@@ -204,9 +222,11 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
   const [failed, setFailed] = useState(false);
   const [cancelQuote, setCancelQuote] = useState<CglSnapshot | null>(null);
   const [checkoutQuote, setCheckoutQuote] = useState<CglSnapshot | null>(null);
+  const [checkoutTermsAccepted, setCheckoutTermsAccepted] = useState(false);
   const [billingSyncing, setBillingSyncing] = useState(false);
   const [billingMessage, setBillingMessage] = useState("");
   const checkoutKeys = useRef(new Map<string, string>());
+  const checkoutReviewRef = useRef<HTMLDivElement>(null);
   const accountId = useRef<string | null>(null);
   const returnSync = useRef({ owner: "", checkoutId: "", attempts: 0 });
   const [redeemItem, setRedeemItem] = useState("");
@@ -260,6 +280,7 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
       (_event, current) => {
         if (accountId.current !== (current?.user.id ?? null)) {
           setCheckoutQuote(null);
+          setCheckoutTermsAccepted(false);
           setCancelQuote(null);
           setBillingMessage("");
           setBillingSyncing(false);
@@ -487,6 +508,9 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
       if (checkoutQuote && checkoutQuote.purchaseEnabled !== true) {
         throw new Error("Square setup or the required payment disclosures are still pending. No payment has been taken.");
       }
+      if (checkoutQuote && form.get("terms") !== "on") {
+        throw new Error("Review the payment details and accept the membership terms before continuing to Square.");
+      }
       const scope = cglCheckoutStorageKey(session.user.id, planCode, seasonId);
       let storage: Storage | null = null;
       try { storage = window.sessionStorage; } catch { /* Private browsing may restrict storage. */ }
@@ -528,6 +552,7 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
           throw new Error("Square returned an unexpected checkout address.");
         window.location.assign(url);
       } else {
+        setCheckoutTermsAccepted(false);
         setCheckoutQuote(result);
         setMessage(
           str(
@@ -577,8 +602,20 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
       setSelectedPlan("casual_registration");
       setSelectedSeason("");
       setCheckoutQuote(null);
+      setCheckoutTermsAccepted(false);
     }
   }, [recurringCheckoutEnabled, selectedPlan]);
+  useEffect(() => {
+    if (!checkoutQuote) return;
+    const frame = window.requestAnimationFrame(() => {
+      checkoutReviewRef.current?.focus({ preventScroll: true });
+      checkoutReviewRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [checkoutQuote]);
   const formula = row(row(data.settings).annual_formula);
   const annualYear = Math.max(
     2027,
@@ -1212,6 +1249,7 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
                       setSelectedPlan(planCode);
                       if (!cglPlanRequiresSeason(planCode)) setSelectedSeason("");
                       setCheckoutQuote(null);
+                      setCheckoutTermsAccepted(false);
                     }}
                   >
                     {rows(data.plans).map((p) => {
@@ -1238,6 +1276,7 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
                       onChange={(e) => {
                         setSelectedSeason(e.target.value);
                         setCheckoutQuote(null);
+                        setCheckoutTermsAccepted(false);
                       }}
                     >
                       <option value="">Choose an open season</option>
@@ -1255,16 +1294,41 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
                   ? "The $100 Season Pass is the only purchase linked to a specific season. A current Casual Registration is also required."
                   : "This membership can be purchased at any time and is not linked to a specific season."}
               </p>
-              {checkoutQuote ? <CglSquareQuoteSummary quote={checkoutQuote} /> : null}
+              {checkoutQuote ? (
+                <div
+                  ref={checkoutReviewRef}
+                  aria-live="polite"
+                  className={s.paymentReview}
+                  tabIndex={-1}
+                >
+                  <p className={s.reviewStep}>FINAL REVIEW · STEP 2 OF 2</p>
+                  <CglSquareQuoteSummary
+                    quote={checkoutQuote}
+                    termsAccepted={checkoutTermsAccepted}
+                    onTermsAcceptedChange={setCheckoutTermsAccepted}
+                  />
+                  <p className={s.termsPrompt}>
+                    {checkoutTermsAccepted
+                      ? "Ready. Press Continue to secure Square checkout below."
+                      : "Tick the confirmation box above to unlock secure Square checkout."}
+                  </p>
+                </div>
+              ) : (
+                <p className={s.reviewHint}>
+                  Step 1 of 2: review the exact AUD charge before opening Square.
+                </p>
+              )}
               <div className={s.actions}>
                 <button
                   className={s.primary}
-                  disabled={busy || billingSyncing || !ready || data.joined !== true || (checkoutQuote ? checkoutQuote.purchaseEnabled !== true : false)}
+                  disabled={busy || billingSyncing || !ready || data.joined !== true || (checkoutQuote ? checkoutQuote.purchaseEnabled !== true || !checkoutTermsAccepted : false)}
                 >
                   {busy
-                    ? "Preparing…"
+                    ? checkoutQuote
+                      ? "Opening Square…"
+                      : "Preparing review…"
                     : checkoutQuote
-                      ? `Continue to Square${billingIsTest ? " Sandbox" : ""}`
+                      ? `Continue to secure Square${billingIsTest ? " Sandbox" : " checkout"}`
                       : "Review payment"}
                   <ArrowRight size={14} />
                 </button>
