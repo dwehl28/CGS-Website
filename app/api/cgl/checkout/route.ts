@@ -11,7 +11,7 @@ import { CGL_MEMBERSHIP_TERMS_VERSION } from "@/lib/cgl-terms";
 
 export const runtime = "nodejs";
 
-const input = z
+const purchaseInput = z
   .object({
     planCode: z.enum([
       "annual",
@@ -27,6 +27,15 @@ const input = z
     acceptedAmountCents: z.number().int().positive(),
   })
   .strict();
+
+const resumeInput = z
+  .object({
+    action: z.literal("resume"),
+    checkoutId: z.uuid(),
+  })
+  .strict();
+
+const input = z.union([purchaseInput, resumeInput]);
 
 export async function GET(request: Request) {
   try {
@@ -107,6 +116,52 @@ export async function POST(request: Request) {
         },
         { status: 400 },
       );
+    if ("action" in body.data) {
+      const { data: saved, error: savedError } = await getSupabaseAdmin()
+        .from("cgl_square_checkout_intents")
+        .select("id,member_id,membership_id,environment,plan_code,season_id,amount_cents,recurring,square_plan_variation_id,square_link_id,square_order_id,payment_link_url,state,terms_snapshot")
+        .eq("id", body.data.checkoutId)
+        .eq("member_id", member.id)
+        .eq("environment", readiness.environment)
+        .eq("state", "pending")
+        .maybeSingle();
+      if (savedError || !saved)
+        return Response.json(
+          { error: "This saved checkout is no longer available. Refresh your membership page to start again safely." },
+          { status: 404 },
+        );
+      const termsSnapshot = saved.terms_snapshot && typeof saved.terms_snapshot === "object"
+        ? saved.terms_snapshot as Record<string, unknown>
+        : {};
+      if (termsSnapshot.terms_version !== CGL_MEMBERSHIP_TERMS_VERSION)
+        return Response.json(
+          { error: "The membership terms have changed. Review the current payment details before continuing." },
+          { status: 409 },
+        );
+      if (readiness.environment === "production" && saved.recurring && !readiness.subscriptionActionsEnabled)
+        throw new CglSquareError(
+          "Recurring Square memberships are still in controlled verification. Choose a one-off casual option for now.",
+          409,
+          "square_recurring_disabled",
+        );
+      const checkout = {
+        ...saved,
+        environment: readiness.environment,
+      } as CglSquareCheckout;
+      const url = await createCglSquareCheckout(checkout);
+      return Response.json(
+        {
+          url,
+          checkoutId: checkout.id,
+          amountCents: checkout.amount_cents,
+          currency: "AUD",
+          environment: readiness.environment,
+          recurring: checkout.recurring,
+          resumed: true,
+        },
+        { headers: { "Cache-Control": "no-store" } },
+      );
+    }
     if (readiness.environment === "production" && ["annual", "monthly", "weekly"].includes(body.data.planCode) && !readiness.subscriptionActionsEnabled)
       throw new CglSquareError(
         "Recurring Square memberships are still in controlled verification. Choose a one-off casual option for now.",

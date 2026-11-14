@@ -534,6 +534,25 @@
   font-size: 12px;
   font-weight: 650;
 }
+.resumeCheckout {
+  margin-top: 20px;
+  padding: 16px 18px;
+  border: 1px solid #65c7e9;
+  border-left: 4px solid #159fd2;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #eaf9ff 0%, #fffaf0 100%);
+  color: #17384a;
+}
+.resumeCheckout strong {
+  color: #147da7;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+}
+.resumeCheckout p {
+  margin-top: 7px;
+  font-size: 13px;
+  line-height: 1.65;
+}
 .termsConfirmation {
   display: flex;
   align-items: flex-start;

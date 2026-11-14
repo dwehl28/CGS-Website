@@ -572,6 +572,40 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
       setBusy(false);
     }
   }
+  async function resumeCheckout(checkoutId: string) {
+    if (!session || !uuidPattern.test(checkoutId)) return;
+    setBusy(true);
+    setMessage("");
+    setFailed(false);
+    try {
+      const response = await fetch("/api/cgl/checkout", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action: "resume", checkoutId }),
+      });
+      const result = await response.json();
+      if (!response.ok)
+        throw new Error(
+          str(result.message ?? result.error, "The saved checkout could not be opened."),
+        );
+      const url = result.checkoutUrl ?? result.url;
+      if (typeof url !== "string" || !isCglSquareHostedCheckoutUrl(url))
+        throw new Error("Square returned an unexpected checkout address.");
+      window.location.assign(url);
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "The saved checkout could not be opened.",
+      );
+      setFailed(true);
+    } finally {
+      setBusy(false);
+    }
+  }
   const member = row(data.member);
   const billing = row(data.billing);
   const billingIsTest = str(billing.environment, "sandbox") !== "production";
@@ -582,6 +616,11 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
     const status = str(season.status, "");
     return !status || ["registration", "published", "active"].includes(status);
   });
+  const pendingCheckout = rows(billing.checkouts).find((checkout) =>
+    str(checkout.state) === "pending" &&
+    str(checkout.plan_code) === selectedPlan &&
+    (!cglPlanRequiresSeason(selectedPlan) || str(checkout.season_id) === selectedSeason),
+  );
   const cancellationPolicyApproved = billing.cancellationPolicyApproved === true;
   const memberships = rows(data.memberships);
   const membership =
@@ -1234,7 +1273,15 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
             <h2 style={{ fontSize: 25, fontWeight: 800, marginBottom: 20 }}>
               Choose your membership
             </h2>
-            <form className={s.panel} onSubmit={checkout}>
+            <form
+              className={s.panel}
+              onSubmit={pendingCheckout
+                ? (event) => {
+                    event.preventDefault();
+                    void resumeCheckout(str(pendingCheckout.id));
+                  }
+                : checkout}
+            >
               <div className={s.notice}>{billingIsTest
                 ? "Square Sandbox only. All test prices are AUD. Test payments do not activate real membership access."
                 : "Secure live Square checkout in AUD. Recurring memberships remain unavailable until their renewal flow completes final verification."}</div>
@@ -1294,7 +1341,14 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
                   ? "The $100 Season Pass is the only purchase linked to a specific season. A current Casual Registration is also required."
                   : "This membership can be purchased at any time and is not linked to a specific season."}
               </p>
-              {checkoutQuote ? (
+              {pendingCheckout ? (
+                <div className={s.resumeCheckout}>
+                  <strong>YOUR SECURE CHECKOUT IS READY</strong>
+                  <p>
+                    Resume the saved {aud(pendingCheckout.amount_cents)} AUD checkout. This will not create a duplicate charge or a second membership.
+                  </p>
+                </div>
+              ) : checkoutQuote ? (
                 <div
                   ref={checkoutReviewRef}
                   aria-live="polite"
@@ -1321,12 +1375,16 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
               <div className={s.actions}>
                 <button
                   className={s.primary}
-                  disabled={busy || billingSyncing || !ready || data.joined !== true || (checkoutQuote ? checkoutQuote.purchaseEnabled !== true || !checkoutTermsAccepted : false)}
+                  disabled={busy || billingSyncing || !ready || data.joined !== true || (!pendingCheckout && checkoutQuote ? checkoutQuote.purchaseEnabled !== true || !checkoutTermsAccepted : false)}
                 >
                   {busy
-                    ? checkoutQuote
+                    ? pendingCheckout
+                      ? "Opening saved checkout…"
+                      : checkoutQuote
                       ? "Opening Square…"
                       : "Preparing review…"
+                    : pendingCheckout
+                      ? `Pay ${aud(pendingCheckout.amount_cents)} securely with Square`
                     : checkoutQuote
                       ? `Continue to secure Square${billingIsTest ? " Sandbox" : " checkout"}`
                       : "Review payment"}

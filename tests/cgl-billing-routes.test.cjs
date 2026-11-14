@@ -16,7 +16,7 @@ const memberId='11111111-1111-4111-8111-111111111111';
 const checkoutId='22222222-2222-4222-8222-222222222222';
 const termsVersion='cgl-membership-terms-2026-11-14';
 function harness(options={}) {
-  const calls={rpc:[],checkout:[],sync:[],receipt:[],worker:[],after:[]};
+  const calls={rpc:[],checkout:[],lookup:[],sync:[],receipt:[],worker:[],after:[]};
   const platform={
     verifyCglOrigin(request){if(request.headers.get('origin')&&request.headers.get('origin')!=='https://example.test')throw new BillingError('Wrong origin',403);},
     async getCglMemberIdentity(request){if(request.headers.get('authorization')!=='Bearer member')throw new BillingError('Sign in',401);return{id:memberId,email:'own@example.invalid'};},
@@ -33,7 +33,10 @@ function harness(options={}) {
   };
   const mocks={
     '@/lib/cgl-platform':platform,'@/lib/cgl-square':square,'@/lib/cgl-terms':{CGL_MEMBERSHIP_TERMS_VERSION:termsVersion},
-    '@/lib/supabase-admin':{getSupabaseAdmin:()=>({async rpc(...args){calls.rpc.push(args);return options.rpcFailure?{error:{message:'Changed price'}}:{data:options.intent??{id:checkoutId,member_id:memberId,amount_cents:2995,recurring:true,environment:options.environment??'sandbox'}};}})},
+    '@/lib/supabase-admin':{getSupabaseAdmin:()=>({
+      async rpc(...args){calls.rpc.push(args);return options.rpcFailure?{error:{message:'Changed price'}}:{data:options.intent??{id:checkoutId,member_id:memberId,amount_cents:2995,recurring:true,environment:options.environment??'sandbox'}};},
+      from(table){const filters=[];const builder={select(){return builder;},eq(key,value){filters.push([key,value]);return builder;},async maybeSingle(){calls.lookup.push({table,filters});const saved=options.savedIntent??null;return{data:saved&&filters.every(([key,value])=>saved[key]===value)?saved:null,error:null};}};return builder;},
+    })},
     'next/server':{after(fn){calls.after.push(fn);}},
   };
   return{calls,checkout:compile('app/api/cgl/checkout/route.ts',mocks),sync:compile('app/api/cgl/billing/sync/route.ts',mocks),webhook:compile('app/api/cgl/square-webhook/route.ts',mocks),recovery:compile('app/api/cgl/billing/reconcile/route.ts',mocks)};
@@ -75,6 +78,22 @@ test('production checkout uses the live one-off RPC and keeps recurring plans lo
   const recurring=harness({environment:'production'});
   assert.equal((await recurring.checkout.POST(post('/api/cgl/checkout',purchase))).status,409);
   assert.equal(recurring.calls.rpc.length,0);assert.equal(recurring.calls.checkout.length,0);
+});
+test('a member can resume only their own pending checkout with the current accepted terms',async()=>{
+  const savedIntent={id:checkoutId,member_id:memberId,membership_id:'33333333-3333-4333-8333-333333333333',environment:'production',plan_code:'casual_registration',season_id:null,amount_cents:2900,recurring:false,square_plan_variation_id:null,square_link_id:'link',square_order_id:'order',payment_link_url:'https://square.link/test',state:'pending',terms_snapshot:{terms_version:termsVersion}};
+  const live=harness({environment:'production',savedIntent});
+  const response=await live.checkout.POST(post('/api/cgl/checkout',{action:'resume',checkoutId}));
+  assert.equal(response.status,200);assert.equal(live.calls.rpc.length,0);assert.equal(live.calls.checkout.length,1);
+  assert.equal(live.calls.checkout[0][0].member_id,memberId);
+  assert(live.calls.lookup[0].filters.some(([key,value])=>key==='member_id'&&value===memberId));
+
+  const oldTerms=harness({environment:'production',savedIntent:{...savedIntent,terms_snapshot:{terms_version:'old-terms'}}});
+  assert.equal((await oldTerms.checkout.POST(post('/api/cgl/checkout',{action:'resume',checkoutId}))).status,409);
+  assert.equal(oldTerms.calls.checkout.length,0);
+
+  const otherMember=harness({environment:'production',savedIntent:{...savedIntent,member_id:'44444444-4444-4444-8444-444444444444'}});
+  assert.equal((await otherMember.checkout.POST(post('/api/cgl/checkout',{action:'resume',checkoutId}))).status,404);
+  assert.equal(otherMember.calls.checkout.length,0);
 });
 test('Sandbox checkout disabled flag, malformed JSON and actual body limits fail before preparation',async()=>{
   const off=harness({ready:false});assert.equal((await off.checkout.POST(post('/api/cgl/checkout',purchase))).status,503);assert.equal(off.calls.rpc.length,0);
