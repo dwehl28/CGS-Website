@@ -1,5 +1,7 @@
 # CGL 2027 — implementation and launch status
 
+> Historical note: this report records the original November 2026 review release. The hosted CGL migrations, read-only SGT connection and live one-off Square checkout were completed later. See [the current master implementation audit](cgl-2027-master-audit.md) before making launch decisions.
+
 The implementation adds a CGS-branded public clubhouse, member portal and protected league administration alongside the existing CGS events. On 4 November 2026, CGS approved publishing the website for member review at https://crossodoggolf.com/cgl. This is **a website review release**: hosted CGL migrations have not been applied, membership sales are closed, Square credentials are not configured, and several provider-dependent billing operations remain disabled. See [the review release record](cgl-member-review-release.md).
 
 ## Implemented

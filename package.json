@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:cgl": "node --experimental-strip-types --test --test-isolation=none tests/cgl-engine.test.ts tests/cgl-platform.test.cjs tests/cgl-platform-db.test.cjs tests/cgl-square.test.cjs tests/cgl-square-db.test.cjs tests/cgl-player.test.cjs tests/cgl-preview.test.cjs tests/cgl-member-billing.test.cjs tests/cgl-billing-routes.test.cjs tests/cgl-sgt.test.cjs",
+    "test:cgl": "node --experimental-strip-types --test --test-isolation=none tests/cgl-engine.test.ts tests/cgl-season-one.test.ts tests/cgl-platform.test.cjs tests/cgl-platform-db.test.cjs tests/cgl-square.test.cjs tests/cgl-square-db.test.cjs tests/cgl-player.test.cjs tests/cgl-preview.test.cjs tests/cgl-member-billing.test.cjs tests/cgl-billing-routes.test.cjs tests/cgl-sgt.test.cjs",
     "test:par3": "node --test --test-isolation=none tests/par3-format.test.cjs tests/par3-format-control.test.cjs tests/par3-display.test.cjs tests/par3-actions.test.cjs tests/par3-backend.test.cjs tests/par3-flexible-db.test.cjs tests/par3-bye-db.test.cjs"
   },
   "dependencies": {

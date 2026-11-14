@@ -26,6 +26,7 @@ export default function CglShell({
   oneOffSalesOpen?: boolean;
 }) {
   const pathname = usePathname();
+  const seasonOnePreview = pathname.startsWith("/cgl/preview/season-1");
   const legacyPreview =
     pathname.startsWith("/cgl/preview") ||
     pathname.startsWith("/cgl/rounds/") ||
@@ -112,7 +113,9 @@ export default function CglShell({
             <FlaskConical size={15} aria-hidden="true" />
             <strong>Design preview</strong>
             <span>
-              Sample scores. Real players and SGT results are in the Trial hub.
+              {seasonOnePreview
+                ? "Season 1 presentation and draft schedule. No live records or payments are changed."
+                : "Sample scores. Real players and SGT results are in the Trial hub."}
             </span>
           </div>
         </div>

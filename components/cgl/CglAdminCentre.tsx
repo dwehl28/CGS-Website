@@ -941,6 +941,10 @@ export default function CglAdminCentre() {
           Public clubhouse
           <ArrowRight size={13} />
         </Link>
+        <Link className={s.textLink} href="/cgl/preview/season-1">
+          Review Season 1 design
+          <ArrowRight size={13} />
+        </Link>
         <span className={s.badge}>{billingIsTest
           ? "Square Sandbox · Live billing disabled"
           : `Square production · ${billing.livePaymentsEnabled === true ? "One-off payments enabled" : "Launch disabled"}`}</span>

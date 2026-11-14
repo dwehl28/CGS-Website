@@ -11,6 +11,8 @@ export default function Cgl2027Preview() {
         </strong>{" "}
         Calculated with the new division and best-eight rules. Unresolved ties
         stay pending. No live records, payments or rewards are changed.{" "}
+        <Link href="/cgl/preview/season-1">Review the Season 1 launch design</Link>
+        {" · "}
         <Link href="/cgl">Return to the public clubhouse</Link>.
       </div>
       <CglPublicExperience
