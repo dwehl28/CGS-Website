@@ -1119,3 +1119,542 @@
     animation: none !important;
   }
 }
+
+/* Official CGL identity: navy structure, white cut-lines and electric-lime speed. */
+.page {
+  --ink: #061d43;
+  --navy: #061d43;
+  --navy-2: #0b2f62;
+  --lime: #9cea00;
+  --lime-soft: #efffc9;
+  --sky: #9cea00;
+  --paper: #f1f5ee;
+  --line: #d5dfd1;
+  --muted: #5d6e80;
+}
+
+.reviewBar {
+  position: relative;
+  overflow: hidden;
+  border: 0;
+  border-left: 7px solid var(--lime);
+  background: white;
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: #32465d;
+}
+
+.reviewBar::after {
+  position: absolute;
+  right: -34px;
+  bottom: -38px;
+  width: 130px;
+  height: 64px;
+  border: 8px solid rgba(156, 234, 0, 0.18);
+  border-radius: 50%;
+  content: "";
+  transform: rotate(-13deg);
+}
+
+.reviewBar span {
+  background: var(--navy);
+  color: var(--lime);
+}
+
+.hero {
+  min-height: 670px;
+  border-radius: 0;
+  border-bottom: 8px solid var(--lime);
+  background:
+    linear-gradient(115deg, transparent 0 56%, rgba(156, 234, 0, 0.08) 56% 57%, transparent 57% 63%, rgba(255, 255, 255, 0.055) 63% 64%, transparent 64%),
+    linear-gradient(122deg, #06172f 0 58%, #09295b 58% 100%);
+  box-shadow: 0 24px 60px rgba(6, 29, 67, 0.2);
+}
+
+.hero::before {
+  right: -15%;
+  bottom: -47%;
+  width: 76%;
+  height: 92%;
+  border: 14px solid rgba(156, 234, 0, 0.12);
+  background:
+    repeating-radial-gradient(
+      ellipse at 50% 100%,
+      transparent 0 30px,
+      rgba(255, 255, 255, 0.045) 31px 33px
+    );
+  transform: rotate(-9deg);
+}
+
+.hero::after {
+  top: auto;
+  right: 1%;
+  bottom: -11%;
+  left: auto;
+  width: auto;
+  height: auto;
+  background: none;
+  color: rgba(255, 255, 255, 0.035);
+  content: "01";
+  font-size: clamp(220px, 29vw, 430px);
+  font-style: italic;
+  font-weight: 950;
+  letter-spacing: -0.13em;
+  line-height: 0.8;
+  transform: none;
+}
+
+.heroCopy {
+  padding: clamp(44px, 6vw, 84px);
+}
+
+.brandLine {
+  gap: 20px;
+  margin-bottom: 42px;
+}
+
+.logoPlate {
+  display: flex;
+  width: clamp(190px, 19vw, 285px);
+  min-width: 190px;
+  align-items: center;
+  padding: 9px 18px 9px 10px;
+  background: white;
+  box-shadow: 9px 9px 0 var(--lime);
+  clip-path: polygon(0 0, 100% 0, 91% 100%, 0 100%);
+}
+
+.logoPlate img {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.brandMeta {
+  display: grid;
+  gap: 4px;
+  color: white;
+  letter-spacing: 0.11em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.brandMeta strong {
+  font-size: 10px;
+}
+
+.brandMeta small {
+  color: var(--lime);
+  font-size: 8px;
+  font-weight: 850;
+}
+
+.kicker {
+  color: var(--lime);
+  font-style: italic;
+}
+
+.hero h1 {
+  max-width: 760px;
+  font-size: clamp(60px, 8.3vw, 118px);
+  font-style: italic;
+  letter-spacing: -0.08em;
+  line-height: 0.8;
+  text-shadow: 0 7px 0 rgba(0, 0, 0, 0.16);
+}
+
+.hero h1 em::after {
+  right: -15px;
+  bottom: -8px;
+  left: 10px;
+  height: 7px;
+  background: white;
+  box-shadow: 0 6px 0 -2px var(--lime);
+  transform: skewX(-32deg);
+}
+
+.intro {
+  color: #d0dae7;
+  font-size: clamp(16px, 1.5vw, 19px);
+}
+
+.primaryAction,
+.secondaryAction,
+.readinessActions a {
+  border-radius: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.primaryAction {
+  box-shadow: 6px 6px 0 rgba(255, 255, 255, 0.16);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+}
+
+.secondaryAction {
+  border-color: rgba(156, 234, 0, 0.58);
+}
+
+.launchBoard {
+  position: relative;
+  margin-right: 42px;
+  border: 1px solid rgba(156, 234, 0, 0.52);
+  border-top: 6px solid var(--lime);
+  background: rgba(5, 25, 57, 0.94);
+  box-shadow: 16px 18px 0 rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(14px);
+}
+
+.launchBoard::before {
+  position: absolute;
+  top: -6px;
+  right: 0;
+  width: 35%;
+  height: 6px;
+  background: white;
+  content: "";
+}
+
+.dogBadge {
+  background: linear-gradient(110deg, rgba(255, 255, 255, 0.08), transparent 65%);
+}
+
+.dogBadge img {
+  padding: 5px;
+  background: white;
+  border-radius: 50%;
+}
+
+.dogBadge span,
+.dateBlock span {
+  color: #9fb0c4;
+}
+
+.milestone > span {
+  color: white;
+}
+
+.milestone > strong {
+  font-style: italic;
+  text-transform: uppercase;
+}
+
+.statRail {
+  border: 0;
+  border-bottom: 5px solid var(--lime);
+  background: var(--navy);
+  color: white;
+  box-shadow: 0 12px 30px rgba(6, 29, 67, 0.15);
+}
+
+.statRail article {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.statRail svg,
+.statRail strong {
+  color: var(--lime);
+}
+
+.statRail strong {
+  font-style: italic;
+}
+
+.statRail span {
+  color: #bac7d8;
+}
+
+.eyebrow {
+  color: #39536f;
+}
+
+.eyebrow::before {
+  width: 31px;
+  height: 5px;
+  background: var(--lime);
+  box-shadow: 13px 0 0 -1px var(--navy);
+  transform: skewX(-28deg);
+}
+
+.sectionIntro h2,
+.readiness h2 {
+  color: var(--navy);
+  font-style: italic;
+  text-transform: uppercase;
+}
+
+.courseTile {
+  border: 0;
+  border-top: 5px solid var(--lime);
+  background:
+    linear-gradient(145deg, transparent 0 72%, rgba(156, 234, 0, 0.22) 72%),
+    white;
+  box-shadow: inset 0 0 0 1px var(--line);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+}
+
+.courseTile span {
+  color: var(--lime-dark, #67a900);
+}
+
+.courseTile strong {
+  color: var(--navy);
+  font-style: italic;
+  text-transform: uppercase;
+}
+
+.totalTile {
+  border-top-color: white;
+  background:
+    linear-gradient(145deg, transparent 0 72%, rgba(156, 234, 0, 0.2) 72%),
+    var(--navy);
+}
+
+.totalTile strong {
+  color: white;
+}
+
+.totalTile span {
+  color: var(--lime);
+}
+
+.calendarSection {
+  position: relative;
+  border-top: 7px solid var(--navy);
+  background:
+    linear-gradient(135deg, rgba(6, 29, 67, 0.026) 25%, transparent 25%) 0 0 / 28px 28px,
+    var(--paper);
+}
+
+.calendarSection::before {
+  position: absolute;
+  top: -7px;
+  right: 0;
+  width: 32%;
+  height: 7px;
+  background: var(--lime);
+  content: "";
+}
+
+.phaseHeader span,
+.roundTop span,
+.conditionsTable tbody th {
+  color: #5c9400;
+}
+
+.phaseHeader h3 {
+  color: var(--navy);
+  font-style: italic;
+  text-transform: uppercase;
+}
+
+.qualifierCard,
+.roundCard {
+  position: relative;
+  border: 0;
+  border-left: 5px solid var(--navy);
+  background: white;
+  box-shadow: inset 0 0 0 1px #d6e0d4;
+}
+
+.qualifierCard::after,
+.roundCard::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 46px;
+  height: 5px;
+  background: var(--lime);
+  content: "";
+}
+
+.courseLine > span {
+  border: 2px solid var(--lime);
+  border-radius: 0;
+  background: var(--navy);
+  transform: skewX(-8deg);
+}
+
+.conditionStrip span {
+  background: #eaffc4;
+  color: #294b13;
+}
+
+.draftLabel,
+.pendingLabel {
+  color: #466b0a;
+}
+
+.tableWrap {
+  border: 0;
+  border-bottom: 5px solid var(--lime);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.conditionsTable thead th {
+  background: var(--navy);
+  color: white;
+}
+
+.conditionsTable thead th:first-child {
+  color: var(--lime);
+}
+
+.rulesBand {
+  position: relative;
+  border-bottom: 8px solid var(--lime);
+  background:
+    linear-gradient(118deg, transparent 0 66%, rgba(156, 234, 0, 0.09) 66% 67%, transparent 67%),
+    var(--navy);
+}
+
+.rulesBand::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 22%;
+  height: 7px;
+  background: white;
+  content: "";
+}
+
+.rulesBand .eyebrow {
+  color: var(--lime);
+}
+
+.ruleGrid {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.ruleGrid article {
+  border-top: 3px solid transparent;
+  background: #0a2a58;
+}
+
+.ruleGrid article:hover {
+  border-top-color: var(--lime);
+}
+
+.membershipCard {
+  border: 0;
+  border-top: 6px solid var(--lime);
+  box-shadow:
+    inset 0 0 0 1px var(--line),
+    8px 8px 0 rgba(6, 29, 67, 0.055);
+}
+
+.membershipCard h3,
+.price strong {
+  color: var(--navy);
+}
+
+.price strong {
+  font-style: italic;
+}
+
+.casualBand {
+  border: 0;
+  border-left: 7px solid var(--lime);
+  background: var(--navy);
+  color: white;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.13);
+}
+
+.casualBand div span,
+.casualBand div small,
+.casualBand p {
+  color: #b8c7d8;
+}
+
+.casualBand div strong {
+  color: var(--lime);
+  font-style: italic;
+}
+
+.casualBand p {
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.readiness {
+  position: relative;
+  border: 0;
+  border-top: 7px solid var(--navy);
+  background: white;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.readiness::before {
+  position: absolute;
+  top: -7px;
+  left: 0;
+  width: 28%;
+  height: 7px;
+  background: var(--lime);
+  content: "";
+}
+
+.readiness li svg {
+  color: #65a600;
+}
+
+.readinessActions a:first-child {
+  background: var(--navy);
+  box-shadow: 5px 5px 0 var(--lime);
+}
+
+@media (max-width: 1040px) {
+  .launchBoard {
+    margin-right: 36px;
+  }
+}
+
+@media (max-width: 780px) {
+  .hero {
+    min-height: 0;
+  }
+
+  .brandLine {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .logoPlate {
+    width: 225px;
+  }
+
+  .hero h1 {
+    font-size: clamp(54px, 17vw, 78px);
+  }
+
+  .launchBoard {
+    margin: 0 16px 16px;
+    box-shadow: 8px 9px 0 rgba(0, 0, 0, 0.15);
+  }
+
+  .casualBand p {
+    border-color: rgba(255, 255, 255, 0.16);
+  }
+}
+
+@media (max-width: 520px) {
+  .brandMeta {
+    display: none;
+  }
+
+  .brandLine {
+    margin-bottom: 32px;
+  }
+
+  .logoPlate {
+    width: 205px;
+    min-width: 0;
+    box-shadow: 7px 7px 0 var(--lime);
+  }
+
+  .hero h1 {
+    font-size: clamp(50px, 16vw, 66px);
+  }
+
+  .statRail article {
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+}

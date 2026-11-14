@@ -53,20 +53,18 @@ export default function CglShell({
             className={styles.brand}
             aria-label="CGL — Crossodog Golf League home"
           >
-            <Image
-              src="/cgl/cgs-logo-official.png"
-              width={64}
-              height={64}
-              alt="Crossodog Golf Society"
-              priority
-            />
-            <span className={styles.brandLetters}>
-              CGL<span> /</span>
+            <span className={styles.brandPlate}>
+              <Image
+                src="/cgl/cgl-logo-official.jpg"
+                width={1914}
+                height={816}
+                alt="Crossodog Golf League"
+                priority
+              />
             </span>
             <span className={styles.brandName}>
-              Crossodog
-              <br />
-              Golf League
+              <strong>Competition clubhouse</strong>
+              <small>Season 1 · 2027</small>
             </span>
           </Link>
           <div className={styles.headerActions}>
@@ -145,8 +143,13 @@ export default function CglShell({
 
       <footer className={styles.footer}>
         <div>
-          <Link href="/cgl" className={styles.footerLogo}>
-            CGL<span>.</span>
+          <Link href="/cgl" className={styles.footerLogo} aria-label="CGL home">
+            <Image
+              src="/cgl/cgl-logo-official.jpg"
+              width={1914}
+              height={816}
+              alt="Crossodog Golf League"
+            />
           </Link>
           <p>Your simulator. Your schedule. Your league.</p>
         </div>

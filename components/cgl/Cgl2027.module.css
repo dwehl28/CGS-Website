@@ -1,8 +1,8 @@
 .page {
-  --navy: #071625;
-  --sky: #65d7ff;
-  --gold: #ffbd16;
-  --muted: #657382;
+  --navy: #061d43;
+  --sky: #9cea00;
+  --gold: #9cea00;
+  --muted: #607086;
   color: var(--navy);
 }
 .eyebrow {
@@ -10,7 +10,7 @@
   font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #436071;
+  color: #3f5873;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -18,30 +18,43 @@
 }
 .eyebrow::before {
   content: "";
-  width: 19px;
-  height: 3px;
+  width: 27px;
+  height: 4px;
   background: var(--gold);
+  box-shadow: 10px 0 0 -1px var(--navy);
+  transform: skewX(-28deg);
 }
 .hero {
   display: grid;
   grid-template-columns: 1.12fr 1fr;
-  gap: 30px;
-  background: var(--navy);
+  gap: 34px;
+  background:
+    linear-gradient(116deg, transparent 0 64%, #9cea0014 64% 65%, transparent 65% 70%, #ffffff0d 70% 71%, transparent 71%),
+    var(--navy);
   color: white;
   padding: 48px;
-  border-radius: 6px;
+  border-radius: 0;
+  border-bottom: 7px solid var(--gold);
   position: relative;
   overflow: hidden;
 }
 .hero::after {
-  content: "";
+  content: "01";
   position: absolute;
-  width: 450px;
-  height: 450px;
-  border: 1px solid #65d7ff16;
-  border-radius: 50%;
-  left: 38%;
-  top: 100px;
+  width: auto;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  left: auto;
+  right: 1%;
+  top: auto;
+  bottom: -55px;
+  color: #ffffff0a;
+  font-size: clamp(180px, 23vw, 320px);
+  font-style: italic;
+  font-weight: 950;
+  letter-spacing: -0.13em;
+  line-height: 0.8;
   pointer-events: none;
 }
 .hero .eyebrow {
@@ -49,7 +62,8 @@
 }
 .hero h1 {
   font-size: clamp(42px, 5.4vw, 72px);
-  font-weight: 850;
+  font-style: italic;
+  font-weight: 950;
   max-width: 650px;
   line-height: 1.04;
   letter-spacing: -0.06em;
@@ -82,7 +96,7 @@
   align-items: center;
   justify-content: center;
   gap: 9px;
-  border-radius: 3px;
+  border-radius: 0;
   padding: 13px 20px;
   font-weight: 750;
   font-size: 13px;
@@ -92,10 +106,12 @@
 }
 .primary {
   background: var(--gold);
-  color: #111d26;
+  color: var(--navy);
+  box-shadow: 5px 5px 0 #ffffff24;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 9px) 100%, 0 100%);
 }
 .primary:hover {
-  background: #ffd15c;
+  background: #b4ff22;
 }
 .secondary {
   border-color: #cbd6de;
@@ -129,10 +145,12 @@
   z-index: 1;
 }
 .seasonCard {
-  border: 1px solid #ffffff21;
-  background: #112638;
+  border: 1px solid #9cea0066;
+  border-top: 5px solid var(--gold);
+  background: #0a2b5a;
   padding: 25px;
-  border-radius: 5px;
+  border-radius: 0;
+  box-shadow: 12px 12px 0 #00000026;
 }
 .seasonTop {
   display: flex;
@@ -143,8 +161,12 @@
   padding-bottom: 18px;
 }
 .seasonTop img {
-  width: 70px;
-  height: 70px;
+  width: 126px;
+  height: auto;
+  padding: 5px 8px;
+  background: white;
+  box-shadow: 4px 4px 0 var(--gold);
+  clip-path: polygon(0 0, 100% 0, 92% 100%, 0 100%);
   object-fit: contain;
 }
 .seasonTop h2 {
@@ -205,11 +227,15 @@
   border: 1px solid #dbe4ea;
   background: white;
   margin-top: 16px;
-  border-radius: 4px;
+  border: 0;
+  border-bottom: 5px solid var(--gold);
+  border-radius: 0;
+  background: var(--navy);
+  color: white;
 }
 .formatBar > div {
   padding: 20px 25px;
-  border-right: 1px solid #e3e9ef;
+  border-right: 1px solid #ffffff20;
   display: flex;
   align-items: center;
   gap: 13px;
@@ -218,7 +244,7 @@
   border: 0;
 }
 .formatBar svg {
-  color: #1c6c8c;
+  color: var(--gold);
 }
 .formatBar strong {
   display: block;
@@ -226,7 +252,7 @@
 }
 .formatBar span {
   font-size: 11px;
-  color: var(--muted);
+  color: #b9c6d6;
 }
 .section {
   margin-top: 46px;
@@ -275,8 +301,8 @@
   background: white;
   padding: 23px;
   position: relative;
-  border-top: 3px solid #65d7ff;
-  border-radius: 4px;
+  border-top: 5px solid var(--gold);
+  border-radius: 0;
 }
 .award:last-child {
   border-top-color: var(--gold);
@@ -293,7 +319,7 @@
   text-transform: uppercase;
 }
 .awardHeader svg {
-  color: #237696;
+  color: #609d00;
 }
 .award h3 {
   margin: 18px 0 4px;
@@ -321,7 +347,7 @@
   padding: 26px;
   border: 1px solid #dbe4ea;
   background: white;
-  border-radius: 4px;
+  border-radius: 0;
   min-width: 0;
 }
 .panel h2,
@@ -346,7 +372,8 @@
   margin-top: 15px;
 }
 .darkPanel {
-  background: #102638;
+  background: var(--navy);
+  border-bottom: 5px solid var(--gold);
   color: white;
   border: 0;
 }

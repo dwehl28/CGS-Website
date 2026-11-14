@@ -886,10 +886,10 @@ export default function CglPublicExperience({
                   </span>
                 </div>
                 <Image
-                  src="/cgl/cgs-logo-official.png"
-                  width={84}
-                  height={84}
-                  alt="Crossodog Golf Society bulldog"
+                  src="/cgl/cgl-logo-official.jpg"
+                  width={1914}
+                  height={816}
+                  alt="Crossodog Golf League"
                   priority
                 />
               </div>

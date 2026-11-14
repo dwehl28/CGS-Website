@@ -1,12 +1,18 @@
 .shell {
-  --cgl-ink: #0a2133;
-  --cgl-muted: #607280;
-  --cgl-bg: #f3f6f8;
-  --cgl-accent: #ffbd16;
-  --cgl-line: #dce5eb;
+  --cgl-ink: #061d43;
+  --cgl-navy: #061d43;
+  --cgl-navy-2: #0a2b5c;
+  --cgl-lime: #9cea00;
+  --cgl-lime-dark: #67a900;
+  --cgl-muted: #607086;
+  --cgl-bg: #f4f7f1;
+  --cgl-accent: var(--cgl-lime);
+  --cgl-line: #d7e0d2;
   position: relative;
   min-height: 100svh;
-  background: var(--cgl-bg);
+  background:
+    linear-gradient(145deg, rgba(156, 234, 0, 0.035), transparent 28%),
+    var(--cgl-bg);
   color: var(--cgl-ink);
   font-family: var(--font-space-grotesk), "Segoe UI", Arial, sans-serif;
   font-size: 15px;
@@ -41,7 +47,7 @@
 .shell select:focus-visible,
 .shell input:focus-visible,
 .shell summary:focus-visible {
-  outline: 3px solid #007d93;
+  outline: 3px solid var(--cgl-lime-dark);
   outline-offset: 4px;
 }
 .shell svg {
@@ -64,61 +70,75 @@
   top: 12px;
 }
 .header {
-  background: #081a2a;
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(112deg, transparent 0 67%, rgba(156, 234, 0, 0.09) 67% 68%, transparent 68% 72%, rgba(255, 255, 255, 0.045) 72% 73%, transparent 73%),
+    var(--cgl-navy);
   color: white;
-  border-bottom: 1px solid #ffffff15;
+  border-bottom: 4px solid var(--cgl-lime);
 }
 .headerInner,
 .navInner {
-  width: min(1240px, calc(100% - 64px));
+  width: min(1320px, calc(100% - 64px));
   margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 .headerInner {
-  min-height: 91px;
+  min-height: 104px;
   gap: 20px;
 }
 .brand {
   display: flex;
   align-items: center;
-  gap: 13px;
+  gap: 17px;
   color: white;
 }
-.brand img {
-  width: 64px;
-  height: 64px;
+.brandPlate {
+  display: flex;
+  width: 182px;
+  height: 72px;
+  align-items: center;
+  overflow: hidden;
+  padding: 6px 12px 6px 8px;
+  background: white;
+  box-shadow: 7px 7px 0 rgba(156, 234, 0, 0.92);
+  clip-path: polygon(0 0, 100% 0, 91% 100%, 0 100%);
+}
+.brandPlate img {
+  width: 100%;
+  height: auto;
   object-fit: contain;
 }
-.brandLetters {
-  font-size: 37px;
-  font-weight: 950;
-  letter-spacing: -3px;
-  line-height: 1;
-}
-.brandLetters > span {
-  color: #65d7ff;
-  font-size: 28px;
-}
 .brandName {
-  padding-left: 4px;
-  font-size: 10px;
-  font-weight: 750;
-  line-height: 1.4;
-  letter-spacing: 1.4px;
+  display: grid;
+  gap: 3px;
+  font-size: 9px;
+  line-height: 1.3;
+  letter-spacing: 1.35px;
   text-transform: uppercase;
+}
+.brandName strong {
+  color: white;
+  font-size: 10px;
+}
+.brandName small {
+  color: var(--cgl-lime);
+  font-size: 8px;
+  font-weight: 800;
 }
 .back {
   display: flex;
   gap: 8px;
   align-items: center;
-  color: #a7bdce;
+  color: #b9c7d9;
   font-size: 12px;
   font-weight: 600;
 }
 .back:hover {
-  color: #006d7a;
+  color: var(--cgl-lime);
 }
 .navWrap {
   border-top: 1px solid #ffffff14;
@@ -143,14 +163,15 @@
   font-size: 12px;
   font-weight: 650;
   white-space: nowrap;
-  color: #a8bfce;
+  color: #bdc9d8;
+  letter-spacing: 0.015em;
 }
 .navigation a[aria-current="page"] {
   color: #fff;
-  border-color: #ffbd16;
+  border-color: var(--cgl-lime);
 }
 .navigation a:hover {
-  color: #65d7ff;
+  color: var(--cgl-lime);
 }
 .seasonLabel {
   display: flex;
@@ -166,11 +187,11 @@
   margin: 0 5px;
 }
 .preview {
-  background: #e8eedf;
-  border-bottom: 1px solid #dbe4ce;
+  background: #ebffc8;
+  border-bottom: 1px solid #c7df96;
 }
 .preview > div {
-  width: min(1240px, calc(100% - 64px));
+  width: min(1320px, calc(100% - 64px));
   margin: 0 auto;
   display: flex;
   gap: 9px;
@@ -178,7 +199,7 @@
   padding: 10px 0;
   font-size: 11px;
   line-height: 1.5;
-  color: #40513a;
+  color: #244409;
 }
 .preview strong {
   white-space: nowrap;
@@ -188,13 +209,13 @@
   border-left: 1px solid #becbb0;
 }
 .main {
-  width: min(1240px, calc(100% - 64px));
+  width: min(1320px, calc(100% - 64px));
   margin: 0 auto;
   padding: 35px 0 72px;
   outline: none;
 }
 .footer {
-  width: min(1240px, calc(100% - 64px));
+  width: min(1320px, calc(100% - 64px));
   margin: 0 auto;
   padding: 35px 0 28px;
   border-top: 1px solid #cedad3;
@@ -204,12 +225,16 @@
   gap: 28px;
 }
 .footerLogo {
-  font-size: 28px;
-  font-weight: 950;
-  letter-spacing: -1.5px;
+  display: inline-flex;
+  width: 145px;
+  padding: 5px 7px;
+  background: white;
+  box-shadow: 4px 4px 0 var(--cgl-lime);
+  clip-path: polygon(0 0, 100% 0, 93% 100%, 0 100%);
 }
-.footerLogo span {
-  color: #008f9c;
+.footerLogo img {
+  width: 100%;
+  height: auto;
 }
 .footer p {
   color: var(--cgl-muted);
@@ -253,16 +278,16 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid #416173;
+  border: 1px solid rgba(156, 234, 0, 0.65);
   padding: 10px 15px;
   border-radius: 3px;
   font-size: 12px;
-  color: #ddf5ff;
+  color: white;
   font-weight: 700;
 }
 .launch {
-  background: #e3f3fb;
-  color: #225875;
+  background: #eaffc2;
+  color: #244409;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -278,7 +303,7 @@
   gap: 5px;
   font-weight: 600;
   letter-spacing: 0;
-  border-left: 1px solid #bdd7e5;
+  border-left: 1px solid #b9d47f;
   padding-left: 25px;
 }
 
@@ -301,17 +326,14 @@
   .brand {
     gap: 9px;
   }
-  .brand img {
-    width: 38px;
-    height: 38px;
-  }
-  .brandLetters {
-    font-size: 31px;
+  .brandPlate {
+    width: 122px;
+    height: 50px;
+    padding: 5px 9px 5px 5px;
+    box-shadow: 4px 4px 0 rgba(156, 234, 0, 0.92);
   }
   .brandName {
-    font-size: 8px;
-    padding-left: 9px;
-    letter-spacing: 1px;
+    display: none;
   }
   .back {
     font-size: 10px;

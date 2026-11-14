@@ -81,10 +81,21 @@ export default function CglSeasonOnePreview() {
       <section className={styles.hero} aria-labelledby="season-one-title">
         <div className={styles.heroCopy}>
           <div className={styles.brandLine}>
-            <span className={styles.cglMark}>CGL</span>
-            <span>Crossodog Golf League</span>
+            <span className={styles.logoPlate}>
+              <Image
+                src="/cgl/cgl-logo-official.jpg"
+                alt="Crossodog Golf League"
+                width={1914}
+                height={816}
+                priority
+              />
+            </span>
+            <span className={styles.brandMeta}>
+              <strong>Crossodog Golf League</strong>
+              <small>Inaugural season · 2027</small>
+            </span>
           </div>
-          <div className={styles.kicker}>Season 1 · 2027</div>
+          <div className={styles.kicker}>Season 01 · The opening tour</div>
           <h1 id="season-one-title">
             Hidden <em>Gems</em>
             <br /> Tour.
