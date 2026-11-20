@@ -5,13 +5,15 @@ import { z } from "zod";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 type JsonRecord = Record<string, unknown>;
-type SyncTrigger = "connect" | "manual" | "schedule" | "recovery";
+type SyncTrigger = "connect" | "manual" | "schedule" | "recovery" | "live";
 
 const SGT_API_ROOT = "https://simulatorgolftour.com/sgt-api/club-admin";
 export const CGL_SGT_CLUB_SLUG =
   process.env.CGL_SGT_CLUB_SLUG?.trim() || "CGSBunker";
 const SGT_REQUEST_TIMEOUT_MS = 12_000;
-const SGT_REFRESH_WINDOW_MS = 35 * 60 * 1000;
+// Refresh on the previous scheduled run rather than relying on the final
+// 30-minute window. A delayed cron run must not allow the rotating key to lapse.
+const SGT_REFRESH_WINDOW_MS = 75 * 60 * 1000;
 const SGT_MAX_TOURS = 100;
 const SGT_MAX_TOURNAMENTS = 300;
 const SGT_MAX_ROWS = 2_000;
@@ -683,6 +685,168 @@ async function performSync(
   };
 }
 
+function tournamentIsCurrent(tournament: JsonRecord, today: string) {
+  const status = textValue(tournament, ["status"]).toLowerCase();
+  if (/in progress|active|live|open/.test(status)) return true;
+  const starts = textValue(tournament, ["start_date"]);
+  const ends = textValue(tournament, ["end_date"]);
+  return Boolean(starts && ends && starts <= today && ends >= today);
+}
+
+async function performLiveSync(
+  clubSlug: string,
+  apiKey: string,
+) {
+  const warnings: string[] = [];
+  const [{ data: storedTours, error: toursError }, { data: storedTournaments, error: tournamentsError }] =
+    await Promise.all([
+      database()
+        .from("cgl_sgt_tours")
+        .select("sgt_tour_id,active,start_date")
+        .eq("club_slug", clubSlug)
+        .order("active", { ascending: false })
+        .order("start_date", { ascending: false }),
+      database()
+        .from("cgl_sgt_tournaments")
+        .select("sgt_tournament_id,sgt_tour_id,status,start_date,end_date")
+        .eq("club_slug", clubSlug)
+        .order("start_date", { ascending: false }),
+    ]);
+  if (toursError || tournamentsError)
+    throw new CglSgtError(
+      "The current SGT event could not be prepared for refresh.",
+      503,
+      "sgt_snapshot_read_failed",
+    );
+
+  const today = new Date().toISOString().slice(0, 10);
+  const tournaments = ((storedTournaments ?? []) as JsonRecord[]).filter(
+    (tournament) => tournamentIsCurrent(tournament, today),
+  );
+  const liveTournaments = (tournaments.length
+    ? tournaments
+    : ((storedTournaments ?? []) as JsonRecord[]).slice(0, 1)
+  ).slice(0, 6);
+  const currentTourIds = new Set(
+    liveTournaments
+      .map((tournament) => integerValue(tournament, ["sgt_tour_id"]))
+      .filter((value): value is number => value !== null),
+  );
+  const liveTours = ((storedTours ?? []) as JsonRecord[])
+    .filter(
+      (tour) =>
+        booleanValue(tour, ["active"]) ||
+        currentTourIds.has(integerValue(tour, ["sgt_tour_id"]) ?? -1),
+    )
+    .slice(0, 6);
+
+  let toursUpdated = 0;
+  let tournamentsUpdated = 0;
+  await mapLimited(liveTours, 3, async (tour) => {
+    const tourId = integerValue(tour, ["sgt_tour_id"]);
+    if (tourId === null) return;
+    const [gross, net, stats] = await Promise.all([
+      safeSgtGet(
+        warnings,
+        `Tour ${tourId} gross standings`,
+        clubSlug,
+        "/tours/standings",
+        apiKey,
+        { tourId, grossOrNet: "gross" },
+      ),
+      safeSgtGet(
+        warnings,
+        `Tour ${tourId} net standings`,
+        clubSlug,
+        "/tours/standings",
+        apiKey,
+        { tourId, grossOrNet: "net" },
+      ),
+      safeSgtGet(
+        warnings,
+        `Tour ${tourId} statistics`,
+        clubSlug,
+        "/tours/stats",
+        apiKey,
+        { tourId },
+      ),
+    ]);
+    const patch: JsonRecord = {
+      synced_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    if (gross !== null)
+      patch.standings_gross = payloadRows(gross, ["standings", "results", "data", "rows"]);
+    if (net !== null)
+      patch.standings_net = payloadRows(net, ["standings", "results", "data", "rows"]);
+    if (stats !== null) patch.stats = payloadJson(stats);
+    if (gross === null && net === null && stats === null) return;
+    const { error } = await database()
+      .from("cgl_sgt_tours")
+      .update(patch)
+      .eq("club_slug", clubSlug)
+      .eq("sgt_tour_id", tourId);
+    if (error)
+      throw new CglSgtError(
+        "Live SGT tour data was received but could not be saved.",
+        503,
+        "sgt_snapshot_store_failed",
+      );
+    toursUpdated += 1;
+  });
+
+  await mapLimited(liveTournaments, 3, async (tournament) => {
+    const tournamentId = integerValue(tournament, ["sgt_tournament_id"]);
+    if (tournamentId === null) return;
+    const [scorecards, stats] = await Promise.all([
+      safeSgtGet(
+        warnings,
+        `Tournament ${tournamentId} scorecards`,
+        clubSlug,
+        "/tournaments/scorecards",
+        apiKey,
+        { tournamentId },
+      ),
+      safeSgtGet(
+        warnings,
+        `Tournament ${tournamentId} statistics`,
+        clubSlug,
+        "/tournaments/stats",
+        apiKey,
+        { tournamentId },
+      ),
+    ]);
+    if (scorecards === null && stats === null) return;
+    const patch: JsonRecord = {
+      synced_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    if (scorecards !== null)
+      patch.scorecards = payloadRows(scorecards, ["scorecards", "results", "data", "rows"]);
+    if (stats !== null) patch.stats = payloadJson(stats);
+    const { error } = await database()
+      .from("cgl_sgt_tournaments")
+      .update(patch)
+      .eq("club_slug", clubSlug)
+      .eq("sgt_tournament_id", tournamentId);
+    if (error)
+      throw new CglSgtError(
+        "Live SGT tournament data was received but could not be saved.",
+        503,
+        "sgt_snapshot_store_failed",
+      );
+    tournamentsUpdated += 1;
+  });
+
+  return {
+    warnings,
+    counts: {
+      tours: toursUpdated,
+      tournaments: tournamentsUpdated,
+    },
+  };
+}
+
 async function beginSyncRun(
   clubSlug: string,
   trigger: SyncTrigger,
@@ -739,6 +903,47 @@ async function finishSync(
           : null),
       ...(result.clubMembers ? { members: result.clubMembers } : {}),
       ...(result.inviteLinks ? { invite_links: result.inviteLinks } : {}),
+      lease_token: null,
+      lease_until: null,
+      updated_at: now,
+    })
+    .eq("club_slug", clubSlug)
+    .eq("lease_token", leaseToken);
+}
+
+async function finishLiveSync(
+  clubSlug: string,
+  leaseToken: string,
+  runId: string,
+  result: {
+    state: "completed" | "partial" | "failed";
+    counts?: JsonRecord;
+    warnings?: string[];
+    error?: string;
+  },
+) {
+  const now = new Date().toISOString();
+  await database()
+    .from("cgl_sgt_sync_runs")
+    .update({
+      state: result.state,
+      counts: result.counts ?? {},
+      warnings: result.warnings ?? [],
+      error: result.error ?? null,
+      completed_at: now,
+    })
+    .eq("id", runId);
+  await database()
+    .from("cgl_sgt_connections")
+    .update({
+      status: result.state === "failed" ? "error" : "connected",
+      last_live_sync_at: now,
+      ...(result.state === "failed" ? {} : { last_live_success_at: now }),
+      last_error:
+        result.error ??
+        (result.warnings?.length
+          ? `${result.warnings.length} live SGT section(s) will retry.`
+          : null),
       lease_token: null,
       lease_until: null,
       updated_at: now,
@@ -869,6 +1074,63 @@ export async function runCglSgtSync(input: {
         ? error
         : new CglSgtError("SGT sync failed. Cached data remains available.");
     await finishSync(clubSlug, leaseToken, runId, {
+      state: "failed",
+      error: safeError.message,
+    });
+    throw safeError;
+  }
+}
+
+export async function runCglSgtLiveSync(input: {
+  actor?: string;
+  clubSlug?: string;
+} = {}) {
+  const clubSlug = clubSlugSchema.parse(input.clubSlug ?? CGL_SGT_CLUB_SLUG);
+  const actor = input.actor?.trim().slice(0, 200) || "public-live-pulse";
+  const leaseToken = randomUUID();
+  const { data: claimed, error: claimError } = await database().rpc(
+    "cgl_sgt_claim_live_sync",
+    {
+      p_club_slug: clubSlug,
+      p_lease_token: leaseToken,
+    },
+  );
+  if (claimError)
+    throw new CglSgtError(
+      "The live SGT refresh lock could not be acquired.",
+      503,
+      "sgt_live_sync_store_failed",
+    );
+  if (claimed !== true)
+    return {
+      status: "skipped",
+      message: "The live feed is already current or another refresh is running.",
+    };
+
+  const runId = await beginSyncRun(clubSlug, "live", actor);
+  try {
+    const connection = await loadConnection(clubSlug);
+    const apiKey = await validApiKey(clubSlug, connection, actor);
+    const snapshot = await performLiveSync(clubSlug, apiKey);
+    const state = snapshot.warnings.length ? "partial" : "completed";
+    await finishLiveSync(clubSlug, leaseToken, runId, {
+      state,
+      counts: snapshot.counts,
+      warnings: snapshot.warnings,
+    });
+    return {
+      status: state,
+      counts: snapshot.counts,
+      warnings: snapshot.warnings,
+    };
+  } catch (error) {
+    const safeError =
+      error instanceof CglSgtError
+        ? error
+        : new CglSgtError(
+            "The live SGT refresh failed. Last confirmed data remains available.",
+          );
+    await finishLiveSync(clubSlug, leaseToken, runId, {
       state: "failed",
       error: safeError.message,
     });

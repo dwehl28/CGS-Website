@@ -532,6 +532,87 @@ function standingsFrom(
   return result;
 }
 
+function publicSgtSnapshot(
+  sgtConnections: CglData[],
+  sgtTours: CglData[],
+  sgtTournaments: CglData[],
+) {
+  const connection = sgtConnections[0];
+  const sourceTimes = [
+    ...sgtTours.map((tour) => String(tour.synced_at ?? "")),
+    ...sgtTournaments.map((tournament) => String(tournament.synced_at ?? "")),
+  ].filter((value) => Number.isFinite(Date.parse(value)));
+  const sourceUpdatedAt = sourceTimes.toSorted().at(-1) ?? null;
+  return {
+    connection: connection
+      ? {
+          club_slug: connection.club_slug,
+          club_id: connection.club_id,
+          source_url: connection.source_url,
+          status: connection.status,
+          sync_enabled: connection.sync_enabled,
+          live_sync_enabled: connection.live_sync_enabled,
+          live_sync_interval_seconds: connection.live_sync_interval_seconds,
+          last_sync_at: connection.last_sync_at,
+          last_success_at: connection.last_success_at,
+          last_live_sync_at: connection.last_live_sync_at,
+          last_live_success_at: connection.last_live_success_at,
+          source_updated_at: sourceUpdatedAt,
+        }
+      : null,
+    tours: sgtTours.map((tour) => ({
+      sgt_tour_id: tour.sgt_tour_id,
+      name: tour.name,
+      start_date: tour.start_date,
+      end_date: tour.end_date,
+      team_tour: tour.team_tour,
+      active: tour.active,
+      members: sanitizeSgtPublic(tour.members),
+      teams: sanitizeSgtPublic(tour.teams),
+      standings_gross: sanitizeSgtPublic(tour.standings_gross),
+      standings_net: sanitizeSgtPublic(tour.standings_net),
+      stats: sanitizeSgtPublic(tour.stats),
+      synced_at: tour.synced_at,
+    })),
+    tournaments: sgtTournaments.map((tournament) => ({
+      sgt_tournament_id: tournament.sgt_tournament_id,
+      sgt_tour_id: tournament.sgt_tour_id,
+      name: tournament.name,
+      status: tournament.status,
+      start_date: tournament.start_date,
+      end_date: tournament.end_date,
+      registration_start_date: tournament.registration_start_date,
+      registration_end_date: tournament.registration_end_date,
+      course_name: tournament.course_name,
+      number_rounds: tournament.number_rounds,
+      number_holes: tournament.number_holes,
+      gameplay: tournament.gameplay,
+      stableford: tournament.stableford,
+      registrations: sanitizeSgtPublic(tournament.registrations),
+      scorecards: sanitizeSgtPublic(tournament.scorecards),
+      stats: sanitizeSgtPublic(tournament.stats),
+      synced_at: tournament.synced_at,
+    })),
+  };
+}
+
+export async function getCglSgtPublicSnapshot() {
+  const [connections, tours, tournaments] = await Promise.all([
+    rows(
+      "cgl_sgt_connections",
+      {},
+      "club_slug,club_id,source_url,status,sync_enabled,live_sync_enabled,live_sync_interval_seconds,last_sync_at,last_success_at,last_live_sync_at,last_live_success_at,updated_at",
+    ),
+    rows("cgl_sgt_tours"),
+    rows("cgl_sgt_tournaments"),
+  ]);
+  return {
+    status: "ready",
+    sgt: publicSgtSnapshot(connections, tours, tournaments),
+    updated_at: new Date().toISOString(),
+  };
+}
+
 export async function getCglPublicSnapshot() {
   const [
     settings,
@@ -559,7 +640,7 @@ export async function getCglPublicSnapshot() {
     rows(
       "cgl_sgt_connections",
       {},
-      "club_slug,club_id,source_url,status,sync_enabled,last_sync_at,last_success_at,last_error,updated_at",
+      "club_slug,club_id,source_url,status,sync_enabled,live_sync_enabled,live_sync_interval_seconds,last_sync_at,last_success_at,last_live_sync_at,last_live_success_at,updated_at",
     ),
     rows("cgl_sgt_tours"),
     rows("cgl_sgt_tournaments"),
@@ -760,52 +841,7 @@ export async function getCglPublicSnapshot() {
       },
       legal: { approved: config.legal?.approved === true },
     },
-    sgt: {
-      connection: sgtConnections[0]
-        ? {
-            club_slug: sgtConnections[0].club_slug,
-            club_id: sgtConnections[0].club_id,
-            source_url: sgtConnections[0].source_url,
-            status: sgtConnections[0].status,
-            sync_enabled: sgtConnections[0].sync_enabled,
-            last_sync_at: sgtConnections[0].last_sync_at,
-            last_success_at: sgtConnections[0].last_success_at,
-          }
-        : null,
-      tours: sgtTours.map((tour) => ({
-        sgt_tour_id: tour.sgt_tour_id,
-        name: tour.name,
-        start_date: tour.start_date,
-        end_date: tour.end_date,
-        team_tour: tour.team_tour,
-        active: tour.active,
-        members: sanitizeSgtPublic(tour.members),
-        teams: sanitizeSgtPublic(tour.teams),
-        standings_gross: sanitizeSgtPublic(tour.standings_gross),
-        standings_net: sanitizeSgtPublic(tour.standings_net),
-        stats: sanitizeSgtPublic(tour.stats),
-        synced_at: tour.synced_at,
-      })),
-      tournaments: sgtTournaments.map((tournament) => ({
-        sgt_tournament_id: tournament.sgt_tournament_id,
-        sgt_tour_id: tournament.sgt_tour_id,
-        name: tournament.name,
-        status: tournament.status,
-        start_date: tournament.start_date,
-        end_date: tournament.end_date,
-        registration_start_date: tournament.registration_start_date,
-        registration_end_date: tournament.registration_end_date,
-        course_name: tournament.course_name,
-        number_rounds: tournament.number_rounds,
-        number_holes: tournament.number_holes,
-        gameplay: tournament.gameplay,
-        stableford: tournament.stableford,
-        registrations: sanitizeSgtPublic(tournament.registrations),
-        scorecards: sanitizeSgtPublic(tournament.scorecards),
-        stats: sanitizeSgtPublic(tournament.stats),
-        synced_at: tournament.synced_at,
-      })),
-    },
+    sgt: publicSgtSnapshot(sgtConnections, sgtTours, sgtTournaments),
     updated_at: new Date().toISOString(),
   };
 }
