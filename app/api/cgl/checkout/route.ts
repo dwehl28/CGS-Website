@@ -5,6 +5,7 @@ import {
   CglSquareError,
   createCglSquareCheckout,
   getCglSquareOperationalReadiness,
+  retireStaleCglSquareCheckout,
   type CglSquareCheckout,
 } from "@/lib/cgl-square";
 import { CGL_MEMBERSHIP_TERMS_VERSION } from "@/lib/cgl-terms";
@@ -36,6 +37,13 @@ const resumeInput = z
   .strict();
 
 const input = z.union([purchaseInput, resumeInput]);
+
+function acceptedTermsVersion(checkout: CglSquareCheckout) {
+  const snapshot = checkout.terms_snapshot;
+  return snapshot && typeof snapshot === "object"
+    ? snapshot.terms_version
+    : null;
+}
 
 export async function GET(request: Request) {
   try {
@@ -137,11 +145,16 @@ export async function POST(request: Request) {
       const termsSnapshot = saved.terms_snapshot && typeof saved.terms_snapshot === "object"
         ? saved.terms_snapshot as Record<string, unknown>
         : {};
-      if (termsSnapshot.terms_version !== CGL_MEMBERSHIP_TERMS_VERSION)
+      if (termsSnapshot.terms_version !== CGL_MEMBERSHIP_TERMS_VERSION) {
+        await retireStaleCglSquareCheckout(saved as CglSquareCheckout);
         return Response.json(
-          { error: "The membership terms have changed. Review the current payment details before continuing." },
+          {
+            error: "The membership terms changed, so the old unpaid Square link was closed. Review the current payment details to start a fresh checkout.",
+            staleCheckoutRetired: true,
+          },
           { status: 409 },
         );
+      }
       if (readiness.environment === "production" && saved.recurring && !readiness.subscriptionActionsEnabled)
         throw new CglSquareError(
           "Recurring Square memberships are still in controlled verification. Choose a one-off casual option for now.",
@@ -166,31 +179,33 @@ export async function POST(request: Request) {
         { headers: { "Cache-Control": "no-store" } },
       );
     }
-    if (readiness.environment === "production" && ["annual", "monthly", "weekly"].includes(body.data.planCode) && !readiness.subscriptionActionsEnabled)
+    const purchase = body.data;
+    if (readiness.environment === "production" && ["annual", "monthly", "weekly"].includes(purchase.planCode) && !readiness.subscriptionActionsEnabled)
       throw new CglSquareError(
         "Recurring Square memberships are still in controlled verification. Choose a one-off casual option for now.",
         409,
         "square_recurring_disabled",
       );
     const seasonId =
-      body.data.planCode === "casual_season" ? body.data.seasonId ?? null : null;
-    if (body.data.planCode === "casual_season" && !seasonId)
+      purchase.planCode === "casual_season" ? purchase.seasonId ?? null : null;
+    if (purchase.planCode === "casual_season" && !seasonId)
       return Response.json(
         { error: "Choose an open season for the $100 Season Pass." },
         { status: 400 },
       );
-    const { data, error } = await getSupabaseAdmin().rpc(
+    const prepareCheckout = () => getSupabaseAdmin().rpc(
       readiness.environment === "production"
         ? "cgl_prepare_square_live_checkout"
         : "cgl_prepare_square_checkout",
       {
         p_member_id: member.id,
-        p_plan_code: body.data.planCode,
+        p_plan_code: purchase.planCode,
         p_season_id: seasonId,
-        p_request_key: body.data.requestKey,
-        p_accepted_amount_cents: body.data.acceptedAmountCents,
+        p_request_key: purchase.requestKey,
+        p_accepted_amount_cents: purchase.acceptedAmountCents,
       },
     );
+    let { data, error } = await prepareCheckout();
     if (error)
       return Response.json(
         {
@@ -199,12 +214,27 @@ export async function POST(request: Request) {
         },
         { status: 409 },
       );
-    const checkout = data as CglSquareCheckout;
+    let checkout = data as CglSquareCheckout;
     if (!checkout?.id)
       throw new CglSquareError(
         "The checkout could not be prepared. No payment has been taken.",
       );
-    if (checkout.amount_cents !== body.data.acceptedAmountCents)
+    if (acceptedTermsVersion(checkout) !== CGL_MEMBERSHIP_TERMS_VERSION) {
+      await retireStaleCglSquareCheckout(checkout);
+      ({ data, error } = await prepareCheckout());
+      if (error)
+        throw new CglSquareError(
+          "The old checkout was closed, but a fresh checkout could not be prepared. Retry safely.",
+        );
+      checkout = data as CglSquareCheckout;
+      if (!checkout?.id || acceptedTermsVersion(checkout) !== CGL_MEMBERSHIP_TERMS_VERSION)
+        throw new CglSquareError(
+          "The fresh checkout did not preserve the current membership terms. No payment has been taken.",
+          409,
+          "square_terms_mismatch",
+        );
+    }
+    if (checkout.amount_cents !== purchase.acceptedAmountCents)
       throw new CglSquareError(
         "The membership price has changed. Review the current quote before confirming payment.",
         409,

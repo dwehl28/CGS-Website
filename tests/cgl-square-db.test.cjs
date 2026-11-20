@@ -4,6 +4,7 @@ const { randomUUID } = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const { PGlite } = require("@electric-sql/pglite");
+const TERMS_VERSION = "cgl-membership-terms-2026-11-20-recurring-v1";
 let db;
 test.before(async () => {
   db = new PGlite();
@@ -15,6 +16,7 @@ test.before(async () => {
     "20261106202134_cgl_square_sandbox_billing.sql",
     "20261111001557_cgl_square_production_one_off.sql",
     "20261114143000_cgl_square_production_recurring.sql",
+    "20261120122500_cgl_retire_stale_square_checkout.sql",
   ])
     await db.exec(
       fs.readFileSync(
@@ -876,6 +878,7 @@ test("Sandbox records and all privileged RPCs are inaccessible to browser roles"
     "cgl_claim_square_events(text,integer)",
     "cgl_claim_square_live_events(text,integer,text)",
     "cgl_fail_square_event(text,uuid,text,boolean)",
+    "cgl_retire_stale_square_checkout(uuid,uuid,text,text)",
   ])
     assert.equal(
       (
@@ -886,4 +889,42 @@ test("Sandbox records and all privileged RPCs are inaccessible to browser roles"
       ).rows[0].allowed,
       false,
     );
+});
+
+test("stale checkout retirement atomically cancels only its pending membership", async () => {
+  const id = await member();
+  await db.exec(`
+    update cgl_settings
+    set value='{"approved":true,"version":"old-terms","recurring_approved":true,"approved_products":["casual_registration"]}'::jsonb
+    where key='legal';
+    update cgl_settings
+    set value='{"approved":true,"mode":"paid_term"}'::jsonb
+    where key='cancellation_policy';
+    update cgl_settings
+    set value='{"checkout_enabled":true,"launch_approved":true,"live_entitlements":true,"recurring_enabled":true}'::jsonb
+    where key='square_production';
+  `);
+  const intent = await prepareLive(id, "casual_registration", null, randomUUID(), 2900);
+  await db.query(
+    "update cgl_settings set value=jsonb_set(value,'{version}',to_jsonb($1::text)) where key='legal'",
+    [TERMS_VERSION],
+  );
+  const retired = (
+    await db.query(
+      "select cgl_retire_stale_square_checkout($1,$2,'production',$3) value",
+      [intent.id, id, TERMS_VERSION],
+    )
+  ).rows[0].value;
+  assert.equal(retired.state, "cancelled");
+  assert.equal(
+    (await db.query("select state from cgl_square_checkout_intents where id=$1", [intent.id])).rows[0].state,
+    "cancelled",
+  );
+  assert.equal(
+    (await db.query("select state from cgl_memberships where id=$1", [intent.membership_id])).rows[0].state,
+    "cancelled",
+  );
+  await assert.rejects(
+    db.query("select cgl_retire_stale_square_checkout($1,$2,'production',$3)", [intent.id, id, TERMS_VERSION]),
+  );
 });

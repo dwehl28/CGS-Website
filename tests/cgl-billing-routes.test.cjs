@@ -16,7 +16,7 @@ const memberId='11111111-1111-4111-8111-111111111111';
 const checkoutId='22222222-2222-4222-8222-222222222222';
 const termsVersion='cgl-membership-terms-2026-11-20-recurring-v1';
 function harness(options={}) {
-  const calls={rpc:[],checkout:[],lookup:[],sync:[],receipt:[],worker:[],after:[]};
+  const calls={rpc:[],checkout:[],retire:[],lookup:[],sync:[],receipt:[],worker:[],after:[]};
   const platform={
     verifyCglOrigin(request){if(request.headers.get('origin')&&request.headers.get('origin')!=='https://example.test')throw new BillingError('Wrong origin',403);},
     async getCglMemberIdentity(request){if(request.headers.get('authorization')!=='Bearer member')throw new BillingError('Sign in',401);return{id:memberId,email:'own@example.invalid'};},
@@ -27,6 +27,7 @@ function harness(options={}) {
     getCglSquareReadiness:()=>({ready:options.ready!==false,configured:true,environment:options.environment??'sandbox',oneOffActionsEnabled:options.ready!==false,subscriptionActionsEnabled:options.subscriptionActionsEnabled===true}),
     getCglSquareOperationalReadiness:async()=>({ready:options.ready!==false,configured:true,environment:options.environment??'sandbox',oneOffActionsEnabled:options.ready!==false,subscriptionActionsEnabled:options.subscriptionActionsEnabled===true}),
     async createCglSquareCheckout(...args){calls.checkout.push(args);return'https://sandbox.square.link/test';},
+    async retireStaleCglSquareCheckout(...args){calls.retire.push(args);return{state:'cancelled'};},
     async syncCglSquareMember(...args){calls.sync.push(args);return{status:'pending',checkouts:[{id:args[1],state:'pending'}]};},
     async receiveCglSquareWebhook(...args){calls.receipt.push(args);if(options.badSignature)throw new BillingError('Invalid signature',401);return options.testEvent?{eventId:'test-event',event_id:'test-event',test:true}:{eventId:'event',queued:true};},
     async processQueuedCglSquareEvents(...args){calls.worker.push(args);return{processed:0};},
@@ -34,7 +35,12 @@ function harness(options={}) {
   const mocks={
     '@/lib/cgl-platform':platform,'@/lib/cgl-square':square,'@/lib/cgl-terms':{CGL_MEMBERSHIP_TERMS_VERSION:termsVersion},
     '@/lib/supabase-admin':{getSupabaseAdmin:()=>({
-      async rpc(...args){calls.rpc.push(args);return options.rpcFailure?{error:{message:'Changed price'}}:{data:options.intent??{id:checkoutId,member_id:memberId,amount_cents:2995,recurring:true,environment:options.environment??'sandbox'}};},
+      async rpc(...args){
+        calls.rpc.push(args);
+        if(options.rpcFailure)return{error:{message:'Changed price'}};
+        if(options.rpcResults?.length)return options.rpcResults.shift();
+        return{data:options.intent??{id:checkoutId,member_id:memberId,amount_cents:2995,recurring:true,environment:options.environment??'sandbox',terms_snapshot:{terms_version:termsVersion}}};
+      },
       from(table){const filters=[];const builder={select(){return builder;},eq(key,value){filters.push([key,value]);return builder;},async maybeSingle(){calls.lookup.push({table,filters});const saved=options.savedIntent??null;return{data:saved&&filters.every(([key,value])=>saved[key]===value)?saved:null,error:null};}};return builder;},
     })},
     'next/server':{after(fn){calls.after.push(fn);}},
@@ -66,19 +72,19 @@ test('only the $100 season pass carries a season into checkout',async()=>{
   assert.equal((await missing.checkout.POST(post('/api/cgl/checkout',seasonPass))).status,400);
   assert.equal(missing.calls.rpc.length,0);
 
-  const selected=harness({intent:{id:checkoutId,member_id:memberId,amount_cents:10000,recurring:false,environment:'sandbox'}});
+  const selected=harness({intent:{id:checkoutId,member_id:memberId,amount_cents:10000,recurring:false,environment:'sandbox',terms_snapshot:{terms_version:termsVersion}}});
   assert.equal((await selected.checkout.POST(post('/api/cgl/checkout',{...seasonPass,seasonId}))).status,200);
   assert.equal(selected.calls.rpc[0][1].p_season_id,seasonId);
 });
 test('production checkout uses the live RPC and opens recurring plans only after the recurring gate',async()=>{
   const oneOff={planCode:'casual_registration',requestKey:checkoutId,termsAccepted:true,termsVersion,acceptedAmountCents:2900};
-  const live=harness({environment:'production',intent:{id:checkoutId,member_id:memberId,amount_cents:2900,recurring:false,environment:'production'}});
+  const live=harness({environment:'production',intent:{id:checkoutId,member_id:memberId,amount_cents:2900,recurring:false,environment:'production',terms_snapshot:{terms_version:termsVersion}}});
   assert.equal((await live.checkout.POST(post('/api/cgl/checkout',oneOff))).status,200);
   assert.deepEqual(live.calls.rpc[0],['cgl_prepare_square_live_checkout',{p_member_id:memberId,p_plan_code:'casual_registration',p_season_id:null,p_request_key:checkoutId,p_accepted_amount_cents:2900}]);
   const recurring=harness({environment:'production'});
   assert.equal((await recurring.checkout.POST(post('/api/cgl/checkout',purchase))).status,409);
   assert.equal(recurring.calls.rpc.length,0);assert.equal(recurring.calls.checkout.length,0);
-  const enabled=harness({environment:'production',subscriptionActionsEnabled:true,intent:{id:checkoutId,member_id:memberId,amount_cents:2995,recurring:true,environment:'production',square_plan_variation_id:'variation-monthly'}});
+  const enabled=harness({environment:'production',subscriptionActionsEnabled:true,intent:{id:checkoutId,member_id:memberId,amount_cents:2995,recurring:true,environment:'production',square_plan_variation_id:'variation-monthly',terms_snapshot:{terms_version:termsVersion}}});
   assert.equal((await enabled.checkout.POST(post('/api/cgl/checkout',purchase))).status,200);
   assert.deepEqual(enabled.calls.rpc[0],['cgl_prepare_square_live_checkout',{p_member_id:memberId,p_plan_code:'monthly',p_season_id:null,p_request_key:checkoutId,p_accepted_amount_cents:2995}]);
   assert.equal(enabled.calls.checkout.length,1);
@@ -93,11 +99,20 @@ test('a member can resume only their own pending checkout with the current accep
 
   const oldTerms=harness({environment:'production',savedIntent:{...savedIntent,terms_snapshot:{terms_version:'old-terms'}}});
   assert.equal((await oldTerms.checkout.POST(post('/api/cgl/checkout',{action:'resume',checkoutId}))).status,409);
-  assert.equal(oldTerms.calls.checkout.length,0);
+  assert.equal(oldTerms.calls.checkout.length,0);assert.equal(oldTerms.calls.retire.length,1);
 
   const otherMember=harness({environment:'production',savedIntent:{...savedIntent,member_id:'44444444-4444-4444-8444-444444444444'}});
   assert.equal((await otherMember.checkout.POST(post('/api/cgl/checkout',{action:'resume',checkoutId}))).status,404);
   assert.equal(otherMember.calls.checkout.length,0);
+});
+test('a new purchase retires an old-terms pending intent and prepares a fresh checkout',async()=>{
+  const stale={id:checkoutId,member_id:memberId,membership_id:'33333333-3333-4333-8333-333333333333',amount_cents:2900,recurring:false,environment:'production',plan_code:'casual_registration',season_id:null,terms_snapshot:{terms_version:'old-terms'}};
+  const fresh={...stale,id:'55555555-5555-4555-8555-555555555555',membership_id:'66666666-6666-4666-8666-666666666666',terms_snapshot:{terms_version:termsVersion}};
+  const h=harness({environment:'production',rpcResults:[{data:stale},{data:fresh}]});
+  const oneOff={planCode:'casual_registration',requestKey:'77777777-7777-4777-8777-777777777777',termsAccepted:true,termsVersion,acceptedAmountCents:2900};
+  const response=await h.checkout.POST(post('/api/cgl/checkout',oneOff));
+  assert.equal(response.status,200);assert.equal(h.calls.retire.length,1);assert.equal(h.calls.rpc.length,2);assert.equal(h.calls.checkout.length,1);
+  assert.equal(h.calls.checkout[0][0].id,fresh.id);
 });
 test('Sandbox checkout disabled flag, malformed JSON and actual body limits fail before preparation',async()=>{
   const off=harness({ready:false});assert.equal((await off.checkout.POST(post('/api/cgl/checkout',purchase))).status,503);assert.equal(off.calls.rpc.length,0);

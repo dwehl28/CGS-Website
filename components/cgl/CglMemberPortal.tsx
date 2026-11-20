@@ -58,6 +58,15 @@ export function cglPlanRequiresSeason(planCode: string) {
   return planCode === "casual_season";
 }
 
+export function cglCheckoutTermsAreCurrent(
+  checkout: CglSnapshot,
+  readiness: CglSnapshot,
+) {
+  const current = str(readiness.expectedTermsVersion, str(readiness.termsVersion));
+  if (!current) return true;
+  return str(row(checkout.terms_snapshot).terms_version) === current;
+}
+
 export function getCglCheckoutRequestKey(
   storage: Pick<Storage, "getItem" | "setItem"> | null,
   scope: string,
@@ -590,10 +599,16 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
         body: JSON.stringify({ action: "resume", checkoutId }),
       });
       const result = await response.json();
-      if (!response.ok)
+      if (!response.ok) {
+        if (result.staleCheckoutRetired === true) {
+          setCheckoutQuote(null);
+          setCheckoutTermsAccepted(false);
+          await load(session.access_token);
+        }
         throw new Error(
           str(result.message ?? result.error, "The saved checkout could not be opened."),
         );
+      }
       const url = result.checkoutUrl ?? result.url;
       if (typeof url !== "string" || !isCglSquareHostedCheckoutUrl(url))
         throw new Error("Square returned an unexpected checkout address.");
@@ -621,6 +636,7 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
   });
   const pendingCheckout = rows(billing.checkouts).find((checkout) =>
     str(checkout.state) === "pending" &&
+    cglCheckoutTermsAreCurrent(checkout, checkoutReadiness) &&
     str(checkout.plan_code) === selectedPlan &&
     (!cglPlanRequiresSeason(selectedPlan) || str(checkout.season_id) === selectedSeason),
   );

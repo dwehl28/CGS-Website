@@ -376,6 +376,36 @@ test("reusing a saved checkout retrieves its current provider link and prevents 
   await assert.rejects(square.createCglSquareCheckout(value), /no longer payable/);
   assert(!requests.some(([, options]) => options.method === "POST"));
 });
+test("stale-terms checkout retirement cancels the unpaid Square order before the local records", async () => {
+  let providerCancelled = false;
+  overrides["/online-checkout/payment-links/link"] = (options) => {
+    if (options.method === "DELETE") {
+      providerCancelled = true;
+      return Response.json({ id: "link", cancelled_order_id: "template" });
+    }
+    return Response.json({ payment_link: { id: "link", order_id: "template", url: "https://sandbox.square.link/u/test" } });
+  };
+  overrides["/orders/template"] = () => Response.json({
+    order: { ...template(), state: providerCancelled ? "CANCELED" : "OPEN" },
+  });
+  rpcOverride = async (name) => name === "cgl_retire_stale_square_checkout"
+    ? { data: { state: "cancelled" }, error: null }
+    : undefined;
+  const stale = {
+    ...intent,
+    square_link_id: "link",
+    payment_link_url: "https://sandbox.square.link/u/test",
+    terms_snapshot: { terms_version: "old-terms" },
+  };
+  assert.equal((await square.retireStaleCglSquareCheckout(stale)).state, "cancelled");
+  assert.equal(providerCancelled, true);
+  assert.equal(rpcCalls.find(([name]) => name === "cgl_retire_stale_square_checkout")[1].p_intent_id, intent.id);
+
+  providerCancelled = false;
+  overrides["/orders/template"] = { order: { ...template(), tenders: [{ payment_id: "recorded-attempt" }] } };
+  await assert.rejects(square.retireStaleCglSquareCheckout(stale), /recorded payment attempt/);
+  assert.equal(providerCancelled, false);
+});
 test("read-only catalog mapping checks existing IDs without catalog mutations", async () => {
   const result = await square.auditCglSquareCatalogMappings([{ code: "monthly", amountCents: 2995, variationId: "variation" }]);
   assert.equal(result.mappings[0].parentId, "plan"); assert(requests.every(([, options]) => !options.method));

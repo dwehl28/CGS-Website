@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     const readiness = await getCglSquareOperationalReadiness();
     const [{ data: checkouts, error }, { data: seasonEntitlements }] = await Promise.all([getSupabaseAdmin()
       .from("cgl_square_checkout_intents")
-      .select("id,plan_code,season_id,amount_cents,recurring,state,environment,created_at,completed_at")
+      .select("id,plan_code,season_id,amount_cents,recurring,state,environment,terms_snapshot,created_at,completed_at")
       .eq("member_id", identity.id)
       .eq("environment", readiness.environment)
       .order("created_at", { ascending: false })

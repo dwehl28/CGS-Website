@@ -21,6 +21,7 @@ export type CglSquareCheckout = {
   recurring: boolean; square_plan_variation_id: string | null; payment_link_url: string | null;
   square_link_id?: string | null; square_order_id?: string | null; season_id: string | null;
   environment?: CglSquareEnvironment;
+  terms_snapshot?: Data | null;
 };
 function object(value: unknown): Data { return value && typeof value === "object" && !Array.isArray(value) ? value as Data : {}; }
 function string(value: unknown): string | null { return typeof value === "string" && value.length > 0 ? value : null; }
@@ -436,6 +437,61 @@ export async function createCglSquareCheckout(checkout: CglSquareCheckout) {
   const { error } = await getSupabaseAdmin().rpc("cgl_attach_square_checkout", { p_intent_id: checkout.id, p_link_id: link.id, p_order_id: orderId, p_url: url });
   if (error) throw new CglSquareError("The checkout could not be saved. Retry the same request to recover it safely.");
   return url;
+}
+
+/** Close an unpaid checkout whose accepted terms no longer match the published
+ * version. Square is cancelled first so a retired local intent can never leave
+ * a payable provider link behind. */
+export async function retireStaleCglSquareCheckout(checkout: CglSquareCheckout) {
+  const config = getConfig(true);
+  const environment = checkout.environment ?? config.environment;
+  const acceptedTerms = string(object(checkout.terms_snapshot).terms_version);
+  if (environment !== config.environment) invalid("The saved checkout belongs to a different Square environment.");
+  if (acceptedTerms === CGL_MEMBERSHIP_TERMS_VERSION) invalid("The saved checkout already uses the current membership terms.");
+
+  await verifyCglSquareConnection();
+  if (checkout.square_order_id) {
+    const orderId = checkout.square_order_id;
+    let order = object((await squareRequest(`/orders/${encodeURIComponent(orderId)}`)).order);
+    verifyRecoveredCheckoutOrder(checkout, order, orderId);
+    if (order.state === "COMPLETED") {
+      throw new CglSquareError(
+        "This Square checkout may already be paid. Refresh billing before another purchase.",
+        409,
+        "square_checkout_payment_recorded",
+      );
+    }
+    requireUnpaidCheckoutOrder(order);
+    if (order.state !== "CANCELED") {
+      if (!checkout.square_link_id) invalid("The stale Square checkout link is incomplete.");
+      const linkId = checkout.square_link_id;
+      const link = object((await squareRequest(`/online-checkout/payment-links/${encodeURIComponent(linkId)}`)).payment_link);
+      if (link.id !== linkId || link.order_id !== orderId) invalid("The stale Square checkout link does not match its order.");
+      const retired = await squareRequest(`/online-checkout/payment-links/${encodeURIComponent(linkId)}`, { method: "DELETE" });
+      if (retired.id !== linkId || retired.cancelled_order_id !== orderId) invalid("Square did not confirm the stale checkout cancellation.");
+      order = object((await squareRequest(`/orders/${encodeURIComponent(orderId)}`)).order);
+      verifyRecoveredCheckoutOrder(checkout, order, orderId);
+      if (order.state !== "CANCELED") invalid("Square did not cancel the stale checkout order.");
+    }
+  } else if (checkout.square_link_id || checkout.payment_link_url) {
+    invalid("The stale Square checkout is missing its verified order.");
+  }
+
+  const { data, error } = await getSupabaseAdmin().rpc("cgl_retire_stale_square_checkout", {
+    p_intent_id: checkout.id,
+    p_member_id: checkout.member_id,
+    p_environment: environment,
+    p_current_terms_version: CGL_MEMBERSHIP_TERMS_VERSION,
+  });
+  const result = object(data);
+  if (error || result.state !== "cancelled") {
+    throw new CglSquareError(
+      "The old Square checkout was closed but its CGL record still needs reconciliation.",
+      503,
+      "square_retirement_save_failed",
+    );
+  }
+  return result;
 }
 
 export function normalizeCglSquarePayment(value: unknown) {

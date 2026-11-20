@@ -43,6 +43,13 @@ test("only the $100 Season Pass requires a season", () => {
   assert.equal(portal.cglPlanRequiresSeason("casual_season"), true);
 });
 
+test("only pending checkouts accepted under the current terms can be resumed", () => {
+  const readiness = { expectedTermsVersion: "current-terms" };
+  assert.equal(portal.cglCheckoutTermsAreCurrent({ terms_snapshot: { terms_version: "current-terms" } }, readiness), true);
+  assert.equal(portal.cglCheckoutTermsAreCurrent({ terms_snapshot: { terms_version: "old-terms" } }, readiness), false);
+  assert.equal(portal.cglCheckoutTermsAreCurrent({}, readiness), false);
+});
+
 test("Sandbox billing is visibly TEST, includes confirmed dates and never promises a receipt or real eligibility", () => {
   const html = render(portal.CglSandboxBilling, {
     ready: true, busy: false, syncing: false, message: "", onRefresh() {},
