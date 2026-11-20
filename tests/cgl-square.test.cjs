@@ -9,7 +9,7 @@ const ts = require("typescript");
 let rpcCalls, queue, dbRows, queryCalls, rpcOverride, requests, overrides;
 const originalFetch = global.fetch;
 const savedEnv = { ...process.env };
-const TERMS_VERSION = "cgl-membership-terms-2026-11-14";
+const TERMS_VERSION = "cgl-membership-terms-2026-11-20-recurring-v1";
 const fakeEnv = { CGL_SQUARE_ENVIRONMENT: "sandbox", CGL_SQUARE_ACCESS_TOKEN: "unit-test-token", CGL_SQUARE_MERCHANT_ID: "merchant", CGL_SQUARE_LOCATION_ID: "location", CGL_SQUARE_WEBHOOK_SIGNATURE_KEY: "unit-test-key", CGL_SQUARE_WEBHOOK_URL: "https://example.test/api/cgl/square-webhook", CGL_SQUARE_CHECKOUT_ENABLED: "true", CGL_SQUARE_SANDBOX_TESTING_ENABLED: "true", CGL_SQUARE_TERMS_APPROVED: "false", CGL_SQUARE_APPLICATION_ID: "sandbox-sq0idb-coifDq2jybhW8YXqBoxAyw" };
 const liveEnv = { CGL_SQUARE_ENVIRONMENT: "production", CGL_SQUARE_PRODUCTION_ACCESS_TOKEN: "live-unit-test-token", CGL_SQUARE_PRODUCTION_MERCHANT_ID: "live-merchant", CGL_SQUARE_PRODUCTION_LOCATION_ID: "live-location", CGL_SQUARE_PRODUCTION_WEBHOOK_SIGNATURE_KEY: "live-unit-test-key", CGL_SQUARE_PRODUCTION_WEBHOOK_URL: "https://example.test/api/cgl/square-webhook", CGL_SQUARE_PRODUCTION_APPLICATION_ID: "sq0idp-unit-test", CGL_SQUARE_CHECKOUT_ENABLED: "true", CGL_SQUARE_LIVE_PAYMENTS_ENABLED: "true", CGL_SQUARE_LIVE_RECURRING_ENABLED: "false", CGL_SQUARE_TERMS_APPROVED: "true", CGL_SQUARE_TERMS_VERSION: TERMS_VERSION };
 const intent = { id: "bc403e80-2279-46de-89f5-7a036d3f5c74", member_id: "b83e731e-7613-4249-9684-e41c587ea305", membership_id: "f3b9af69-323f-443f-a451-ce8e7782ab1b", plan_code: "monthly", amount_cents: 2995, recurring: true, square_plan_variation_id: "variation", payment_link_url: null, square_order_id: "template", season_id: null, environment: "sandbox" };
@@ -154,6 +154,75 @@ test("canonical STATIC pricing.price, exact AUD price and each cadence are verif
   for (const [plan_code, cadence] of [["annual", "ANNUAL"], ["monthly", "MONTHLY"], ["weekly", "WEEKLY"]]) { const value = structuredClone(variation); value.subscription_plan_variation_data.phases[0].cadence = cadence; square.validateCglSquareVariation(value, { plan_code, amount_cents: 2995 }); }
   for (const mutation of [v => v.subscription_plan_variation_data.can_prorate = true, v => v.subscription_plan_variation_data.monthly_billing_anchor_date = 1, v => v.subscription_plan_variation_data.phases[0].periods = 13, v => v.subscription_plan_variation_data.phases.push(v.subscription_plan_variation_data.phases[0]), v => v.subscription_plan_variation_data.phases[0].pricing.price.currency = "USD", v => v.is_deleted = true]) { const value = structuredClone(variation); mutation(value); assert.throws(() => square.validateCglSquareVariation(value, intent)); }
   assert.throws(() => square.validateCglSquareVariation(variation, { ...intent, amount_cents: 1 }));
+});
+test("monthly first-of-month proration and exact relative catalogue price are verified", async () => {
+  const value = structuredClone(variation);
+  value.subscription_plan_variation_data.monthly_billing_anchor_date = 1;
+  value.subscription_plan_variation_data.can_prorate = true;
+  value.subscription_plan_variation_data.phases[0].pricing = { type: "RELATIVE" };
+  square.validateCglSquareVariation(value, intent);
+  for (const change of [
+    v => v.subscription_plan_variation_data.monthly_billing_anchor_date = 2,
+    v => v.subscription_plan_variation_data.can_prorate = false,
+    v => v.subscription_plan_variation_data.phases[0].pricing.discount_ids = ["discount"],
+  ]) {
+    const invalidValue = structuredClone(value); change(invalidValue);
+    assert.throws(() => square.validateCglSquareVariation(invalidValue, intent));
+  }
+  overrides["/catalog/object/variation"] = { object: value };
+  overrides["/catalog/object/plan"] = { object: {
+    id: "plan", type: "SUBSCRIPTION_PLAN", present_at_all_locations: true,
+    subscription_plan_data: {
+      all_items: false,
+      eligible_item_ids: ["item"],
+      subscription_plan_variations: [value],
+    },
+  } };
+  overrides["/catalog/object/item"] = { object: {
+    id: "item", type: "ITEM", present_at_all_locations: true,
+    item_data: { variations: [{
+      id: "item-variation", type: "ITEM_VARIATION", present_at_all_locations: true,
+      item_variation_data: {
+        item_id: "item", pricing_type: "FIXED_PRICING",
+        price_money: { amount: 2995, currency: "AUD" },
+        subscription_plan_ids: ["plan"],
+      },
+    }] },
+  } };
+  const audit = await square.auditCglSquareCatalogMappings([{ code: "monthly", amountCents: 2995, variationId: "variation" }]);
+  assert.equal(audit.mappings[0].amountCents, 2995);
+  assert(requests.some(([endpoint]) => endpoint === "/catalog/object/item"));
+});
+test("anchored monthly coverage ends at the invoiced first-of-month boundary", () => {
+  const relative = structuredClone(variation);
+  relative.subscription_plan_variation_data.monthly_billing_anchor_date = 1;
+  relative.subscription_plan_variation_data.can_prorate = true;
+  relative.subscription_plan_variation_data.phases[0].pricing = { type: "RELATIVE" };
+  const anchoredSubscription = {
+    ...subscription,
+    start_date: "2026-11-20",
+    charged_through_date: "2026-11-30",
+    monthly_billing_anchor_date: 1,
+    actions: [],
+  };
+  const firstInvoice = {
+    id: "invoice-prorated", order_id: "order-prorated", subscription_id: "subscription",
+    customer_id: "customer", timezone: "UTC", status: "PAID", version: 1,
+    updated_at: "2026-11-20T00:00:00Z", created_at: "2026-11-20T00:00:00Z",
+    payment_requests: [{ request_type: "BALANCE", due_date: "2026-11-20", computed_amount_cents: 1098, completed_amount_cents: 1098, currency: "AUD", completed_currency: "AUD", automatic_payment_source: "CARD_ON_FILE" }],
+    payment_ids: ["payment-prorated"], period_start_date: null, period_end_date_exclusive: null,
+    paid: false, amount_cents: 0, completed_cents: 0, currency: null,
+  };
+  const first = square.deriveCglSquareCoverage(anchoredSubscription, relative, [firstInvoice], [{ subscription_event_type: "START_SUBSCRIPTION" }], true, { planCode: "monthly", amountCents: 2995 });
+  assert.equal(first.paid_through_date_exclusive, "2026-12-01");
+  const secondInvoice = structuredClone(firstInvoice);
+  secondInvoice.id = "invoice-full"; secondInvoice.order_id = "order-full";
+  secondInvoice.payment_ids = ["payment-full"];
+  secondInvoice.payment_requests[0].due_date = "2026-12-01";
+  secondInvoice.payment_requests[0].computed_amount_cents = 2995;
+  secondInvoice.payment_requests[0].completed_amount_cents = 2995;
+  const renewed = square.deriveCglSquareCoverage({ ...anchoredSubscription, charged_through_date: "2026-12-31" }, relative, [firstInvoice, secondInvoice], [{ subscription_event_type: "START_SUBSCRIPTION" }], true, { planCode: "monthly", amountCents: 2995 });
+  assert.equal(renewed.paid_through_date_exclusive, "2027-01-01");
 });
 test("hosted checkout carries stable authenticated identities without forwarding an email", () => {
   const body = square.buildCglSquareCheckout(intent, "location", "https://example.test/dashboard", "member@example.test");
@@ -320,10 +389,58 @@ test("member sync filters owned checkout UUIDs, bounds work and never drains oth
   assert(!JSON.stringify(result).includes("customer")); assert(!JSON.stringify(result).includes("subscription"));
   await assert.rejects(square.syncCglSquareMember(intent.member_id, "provider-subscription-id"));
 });
-test("minimum-term subscription actions remain disabled without provider writes", async () => {
-  assert.equal((await square.processDueCglSquareCancellations()).processed, 0); assert.equal(requests.length, 0);
+test("cancellation date conversion uses the exact Brisbane paid-term boundary", async () => {
+  const job = await square.processDueCglSquareCancellations();
+  assert.equal(job.processed, 0); assert.equal(job.scheduledAtRequest, true); assert.equal(requests.length, 0);
   assert.equal(square.getCglSquareCancellationDate("2027-06-06T14:00:00.000Z", "Australia/Brisbane"), "2027-06-07");
   assert.throws(() => square.getCglSquareCancellationDate("2027-06-07T00:00:00.000Z", "Australia/Brisbane")); assert.throws(() => square.getCglSquareCancellationDate("2027-06-06T14:00:00.000Z", "UTC"));
+});
+test("live cancellation schedules Square at the end of the verified paid period", async () => {
+  Object.assign(process.env, liveEnv, { CGL_SQUARE_LIVE_RECURRING_ENABLED: "true" });
+  const membership = {
+    id: intent.membership_id,
+    member_id: intent.member_id,
+    plan_code: "monthly",
+    state: "active",
+    paid_through: "2027-01-31T14:00:00.000Z",
+    square_customer_id: "live-customer",
+    square_subscription_id: "live-subscription",
+    metadata: { environment: "production", square_plan_variation_id: "live-variation" },
+  };
+  dbRows = [
+    { key: "square_production", value: { checkout_enabled: true, launch_approved: true, recurring_enabled: true } },
+    { key: "legal", value: { approved: true, version: TERMS_VERSION } },
+    membership,
+  ];
+  const liveSubscription = {
+    id: "live-subscription", location_id: "live-location", customer_id: "live-customer",
+    plan_variation_id: "live-variation", status: "ACTIVE", start_date: "2027-01-01",
+    charged_through_date: "2027-01-31", paid_until_date: "2027-01-31",
+    timezone: "Australia/Brisbane", version: 4, actions: [],
+  };
+  let cancellationPosts = 0;
+  global.fetch = async (url, options = {}) => {
+    const base = "https://connect.squareup.com/v2";
+    assert(String(url).startsWith(base));
+    assert.equal(options.headers.Authorization, "Bearer live-unit-test-token");
+    const endpoint = String(url).slice(base.length); requests.push([endpoint, options]);
+    if (endpoint === "/merchants/live-merchant") return Response.json({ merchant: { id: "live-merchant", status: "ACTIVE", country: "AU" } });
+    if (endpoint === "/locations/live-location") return Response.json({ location: { id: "live-location", merchant_id: "live-merchant", status: "ACTIVE", country: "AU", currency: "AUD", timezone: "Australia/Brisbane" } });
+    if (endpoint === "/subscriptions/live-subscription?include=actions") return Response.json({ subscription: liveSubscription });
+    if (endpoint === "/subscriptions/live-subscription/cancel") {
+      cancellationPosts += 1;
+      return Response.json({
+        subscription: { ...liveSubscription, canceled_date: "2027-01-31", version: 5 },
+        actions: [{ type: "CANCEL", effective_date: "2027-01-31" }],
+      });
+    }
+    assert.fail(`unexpected production request ${endpoint}`);
+  };
+  const result = await square.cancelCglSquareSubscription(intent.member_id, intent.membership_id, membership.paid_through);
+  assert.equal(result.scheduled, true);
+  assert.equal(result.providerCanceledDate, "2027-01-31");
+  assert.equal(result.effectiveAt, membership.paid_through);
+  assert.equal(cancellationPosts, 1);
 });
 test("retrieving a different template ID is rejected for new and saved checkout links", async () => {
   overrides["/orders/template"] = { order: { ...template(), id: "another-template" } };

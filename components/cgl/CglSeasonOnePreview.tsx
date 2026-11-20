@@ -25,12 +25,6 @@ import {
 
 import styles from "./CglSeasonOnePreview.module.css";
 
-const foundingPrices: Record<string, number> = {
-  annual: 22410,
-  monthly: 2696,
-  weekly: 806,
-};
-
 const formatAud = (cents: number) =>
   new Intl.NumberFormat("en-AU", {
     style: "currency",
@@ -356,9 +350,9 @@ export default function CglSeasonOnePreview() {
           <span className={styles.eyebrow}>Founding season</span>
           <h2 id="membership-title">Choose how you join the field.</h2>
           <p>
-            These full-membership prices are the approved commercial proposal,
-            not active recurring checkout options. The founding rate cannot be
-            combined with CGS Credits on the same payment.
+            Full memberships are available through secure Square checkout and
+            can be purchased without selecting a season. CGS Credits cannot be
+            combined with the subscription payment.
           </p>
         </div>
         <div className={styles.membershipGrid}>
@@ -369,15 +363,13 @@ export default function CglSeasonOnePreview() {
                 <h3>{membership.name}</h3>
               </div>
               <div className={styles.price}>
-                <strong>{formatAud(foundingPrices[membership.id])}</strong>
-                <s>{formatAud(membership.priceCents)}</s>
+                <strong>{formatAud(membership.priceCents)}</strong>
               </div>
               <p>
-                10% founding-member rate for the eligible Season 1 payment
-                period.
+                Renews automatically at the displayed cadence until cancelled.
               </p>
               <div className={styles.pendingLabel}>
-                <CircleDashed size={13} /> Recurring checkout not yet enabled
+                <CheckCircle2 size={13} /> Membership checkout open
               </div>
             </article>
           ))}
@@ -417,7 +409,7 @@ export default function CglSeasonOnePreview() {
             "Choose front or back nine for both courses",
             "Confirm exact Brisbane opening and closing timestamps",
             "Approve conditions supported by the live provider",
-            "Complete recurring Square and policy launch review",
+            "Monitor live Square payments and renewal notifications",
           ].map((item) => (
             <li key={item}>
               <CheckCircle2 size={17} aria-hidden="true" /> {item}

@@ -67,14 +67,18 @@ export async function GET(request: Request) {
         readiness,
         purchaseEnabled,
         termsVersion: CGL_MEMBERSHIP_TERMS_VERSION,
-        prorationAvailable: false,
+        prorationAvailable: plan.code === "monthly",
         creditsAvailable: false,
         seasonRequired: plan.code === "casual_season",
         notice:
           plan.code === "casual_season"
             ? "This AUD quote is for a one-off Season Pass linked to the season you select."
-            : plan.auto_renew
-              ? "This recurring membership is not currently available for purchase. No payment or subscription will be created."
+            : plan.code === "monthly"
+              ? "The standard price is $29.95 AUD per month. Square may prorate the first charge to the next first of the month, then renews at $29.95 on the first until cancelled."
+              : plan.code === "annual"
+                ? "This membership is charged in AUD when purchased and renews yearly on the purchase anniversary until cancelled."
+                : plan.code === "weekly"
+                  ? "This membership is charged in AUD when purchased and renews every seven days until cancelled."
               : "This one-off AUD purchase is not linked to a specific season and does not automatically renew.",
       },
       { headers: { "Cache-Control": "no-store" } },

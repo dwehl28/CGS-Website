@@ -20,8 +20,13 @@ const documents = [
   },
   {
     title: "Recurring memberships",
-    status: "Not currently for sale",
-    text: "The proposed $249 annual, $29.95 monthly and $8.95 weekly plans are not currently available for purchase. No recurring membership contract or automatic payment starts by viewing this page or buying a one-off product. CGS will publish a separate renewal and cancellation disclosure before recurring sales open.",
+    status: "Available now",
+    text: "The $249 Annual Membership is charged when purchased and renews each year on the purchase anniversary. The $8.95 Weekly Membership is charged when purchased and renews every seven days. Both continue until cancelled. These memberships can be purchased at any time and are not tied to one season.",
+  },
+  {
+    title: "$29.95 Monthly Membership",
+    status: "Renews on the first of each month",
+    text: "The standard monthly price is $29.95 AUD. When joining after the first day of a month, Square may charge a smaller prorated amount for access from the purchase date to the next first of the month. Square displays that first charge before payment. After that, $29.95 is charged automatically on the first day of each month until cancelled.",
   },
   {
     title: "Payment and activation",
@@ -36,7 +41,7 @@ const documents = [
   {
     title: "Changes, cancellations and refunds",
     status: "Consumer rights preserved",
-    text: "One-off purchases do not need an automatic-renewal cancellation. Contact CGS promptly about a duplicate charge, payment error, inability to access a purchased service or a materially changed or cancelled event. Change-of-mind requests are assessed fairly against the service already supplied and published event conditions. Nothing in these terms excludes, restricts or modifies rights or remedies that cannot lawfully be excluded under the Australian Consumer Law.",
+    text: "A recurring membership can be cancelled from the member dashboard. Cancellation stops the next automatic renewal at the end of the current paid billing period, and access remains available until that paid-through date. Cancellation does not automatically refund the current paid period. One-off purchases do not need an automatic-renewal cancellation. Contact CGS promptly about a duplicate charge, payment error, inability to access a purchased service or a materially changed or cancelled event. Nothing in these terms excludes, restricts or modifies rights or remedies that cannot lawfully be excluded under the Australian Consumer Law.",
   },
   {
     title: "Privacy and records",

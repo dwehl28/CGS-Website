@@ -14,6 +14,7 @@ test.before(async () => {
     "20261106202122_cgl_2027_platform_foundation.sql",
     "20261106202134_cgl_square_sandbox_billing.sql",
     "20261111001557_cgl_square_production_one_off.sql",
+    "20261114143000_cgl_square_production_recurring.sql",
   ])
     await db.exec(
       fs.readFileSync(
@@ -124,8 +125,8 @@ function payload(intent, opts = {}) {
         updated_at: opts.updated ?? "2026-11-06T00:00:00Z",
         created_at: "2026-11-01T00:00:00Z",
         currency: "AUD",
-        amount_cents: intent.amount_cents,
-        completed_cents: state === "COMPLETED" ? intent.amount_cents : 0,
+        amount_cents: opts.invoiceAmount ?? intent.amount_cents,
+        completed_cents: state === "COMPLETED" ? opts.invoiceAmount ?? intent.amount_cents : 0,
         payment_ids: [paymentId],
         paid: state === "COMPLETED",
         period_start_date: start,
@@ -189,6 +190,38 @@ async function event(intent, opts = {}) {
   ).rows[0].value;
   return { value, params, normalized, paymentId: normalized.payments[0]?.id };
 }
+async function liveFixture(plan = "monthly") {
+  const intent = await prepareLive(await member(), plan, null, randomUUID());
+  await db.query("select cgl_attach_square_checkout($1,$2,$3,$4)", [
+    intent.id,
+    `live-link-${intent.id}`,
+    `live-order-${intent.id}`,
+    "https://square.link/u/live-recurring-fixture",
+  ]);
+  intent.square_order_id = `live-order-${intent.id}`;
+  return intent;
+}
+async function liveEvent(intent, opts = {}) {
+  const eventId = opts.eventId ?? `live-event-${randomUUID()}`;
+  const bodyHash = `live-hash-${randomUUID()}`;
+  const normalized = opts.payload ?? payload(intent, opts);
+  normalized.environment = "production";
+  normalized.merchant_id = "live-merchant";
+  normalized.location_id = "live-location";
+  await db.query("select cgl_enqueue_square_live_event($1,$2,$3,$4,$5)", [
+    eventId,
+    opts.type ?? "payment.updated",
+    opts.occurredAt ?? "2026-11-20T00:00:00Z",
+    bodyHash,
+    { environment: "production", merchant_id: "live-merchant", object_id: normalized.payments[0]?.id ?? normalized.subscription?.id, object_type: "payment" },
+  ]);
+  const claim = (await db.query("select cgl_claim_square_live_events($1,1,'production') value", [eventId])).rows[0].value[0];
+  const value = (await db.query(
+    "select cgl_reconcile_square_live_event($1,$2,$3,$4,$5,$6) value",
+    [eventId, opts.type ?? "payment.updated", opts.occurredAt ?? "2026-11-20T00:00:00Z", bodyHash, normalized, claim.lease_token],
+  )).rows[0].value;
+  return { value, normalized };
+}
 test("Sandbox testing is separate from legal approval and default legal terms stay unapproved", async () => {
   const intent = await fixture();
   assert.equal(intent.terms_snapshot.test_only, true);
@@ -217,7 +250,7 @@ test("production checkout stays locked until the independent launch and terms ap
   assert.equal(values.cancellation_policy.approved, true);
   assert.equal(values.cancellation_policy.version, "cgl-cancellation-2026-11-11");
 });
-test("production preparation is server-priced, one-off only and isolated from Sandbox", async () => {
+test("production preparation is server-priced, gated and isolated from Sandbox", async () => {
   await db.exec(`
     update cgl_settings
     set value=value||'{"checkout_enabled":true,"launch_approved":true}'::jsonb
@@ -239,6 +272,38 @@ test("production preparation is server-priced, one-off only and isolated from Sa
   await assert.rejects(prepareLive(await member(), "casual_registration", null, randomUUID(), 1));
   for (const plan of ["annual", "monthly", "weekly"])
     await assert.rejects(prepareLive(await member(), plan, null, randomUUID()));
+});
+test("approved production recurring plans prepare without a season and reconcile a prorated monthly first payment", async () => {
+  await db.exec(`
+    update cgl_settings set value=value||'{"recurring_enabled":true}'::jsonb where key='square_production';
+    update cgl_settings set value=value||'{"recurring_approved":true,"approved_products":["annual","monthly","weekly","casual_registration","casual_season"]}'::jsonb where key='legal';
+    update cgl_settings set value=value||'{"approved":true,"mode":"paid_term"}'::jsonb where key='cancellation_policy';
+    update cgl_plans set config=jsonb_build_object(
+      'square_environment','production',
+      'square_plan_variation_id','variation-'||code
+    ) where auto_renew;
+  `);
+  const intent = await liveFixture("monthly");
+  assert.equal(intent.recurring, true);
+  assert.equal(intent.season_id, null);
+  assert.equal(intent.square_plan_variation_id, "variation-monthly");
+  const paymentAmount = 1098;
+  const result = await liveEvent(intent, {
+    start: "2026-11-20",
+    until: "2026-12-01",
+    chargedThrough: "2026-11-30",
+    timezone: "Australia/Brisbane",
+    amount: paymentAmount,
+    invoiceAmount: paymentAmount,
+  });
+  assert.equal(result.value.state, "reconciled");
+  const updated = await membership(intent.membership_id);
+  assert.equal(updated.state, "active");
+  assert.equal(new Date(updated.paid_through).toISOString(), "2026-11-30T14:00:00.000Z");
+  assert.equal(new Date(updated.next_billing_at).toISOString(), "2026-11-30T14:00:00.000Z");
+  const savedPayment = (await db.query("select * from cgl_payments where membership_id=$1", [intent.membership_id])).rows[0];
+  assert.equal(savedPayment.amount_cents, paymentAmount);
+  assert.equal(savedPayment.metadata.prorated_first_cycle, true);
 });
 test("verified production one-off payment activates exactly one live entitlement", async () => {
   const id = await member();

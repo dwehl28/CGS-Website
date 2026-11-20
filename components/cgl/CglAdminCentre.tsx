@@ -738,7 +738,7 @@ function Finance({
             ? "Test payments are excluded from real revenue, competition entry and gifts."
             : "Confirmed production payments are included in live revenue and eligible access."}
           {" "}Failed or unmatched notifications remain visible for reconciliation.
-          {!billingIsTest && testBilling.recurringEnabled !== true ? " Recurring memberships remain intentionally disabled for the staged launch." : ""}
+          {!billingIsTest && testBilling.recurringEnabled === true ? " Recurring memberships are enabled." : ""}
         </p>
         <div className={s.actions}>
           <button
@@ -947,7 +947,7 @@ export default function CglAdminCentre() {
         </Link>
         <span className={s.badge}>{billingIsTest
           ? "Square Sandbox · Live billing disabled"
-          : `Square production · ${billing.livePaymentsEnabled === true ? "One-off payments enabled" : "Launch disabled"}`}</span>
+          : `Square production · ${billing.recurringEnabled === true ? "All memberships enabled" : billing.livePaymentsEnabled === true ? "One-off payments enabled" : "Launch disabled"}`}</span>
       </div>
       {data.status !== "ready" ? (
         <div className={s.notice} role="status">
@@ -2042,9 +2042,9 @@ export default function CglAdminCentre() {
               ) : null}
               <div className={s.notice}>
                 Do not enable C Grade or an annual aggregation formula without
-                CGS approval. Fully credit-funded recurring Square invoices
-                remain disabled until a supported reconciliation flow is
-                implemented.
+                CGS approval. Live recurring charges are card-funded through
+                Square; fully credit-funded subscription invoices remain
+                disabled.
               </div>
             </div>
           ) : null}

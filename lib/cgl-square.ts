@@ -211,24 +211,71 @@ export function verifyCglSquareSignature(rawBody: string, signature: string | nu
   return receivedBytes.length === expectedBytes.length && timingSafeEqual(receivedBytes, expectedBytes);
 }
 function phaseMoney(phase: Data) { const pricing = object(phase.pricing); return object(pricing.price ?? pricing.price_money ?? phase.recurring_price_money); }
+function relativePricing(phase: Data) { return object(phase.pricing).type === "RELATIVE"; }
+function isActiveAtLocation(item: Data, locationId: string) {
+  return item.is_deleted !== true &&
+    (item.present_at_all_locations !== false || list(item.present_at_location_ids).includes(locationId)) &&
+    !list(item.absent_at_location_ids).includes(locationId);
+}
 export function validateCglSquareVariation(variation: unknown, checkout: Pick<CglSquareCheckout, "plan_code" | "amount_cents">) {
   const item = object(variation), data = object(item.subscription_plan_variation_data), phases = list(data.phases);
   const phase = object(phases[0]), pricing = object(phase.pricing), money = phaseMoney(phase);
-  if (!PLAN_CADENCES[checkout.plan_code] || item.type !== "SUBSCRIPTION_PLAN_VARIATION" || item.is_deleted === true || phases.length !== 1 || phase.cadence !== PLAN_CADENCES[checkout.plan_code] || phase.periods != null || (pricing.type != null && pricing.type !== "STATIC") || money.currency !== "AUD" || money.amount !== checkout.amount_cents || data.monthly_billing_anchor_date != null || data.can_prorate === true) throw new CglSquareError("The Square plan differs from the displayed CGL price or uses an unsupported billing adjustment.", 409, "square_plan_mismatch");
+  const relative = pricing.type === "RELATIVE";
+  const staticPriceMatches = pricing.type === "STATIC" && money.currency === "AUD" && money.amount === checkout.amount_cents;
+  const monthlyAnchor = integer(data.monthly_billing_anchor_date);
+  const monthlyBillingMatches = checkout.plan_code === "monthly"
+    ? (monthlyAnchor === null && data.can_prorate !== true) || (monthlyAnchor === 1 && data.can_prorate === true)
+    : data.monthly_billing_anchor_date == null && data.can_prorate !== true;
+  if (!PLAN_CADENCES[checkout.plan_code] || item.type !== "SUBSCRIPTION_PLAN_VARIATION" || item.is_deleted === true || phases.length !== 1 || phase.cadence !== PLAN_CADENCES[checkout.plan_code] || phase.periods != null || (!relative && !staticPriceMatches) || (relative && (list(pricing.discount_ids).length > 0 || Object.keys(money).length > 0)) || !monthlyBillingMatches) throw new CglSquareError("The Square plan differs from the displayed CGL price or uses an unsupported billing adjustment.", 409, "square_plan_mismatch");
+}
+async function verifyRelativeCglSquarePrice(variation: Data, checkout: Pick<CglSquareCheckout, "plan_code" | "amount_cents">) {
+  const config = getConfig(false, false), data = object(variation.subscription_plan_variation_data);
+  const parentId = string(data.subscription_plan_id);
+  if (!parentId) invalid("The Square variation has no parent subscription plan.");
+  const parent = object((await squareRequest(`/catalog/object/${encodeURIComponent(parentId)}`)).object);
+  const plan = object(parent.subscription_plan_data), itemIds = list(plan.eligible_item_ids);
+  if (parent.id !== parentId || parent.type !== "SUBSCRIPTION_PLAN" || !isActiveAtLocation(parent, config.locationId)
+    || plan.all_items === true || list(plan.eligible_category_ids).length > 0 || itemIds.length !== 1
+    || !list(plan.subscription_plan_variations).some(value => object(value).id === variation.id)) {
+    invalid("The Square subscription plan catalogue mapping is unavailable.");
+  }
+  const itemId = string(itemIds[0]);
+  if (!itemId) invalid("The Square subscription item mapping is unavailable.");
+  const catalogItem = object((await squareRequest(`/catalog/object/${encodeURIComponent(itemId)}`)).object);
+  const itemData = object(catalogItem.item_data);
+  const priced = list(itemData.variations).map(object).filter(value => {
+    const variationData = object(value.item_variation_data), money = object(variationData.price_money);
+    return value.type === "ITEM_VARIATION" && isActiveAtLocation(value, config.locationId)
+      && variationData.item_id === itemId && variationData.pricing_type === "FIXED_PRICING"
+      && money.currency === "AUD" && money.amount === checkout.amount_cents
+      && list(variationData.subscription_plan_ids).includes(parentId);
+  });
+  if (catalogItem.id !== itemId || catalogItem.type !== "ITEM" || !isActiveAtLocation(catalogItem, config.locationId) || priced.length !== 1) {
+    throw new CglSquareError("The Square plan item differs from the displayed CGL price.", 409, "square_plan_mismatch");
+  }
+  const itemVariationId = string(priced[0].id);
+  if (!itemVariationId) invalid("The Square subscription item variation is unavailable.");
+  return itemVariationId;
 }
 async function retrieveVariation(id: string, checkout?: Pick<CglSquareCheckout, "plan_code" | "amount_cents">) {
   const variation = object((await squareRequest(`/catalog/object/${encodeURIComponent(id)}`)).object);
   if (variation.id !== id || variation.type !== "SUBSCRIPTION_PLAN_VARIATION" || variation.is_deleted === true) invalid("The Square plan variation identity does not match.");
-  if (checkout) validateCglSquareVariation(variation, checkout);
+  let catalogItemVariationId: string | null = null;
+  if (checkout) {
+    validateCglSquareVariation(variation, checkout);
+    if (relativePricing(object(list(object(variation.subscription_plan_variation_data).phases)[0]))) {
+      catalogItemVariationId = await verifyRelativeCglSquarePrice(variation, checkout);
+    }
+  }
   const locationId = getConfig(false, false).locationId;
-  if ((variation.present_at_all_locations === false && !list(variation.present_at_location_ids).includes(locationId)) || list(variation.absent_at_location_ids).includes(locationId)) invalid("The Square plan is unavailable at the CGL location.");
-  return variation;
+  if (!isActiveAtLocation(variation, locationId)) invalid("The Square plan is unavailable at the CGL location.");
+  return { variation, catalogItemVariationId };
 }
 /** Validate explicit existing catalog IDs without creating, updating or name-matching products. */
 export async function auditCglSquareCatalogMappings(plans: { code: string; amountCents: number; variationId: string }[]) {
   const connection = await verifyCglSquareConnection(), mappings = [];
   for (const plan of plans) {
-    const variation = await retrieveVariation(plan.variationId, { plan_code: plan.code, amount_cents: plan.amountCents });
+    const { variation } = await retrieveVariation(plan.variationId, { plan_code: plan.code, amount_cents: plan.amountCents });
     const parentId = string(object(variation.subscription_plan_variation_data).subscription_plan_id);
     if (!parentId) invalid("The Square variation has no parent subscription plan.");
     const parent = object((await squareRequest(`/catalog/object/${encodeURIComponent(parentId)}`)).object);
@@ -237,7 +284,12 @@ export async function auditCglSquareCatalogMappings(plans: { code: string; amoun
   }
   return { ...connection, mappings };
 }
-export function buildCglSquareCheckout(checkout: CglSquareCheckout, locationId: string, redirectUrl: string) {
+export function buildCglSquareCheckout(
+  checkout: CglSquareCheckout,
+  locationId: string,
+  redirectUrl: string,
+  catalogItem?: { id: string } | null,
+) {
   if (![checkout.id, checkout.member_id, checkout.membership_id].every(value => UUID.test(value))) invalid("Verified CGL member, membership and checkout identities are required.");
   if (!Number.isSafeInteger(checkout.amount_cents) || checkout.amount_cents < 1) invalid("A positive, verified CGL checkout amount is required.");
   if (checkout.recurring !== Boolean(PLAN_CADENCES[checkout.plan_code]) || (checkout.recurring && !checkout.square_plan_variation_id)) invalid("The CGL recurring plan is not configured.");
@@ -246,7 +298,10 @@ export function buildCglSquareCheckout(checkout: CglSquareCheckout, locationId: 
   // Hosted checkout selects the customer from buyer input. Its template preserves
   // our authenticated website identities; email and customer_id are not proof.
   const label = environment === "sandbox" ? "Sandbox test" : "Crossodog Golf League";
-  return { idempotency_key: environment === "sandbox" ? `cgl-checkout-${checkout.id}` : `cgl-live-checkout-${checkout.id}`, order: { location_id: locationId, reference_id: `cgl:${checkout.id}`, metadata: { cgl_environment: environment, cgl_intent_id: checkout.id, cgl_member_id: checkout.member_id, cgl_membership_id: checkout.membership_id }, line_items: [{ name: `CGL ${checkout.plan_code.replaceAll("_", " ")} — ${label}`, quantity: "1", base_price_money: { amount: checkout.amount_cents, currency: "AUD" } }], pricing_options: { auto_apply_taxes: false, auto_apply_discounts: false } }, checkout_options: { allow_tipping: false, redirect_url: redirectUrl, ...(checkout.recurring ? { subscription_plan_id: checkout.square_plan_variation_id } : {}) }, payment_note: `CGL checkout ${checkout.id}` };
+  const lineItem = catalogItem?.id
+    ? { catalog_object_id: catalogItem.id, quantity: "1" }
+    : { name: `CGL ${checkout.plan_code.replaceAll("_", " ")} — ${label}`, quantity: "1", base_price_money: { amount: checkout.amount_cents, currency: "AUD" } };
+  return { idempotency_key: environment === "sandbox" ? `cgl-checkout-${checkout.id}` : `cgl-live-checkout-${checkout.id}`, order: { location_id: locationId, reference_id: `cgl:${checkout.id}`, metadata: { cgl_environment: environment, cgl_intent_id: checkout.id, cgl_member_id: checkout.member_id, cgl_membership_id: checkout.membership_id }, line_items: [lineItem], pricing_options: { auto_apply_taxes: false, auto_apply_discounts: false } }, checkout_options: { allow_tipping: false, redirect_url: redirectUrl, ...(checkout.recurring ? { subscription_plan_id: checkout.square_plan_variation_id } : {}) }, payment_note: `CGL checkout ${checkout.id}` };
 }
 export function isCglSquareCheckoutUrl(value: string, environment: CglSquareEnvironment = getCglSquareReadiness().environment) {
   try {
@@ -360,19 +415,24 @@ export async function createCglSquareCheckout(checkout: CglSquareCheckout) {
     requireUnpaidCheckoutOrder(order);
     return String(link.url);
   }
-  if (checkout.recurring) await retrieveVariation(checkout.square_plan_variation_id!, checkout);
+  let catalogItemVariationId: string | null = null;
+  if (checkout.recurring) {
+    ({ catalogItemVariationId } = await retrieveVariation(checkout.square_plan_variation_id!, checkout));
+  }
   const redirectUrl = new URL(`/cgl/dashboard?checkout=${checkout.id}`, config.notificationUrl).href;
   let response: Data;
   try {
-    response = await squareRequest("/online-checkout/payment-links", { method: "POST", body: JSON.stringify(buildCglSquareCheckout(checkout, config.locationId, redirectUrl)) });
+    response = await squareRequest("/online-checkout/payment-links", { method: "POST", body: JSON.stringify(buildCglSquareCheckout(checkout, config.locationId, redirectUrl, catalogItemVariationId ? { id: catalogItemVariationId } : null)) });
   } catch (error) {
     if (error instanceof CglSquareError && error.code === "square_idempotency_reused") return recoverCglSquareCheckout(checkout, redirectUrl);
     throw error;
   }
   const link = object(response.payment_link), url = string(link.url), orderId = string(link.order_id);
   if (!url || !isCglSquareCheckoutUrl(url, environment) || !string(link.id) || !orderId) throw new CglSquareError("Square returned an incomplete checkout. Reconcile the saved request before another payment.", 502, "square_invalid_record");
-  const proof = checkoutLinkFromOrder(object((await squareRequest(`/orders/${encodeURIComponent(orderId)}`)).order));
+  const createdOrder = object((await squareRequest(`/orders/${encodeURIComponent(orderId)}`)).order);
+  const proof = checkoutLinkFromOrder(createdOrder);
   if (!proof || proof.order_id !== orderId || proof.intent_id !== checkout.id || proof.member_id !== checkout.member_id || proof.membership_id !== checkout.membership_id) invalid("Square did not preserve the CGL checkout identity.");
+  verifyRecoveredCheckoutOrder(checkout, createdOrder, orderId);
   const { error } = await getSupabaseAdmin().rpc("cgl_attach_square_checkout", { p_intent_id: checkout.id, p_link_id: link.id, p_order_id: orderId, p_url: url });
   if (error) throw new CglSquareError("The checkout could not be saved. Retry the same request to recover it safely.");
   return url;
@@ -407,37 +467,75 @@ function cycleForDate(startDate: string, date: string, planCode: string): number
   const cycle = planCode === "weekly" ? (current.getTime() - start.getTime()) / (7 * 86_400_000) : months / (planCode === "annual" ? 12 : 1);
   return Number.isSafeInteger(cycle) && cycle >= 0 && cycle < 6000 && getCglSquareBillingBoundary(startDate, planCode, cycle) === date ? cycle : null;
 }
+function anchoredMonthlyPeriod(startDate: string, dueDate: string, anchor: number) {
+  const start = parseDate(startDate), due = parseDate(dueDate);
+  if (!start || !due || anchor < 1 || anchor > 28 || due < start) return null;
+  const boundary = (year: number, month: number) => new Date(Date.UTC(year, month, anchor));
+  const sameMonth = boundary(start.getUTCFullYear(), start.getUTCMonth());
+  const firstAnchor = sameMonth > start ? sameMonth : boundary(start.getUTCFullYear(), start.getUTCMonth() + 1);
+  if (due.getTime() === start.getTime()) {
+    const end = start.getUTCDate() === anchor
+      ? boundary(start.getUTCFullYear(), start.getUTCMonth() + 1)
+      : firstAnchor;
+    return { cycle: 0, start: startDate, end: end.toISOString().slice(0, 10), prorated: start.getUTCDate() !== anchor };
+  }
+  if (due.getUTCDate() !== anchor || due < firstAnchor) return null;
+  const months = (due.getUTCFullYear() - firstAnchor.getUTCFullYear()) * 12 + due.getUTCMonth() - firstAnchor.getUTCMonth();
+  if (!Number.isSafeInteger(months) || months < 0 || months > 6000) return null;
+  const end = boundary(due.getUTCFullYear(), due.getUTCMonth() + 1);
+  return { cycle: months + 1, start: dueDate, end: end.toISOString().slice(0, 10), prorated: false };
+}
 function normalizeInvoice(value: Data) {
   assertLocation(value);
   return { id: string(value.id), order_id: string(value.order_id), subscription_id: string(value.subscription_id), customer_id: string(object(value.primary_recipient).customer_id), status: string(value.status), version: integer(value.version), updated_at: string(value.updated_at), created_at: string(value.created_at), scheduled_at: string(value.scheduled_at), timezone: string(value.timezone), payment_requests: list(value.payment_requests).map(request => { const item = object(request), computed = object(item.computed_amount_money), completed = object(item.total_completed_amount_money); return { request_type: string(item.request_type), due_date: string(item.due_date), computed_amount_cents: integer(computed.amount), completed_amount_cents: integer(completed.amount), currency: string(computed.currency), completed_currency: string(completed.currency), automatic_payment_source: string(item.automatic_payment_source) }; }), payment_ids: [] as string[], period_start_date: null as string | null, period_end_date_exclusive: null as string | null, paid: false, amount_cents: 0, completed_cents: 0, currency: null as string | null };
 }
 type NormalizedInvoice = ReturnType<typeof normalizeInvoice>;
 /** Neither ACTIVE, invoiced-through, successful payment count nor payment time proves a paid period. */
-export function deriveCglSquareCoverage(subscription: Data, variation: Data, invoices: NormalizedInvoice[], events: Data[], complete: boolean) {
-  const phase = object(list(object(variation.subscription_plan_variation_data).phases)[0]);
-  const planCode = Object.keys(PLAN_CADENCES).find(code => PLAN_CADENCES[code] === phase.cadence), amount = integer(phaseMoney(phase).amount);
+export function deriveCglSquareCoverage(subscription: Data, variation: Data, invoices: NormalizedInvoice[], events: Data[], complete: boolean, expected?: { planCode: string; amountCents: number }) {
+  const variationData = object(variation.subscription_plan_variation_data);
+  const phase = object(list(variationData.phases)[0]);
+  const planCode = expected?.planCode ?? Object.keys(PLAN_CADENCES).find(code => PLAN_CADENCES[code] === phase.cadence);
+  const override = object(subscription.price_override_money);
+  const amount = expected?.amountCents ?? integer(phaseMoney(phase).amount) ?? integer(override.amount);
   const unsupported = (reason: string) => ({ billing_supported: false, coverage_complete: complete, paid_through_date_exclusive: null, next_billing_date: null, coverage_reason: reason });
+  if (relativePricing(phase) && !expected) return unsupported("missing_checkout_expectation");
   if (!planCode || amount === null || !parseDate(subscription.start_date) || !canonicalTimezone(subscription.timezone)) return unsupported("unsupported_billing_calendar");
   try { validateCglSquareVariation(variation, { plan_code: planCode, amount_cents: amount }); } catch { return unsupported("unsupported_billing_variation"); }
   const startDate = String(subscription.start_date), startDay = parseDate(startDate)!.getUTCDate();
-  if ((subscription.monthly_billing_anchor_date != null && subscription.monthly_billing_anchor_date !== startDay) || (subscription.tax_percentage != null && Number(subscription.tax_percentage) !== 0) || (subscription.price_override_money != null && (object(subscription.price_override_money).amount !== amount || object(subscription.price_override_money).currency !== "AUD"))) return unsupported("subscription_billing_changed");
+  const variationAnchor = integer(variationData.monthly_billing_anchor_date);
+  const subscriptionAnchor = integer(subscription.monthly_billing_anchor_date);
+  const expectedAnchor = variationAnchor ?? startDay;
+  if ((subscription.monthly_billing_anchor_date != null && subscriptionAnchor !== expectedAnchor)
+    || (variationAnchor !== null && planCode !== "monthly")
+    || (subscription.tax_percentage != null && Number(subscription.tax_percentage) !== 0)
+    || (subscription.price_override_money != null && (override.amount !== amount || override.currency !== "AUD"))) return unsupported("subscription_billing_changed");
   const safeEvents = ["START_SUBSCRIPTION", "STOP_SUBSCRIPTION", "CANCEL_SUBSCRIPTION", "DEACTIVATE_SUBSCRIPTION", "COMPLETE_SUBSCRIPTION"];
   if (!complete || events.some(event => !safeEvents.includes(String(event.subscription_event_type))) || list(subscription.actions).some(action => object(action).type !== "CANCEL")) return unsupported("billing_history_requires_review");
-  const paidCycles = new Set<number>();
+  const paidCycles = new Map<number, string>();
   let inconsistent = false;
   for (const invoice of invoices) {
-    const request = invoice.payment_requests[0], cycle = request?.due_date ? cycleForDate(startDate, request.due_date, planCode) : null;
-    if (invoice.subscription_id !== subscription.id || invoice.customer_id !== subscription.customer_id || canonicalTimezone(invoice.timezone) !== canonicalTimezone(subscription.timezone) || invoice.payment_requests.length !== 1 || request?.request_type !== "BALANCE" || cycle === null || request.computed_amount_cents !== amount || request.currency !== "AUD") { inconsistent = true; continue; }
-    invoice.period_start_date = getCglSquareBillingBoundary(startDate, planCode, cycle);
-    invoice.period_end_date_exclusive = getCglSquareBillingBoundary(startDate, planCode, cycle + 1);
-    invoice.amount_cents = amount; invoice.completed_cents = request.completed_amount_cents ?? 0; invoice.currency = request.currency;
-    invoice.paid = invoice.status === "PAID" && request.completed_currency === "AUD" && invoice.completed_cents === amount && invoice.payment_ids.length > 0;
-    if (invoice.paid) { if (paidCycles.has(cycle)) inconsistent = true; paidCycles.add(cycle); }
+    const request = invoice.payment_requests[0];
+    const anchored = planCode === "monthly" && variationAnchor !== null && request?.due_date
+      ? anchoredMonthlyPeriod(startDate, request.due_date, variationAnchor)
+      : null;
+    const cycle = anchored?.cycle ?? (request?.due_date ? cycleForDate(startDate, request.due_date, planCode) : null);
+    const invoiceAmount = request?.computed_amount_cents ?? null;
+    const amountMatches = anchored?.prorated ? invoiceAmount !== null && invoiceAmount > 0 && invoiceAmount <= amount : invoiceAmount === amount;
+    if (invoice.subscription_id !== subscription.id || invoice.customer_id !== subscription.customer_id || canonicalTimezone(invoice.timezone) !== canonicalTimezone(subscription.timezone) || invoice.payment_requests.length !== 1 || request?.request_type !== "BALANCE" || cycle === null || !amountMatches || request.currency !== "AUD") { inconsistent = true; continue; }
+    invoice.period_start_date = anchored?.start ?? getCglSquareBillingBoundary(startDate, planCode, cycle);
+    invoice.period_end_date_exclusive = anchored?.end ?? getCglSquareBillingBoundary(startDate, planCode, cycle + 1);
+    invoice.amount_cents = invoiceAmount!; invoice.completed_cents = request.completed_amount_cents ?? 0; invoice.currency = request.currency;
+    invoice.paid = invoice.status === "PAID" && request.completed_currency === "AUD" && invoice.completed_cents === invoiceAmount && invoice.payment_ids.length > 0;
+    if (invoice.paid) {
+      if (paidCycles.has(cycle)) inconsistent = true;
+      paidCycles.set(cycle, invoice.period_end_date_exclusive);
+    }
   }
   if (inconsistent) return unsupported("invoice_period_requires_review");
   let throughCycle = 0;
   while (paidCycles.has(throughCycle)) throughCycle += 1;
-  const gap = [...paidCycles].some(cycle => cycle >= throughCycle), paidThrough = throughCycle ? getCglSquareBillingBoundary(startDate, planCode, throughCycle) : null;
+  const gap = [...paidCycles.keys()].some(cycle => cycle >= throughCycle);
+  const paidThrough = throughCycle ? paidCycles.get(throughCycle - 1) ?? null : null;
   const invoicedThrough = parseDate(subscription.charged_through_date), nextDate = invoicedThrough ? new Date(invoicedThrough.getTime() + 86_400_000).toISOString().slice(0, 10) : null;
   return { billing_supported: true, coverage_complete: complete, paid_through_date_exclusive: paidThrough, next_billing_date: subscription.status === "ACTIVE" && !subscription.canceled_date && !list(subscription.actions).some(action => object(action).type === "CANCEL") ? nextDate : null, coverage_reason: gap ? "unpaid_billing_gap" : paidThrough ? null : "no_verified_paid_invoice" };
 }
@@ -458,6 +556,23 @@ async function subscriptionLink(subscription: Data): Promise<CheckoutLink | null
     if (candidate) link = candidate;
   }
   return link;
+}
+async function checkoutExpectation(link: CheckoutLink | null, subscription: Data) {
+  if (!link) return null;
+  const environment = getCglSquareReadiness().environment;
+  const { data, error } = await getSupabaseAdmin()
+    .from("cgl_square_checkout_intents")
+    .select("id,member_id,membership_id,environment,plan_code,amount_cents,recurring,square_plan_variation_id")
+    .eq("id", link.intent_id)
+    .eq("environment", environment)
+    .maybeSingle();
+  if (error || !data) return null;
+  if (data.member_id !== link.member_id || data.membership_id !== link.membership_id || data.recurring !== true
+    || data.square_plan_variation_id !== subscription.plan_variation_id || !PLAN_CADENCES[data.plan_code]
+    || !Number.isSafeInteger(data.amount_cents) || data.amount_cents < 1) {
+    invalid("The Square subscription differs from its saved CGL checkout.");
+  }
+  return { planCode: String(data.plan_code), amountCents: Number(data.amount_cents) };
 }
 async function searchSubscriptions(customerId?: string) {
   const config = getConfig(false, false), subscriptions: Data[] = [];
@@ -567,8 +682,13 @@ async function hydrateEvent(kind: string, objectId: string | null, timezone: str
       const invoice = invoices.get(id) ?? await readInvoice(id);
       if (invoice.subscription_id !== subscription.id || invoice.customer_id !== subscription.customer_id) invalid("The Square invoice is outside this subscription.");
     }
-    const variation = await retrieveVariation(String(subscription.plan_variation_id)), history = await subscriptionEvents(String(subscription.id));
-    const coverage = deriveCglSquareCoverage(subscription, variation, [...invoices.values()].filter(invoice => invoice.subscription_id === subscription!.id), history.events, history.complete);
+    const expected = await checkoutExpectation(checkoutLink, subscription);
+    const { variation } = await retrieveVariation(
+      String(subscription.plan_variation_id),
+      expected ? { plan_code: expected.planCode, amount_cents: expected.amountCents } : undefined,
+    );
+    const history = await subscriptionEvents(String(subscription.id));
+    const coverage = deriveCglSquareCoverage(subscription, variation, [...invoices.values()].filter(invoice => invoice.subscription_id === subscription!.id), history.events, history.complete, expected ?? undefined);
     for (const payment of payments.values()) if (payment.subscription_id === subscription.id || (checkoutLink && payment.order_id === checkoutLink.order_id)) { payment.intent_id = checkoutLink?.intent_id ?? null; payment.subscription_id = String(subscription.id); }
     normalizedSubscription = { id: string(subscription.id), customer_id: string(subscription.customer_id), plan_variation_id: string(subscription.plan_variation_id), state: string(subscription.status), start_date: string(subscription.start_date), charged_through_date: string(subscription.charged_through_date), paid_until_date: string(subscription.paid_until_date), canceled_date: string(subscription.canceled_date), timezone: string(subscription.timezone), version: integer(subscription.version), actions: list(subscription.actions).map(action => ({ type: string(object(action).type), effective_date: string(object(action).effective_date) })), template_order_ids: templateIds(subscription), intent_id: checkoutLink?.intent_id ?? null, ...coverage };
   }
@@ -695,10 +815,77 @@ export function getCglSquareCancellationDate(value: string, squareTimezone: stri
   const effective = new Date(value);
   if (!Number.isFinite(effective.getTime())) invalid("The cancellation boundary is invalid.");
   const clock = new Intl.DateTimeFormat("en-GB", { timeZone: squareTimezone, hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).format(effective);
-  if (clock !== "00:00:00" || effective.getUTCMilliseconds() !== 0) invalid("Square cancellation uses whole dates. The season boundary needs approval before scheduling.");
+  if (clock !== "00:00:00" || effective.getUTCMilliseconds() !== 0) invalid("Square cancellation uses whole dates. The paid-term boundary must fall at Brisbane midnight.");
   return new Intl.DateTimeFormat("en-CA", { timeZone: squareTimezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(effective);
 }
-/** No provider action until minimum-term policy and the exact-date workflow are approved. */
+function shiftSquareDate(value: string, days: number) {
+  const parsed = parseDate(value);
+  if (!parsed) invalid("The Square cancellation date is invalid.");
+  parsed.setUTCDate(parsed.getUTCDate() + days);
+  return parsed.toISOString().slice(0, 10);
+}
+/** Schedule the provider cancellation only after the member accepts the exact paid-through quote. */
+export async function cancelCglSquareSubscription(
+  memberId: string,
+  membershipId: string,
+  expectedEffectiveAt: string,
+) {
+  if (!UUID.test(memberId) || !UUID.test(membershipId)) invalid("A verified CGL member and membership are required.");
+  const readiness = await getCglSquareOperationalReadiness();
+  if (readiness.environment !== "production" || !readiness.subscriptionActionsEnabled) {
+    throw new CglSquareError("Recurring membership cancellation is not available yet. No Square subscription was changed.", 409, "square_recurring_disabled");
+  }
+  const { data, error } = await getSupabaseAdmin()
+    .from("cgl_memberships")
+    .select("id,member_id,plan_code,state,paid_through,square_customer_id,square_subscription_id,metadata")
+    .eq("id", membershipId)
+    .eq("member_id", memberId)
+    .maybeSingle();
+  const membership = object(data), metadata = object(membership.metadata);
+  if (error || membership.id !== membershipId || metadata.environment !== "production"
+    || !string(membership.square_subscription_id) || !string(membership.square_customer_id)
+    || !string(metadata.square_plan_variation_id) || !string(membership.paid_through)
+    || !["active", "past_due", "cancel_scheduled"].includes(String(membership.state))) {
+    throw new CglSquareError("This live recurring membership could not be verified for cancellation.", 409, "square_cancellation_unavailable");
+  }
+  const connection = await verifyCglSquareConnection();
+  const expectedExclusiveDate = getCglSquareCancellationDate(expectedEffectiveAt, connection.timezone);
+  if (getCglSquareCancellationDate(String(membership.paid_through), connection.timezone) !== expectedExclusiveDate) {
+    throw new CglSquareError("The paid membership period changed. Review a fresh cancellation quote before continuing.", 409, "quote_changed");
+  }
+  const subscriptionId = String(membership.square_subscription_id);
+  const verify = (value: Data, actions: unknown) => {
+    assertLocation(value);
+    if (value.id !== subscriptionId || value.customer_id !== membership.square_customer_id
+      || value.plan_variation_id !== metadata.square_plan_variation_id) {
+      invalid("The Square subscription differs from this CGL membership.");
+    }
+    const cancelAction = list(actions).map(object).find(action => action.type === "CANCEL")
+      ?? list(value.actions).map(object).find(action => action.type === "CANCEL");
+    const canceledDate = string(cancelAction?.effective_date) ?? string(value.canceled_date);
+    if (!canceledDate || shiftSquareDate(canceledDate, 1) !== expectedExclusiveDate) {
+      throw new CglSquareError("Square returned a different cancellation boundary. The subscription requires CGS billing review before another change.", 409, "square_cancellation_review");
+    }
+    return { canceledDate, version: integer(value.version) };
+  };
+  const current = await fetchSubscription(subscriptionId);
+  const currentAction = list(current.actions).map(object).find(action => action.type === "CANCEL");
+  let scheduled: { canceledDate: string; version: number | null };
+  if (currentAction || current.canceled_date) {
+    scheduled = verify(current, current.actions);
+  } else {
+    const response = await squareRequest(`/subscriptions/${encodeURIComponent(subscriptionId)}/cancel`, { method: "POST" });
+    scheduled = verify(object(response.subscription), response.actions);
+  }
+  return {
+    scheduled: true,
+    alreadyScheduled: Boolean(currentAction || current.canceled_date),
+    effectiveAt: expectedEffectiveAt,
+    providerCanceledDate: scheduled.canceledDate,
+    providerVersion: scheduled.version,
+  };
+}
+/** Provider cancellation is scheduled immediately by the member action; this job remains a safe no-op. */
 export async function processDueCglSquareCancellations() {
-  return { processed: 0, blocked: "Automatic Square subscription actions remain disabled until the minimum-term policy and exact provider-date workflow are approved and tested." };
+  return { processed: 0, scheduledAtRequest: true };
 }

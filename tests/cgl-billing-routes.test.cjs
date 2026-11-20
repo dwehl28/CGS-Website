@@ -14,7 +14,7 @@ function compile(file, mocks) {
 class BillingError extends Error { constructor(message,status=503){super(message);this.status=status;} }
 const memberId='11111111-1111-4111-8111-111111111111';
 const checkoutId='22222222-2222-4222-8222-222222222222';
-const termsVersion='cgl-membership-terms-2026-11-14';
+const termsVersion='cgl-membership-terms-2026-11-20-recurring-v1';
 function harness(options={}) {
   const calls={rpc:[],checkout:[],lookup:[],sync:[],receipt:[],worker:[],after:[]};
   const platform={
@@ -70,7 +70,7 @@ test('only the $100 season pass carries a season into checkout',async()=>{
   assert.equal((await selected.checkout.POST(post('/api/cgl/checkout',{...seasonPass,seasonId}))).status,200);
   assert.equal(selected.calls.rpc[0][1].p_season_id,seasonId);
 });
-test('production checkout uses the live one-off RPC and keeps recurring plans locked',async()=>{
+test('production checkout uses the live RPC and opens recurring plans only after the recurring gate',async()=>{
   const oneOff={planCode:'casual_registration',requestKey:checkoutId,termsAccepted:true,termsVersion,acceptedAmountCents:2900};
   const live=harness({environment:'production',intent:{id:checkoutId,member_id:memberId,amount_cents:2900,recurring:false,environment:'production'}});
   assert.equal((await live.checkout.POST(post('/api/cgl/checkout',oneOff))).status,200);
@@ -78,6 +78,10 @@ test('production checkout uses the live one-off RPC and keeps recurring plans lo
   const recurring=harness({environment:'production'});
   assert.equal((await recurring.checkout.POST(post('/api/cgl/checkout',purchase))).status,409);
   assert.equal(recurring.calls.rpc.length,0);assert.equal(recurring.calls.checkout.length,0);
+  const enabled=harness({environment:'production',subscriptionActionsEnabled:true,intent:{id:checkoutId,member_id:memberId,amount_cents:2995,recurring:true,environment:'production',square_plan_variation_id:'variation-monthly'}});
+  assert.equal((await enabled.checkout.POST(post('/api/cgl/checkout',purchase))).status,200);
+  assert.deepEqual(enabled.calls.rpc[0],['cgl_prepare_square_live_checkout',{p_member_id:memberId,p_plan_code:'monthly',p_season_id:null,p_request_key:checkoutId,p_accepted_amount_cents:2995}]);
+  assert.equal(enabled.calls.checkout.length,1);
 });
 test('a member can resume only their own pending checkout with the current accepted terms',async()=>{
   const savedIntent={id:checkoutId,member_id:memberId,membership_id:'33333333-3333-4333-8333-333333333333',environment:'production',plan_code:'casual_registration',season_id:null,amount_cents:2900,recurring:false,square_plan_variation_id:null,square_link_id:'link',square_order_id:'order',payment_link_url:'https://square.link/test',state:'pending',terms_snapshot:{terms_version:termsVersion}};

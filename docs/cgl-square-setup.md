@@ -1,6 +1,8 @@
 # CGL Square billing
 
-Production one-off groundwork is documented in [CGL Square production launch](cgl-square-production-launch.md). This document retains the Sandbox evidence and limitations used to validate the adapter. Production recurring billing remains disabled.
+> Historical Sandbox validation record. The limitations below describe the pre-production test configuration and are retained as evidence. For the current production design, approved recurring terms and live launch sequence, use [CGL Square production launch](cgl-square-production-launch.md).
+
+Production launch operations are documented in [CGL Square production launch](cgl-square-production-launch.md). This document retains the Sandbox evidence used to validate the adapter and must not be used as the live feature-status checklist.
 
 The existing CGS Stripe payment-intent route is preserved. CGL uses a separate Square REST adapter pinned to API version `2026-09-16`. Its API origin is fixed to `https://connect.squareupsandbox.com/v2`; setting an environment value to `production` disables the adapter. The supplied application ID identifies the application; it does not authenticate requests or prove that a merchant, location, catalogue, webhook or checkout has been connected. Record actual provider-test evidence before describing any part of the integration as externally verified.
 

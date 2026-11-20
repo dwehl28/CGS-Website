@@ -80,7 +80,7 @@ const faq = [
   ],
   [
     "Can I cancel my membership?",
-    "The one-off Casual Registration and Season Pass do not automatically renew, so there is no future recurring payment to cancel. Contact CGS promptly about a duplicate charge, payment error, access problem, or a materially changed event. Recurring memberships are not currently for sale; their renewal and cancellation terms will be published before they launch.",
+    "Yes. Cancel a recurring membership from your member dashboard. Square stops the next renewal at the end of the period already paid for, and your access remains active until that paid-through date. Casual Registration and the Season Pass are one-off purchases and do not automatically renew.",
   ],
   [
     "Are trial results part of the 2027 championship?",
@@ -645,7 +645,7 @@ export function CglPricing({ data }: { data: CglSnapshot }) {
       price_cents: 24900,
       interval: "/ year",
       detail:
-        "Proposed annual plan. Final renewal and cancellation terms will be displayed before recurring sales open.",
+        "Charged when you join, then renews yearly on your purchase anniversary until cancelled.",
     },
     {
       id: "monthly",
@@ -653,7 +653,7 @@ export function CglPricing({ data }: { data: CglSnapshot }) {
       price_cents: 2995,
       interval: "/ month",
       detail:
-        "Proposed monthly plan. Final renewal and cancellation terms will be displayed before recurring sales open.",
+        "Joins immediately. Your first payment may be prorated to the next first of the month, then $29.95 renews monthly on the first.",
     },
     {
       id: "weekly",
@@ -661,7 +661,7 @@ export function CglPricing({ data }: { data: CglSnapshot }) {
       price_cents: 895,
       interval: "/ week",
       detail:
-        "Proposed weekly plan. Final renewal and cancellation terms will be displayed before recurring sales open.",
+        "Charged when you join, then renews every seven days until cancelled.",
     },
     {
       id: "casual_registration",
@@ -684,11 +684,7 @@ export function CglPricing({ data }: { data: CglSnapshot }) {
               key={p.id}
               className={`${s.plan} ${i === 0 ? s.featuredPlan : ""}`}
             >
-              {i === 0 ? (
-                <span className={s.planLabel}>Coming later</span>
-              ) : i < 3 ? (
-                <span className={s.planLabel}>Coming later</span>
-              ) : null}
+              {i < 3 ? <span className={s.planLabel}>Open now</span> : null}
               <h3>{p.name}</h3>
               <div className={s.price}>
                 {aud(price)} <small>{p.interval}</small>
@@ -716,26 +712,19 @@ export function CglPricing({ data }: { data: CglSnapshot }) {
                   <li key={t}>{t}</li>
                 ))}
               </ul>
-              {i < 3 ? (
-                <span className={s.secondary} aria-disabled="true">
-                  Recurring sales not yet open
-                </span>
-              ) : (
-                <Link className={s.primary} href={`/cgl/join?plan=${p.id}`}>
-                  Choose {p.name.toLowerCase()}
-                  <ArrowRight size={13} />
-                </Link>
-              )}
+              <Link className={s.primary} href={`/cgl/join?plan=${p.id}`}>
+                Choose {p.name.toLowerCase()}
+                <ArrowRight size={13} />
+              </Link>
             </article>
           );
         })}
       </div>
       <p className={s.fine}>
         All prices and Square charges are in AUD. The $29 Casual Registration
-        is the launch product and can be purchased at any time. The separate
-        $100 Season Pass requires an open season. Annual, monthly and weekly
-        recurring sales are not currently open. Simulator hire and SGT access
-        are separate.
+        and all recurring memberships can be purchased at any time. Only the
+        separate $100 Season Pass requires an open season. Recurring plans
+        continue until cancelled. Simulator hire and SGT access are separate.
       </p>
     </>
   );
@@ -1098,9 +1087,8 @@ export default function CglPublicExperience({
             <p>
               Casual Registration is a $29 one-off AUD payment for 12 months
               and does not automatically renew. It is not tied to one season.
-              Only the separate $100 Season Pass is linked to a selected open
-              season. Annual, monthly and weekly recurring memberships are not
-              currently available for purchase.
+              season. Annual, monthly and weekly memberships renew automatically
+              at the disclosed cadence until cancelled from the member dashboard.
             </p>
             <Link className={s.textLink} href="/cgl/terms">
               Review pricing and policy status

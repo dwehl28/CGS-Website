@@ -1,5 +1,7 @@
 # Square support request: CGL recurring verification
 
+> Historical support draft retained as launch evidence. The current implementation uses verified Square invoice/payment coverage, production plan mappings and cancellation at the end of the paid billing period. Use [CGL Square production launch](cgl-square-production-launch.md) for current status.
+
 ## Subject
 
 CGL hosted subscription checkout creates no usable Sandbox invoice or renewal evidence
@@ -19,6 +21,6 @@ Could you please confirm the supported verification path for all of the followin
 5. Whether a subscription can be scheduled to cancel on an exact future season-boundary date in the Australia/Brisbane timezone, and which API action/event confirms that schedule.
 6. The recommended production validation approach if the full lifecycle cannot be demonstrated in Sandbox.
 
-Our application does not grant access from subscription `ACTIVE` status alone. It requires a completed payment tied to the correct order, invoice, subscription, customer, amount, currency and billing period. Production recurring checkout remains disabled while we seek this confirmation.
+Our application does not grant access from subscription `ACTIVE` status alone. It requires a completed payment tied to the correct order, invoice, subscription, customer, amount, currency and billing period. At the time this draft was prepared, production recurring checkout remained disabled while this confirmation was sought.
 
 We can provide the application ID, Sandbox merchant/location IDs, redacted event timestamps and affected subscription/payment IDs through the private support channel.

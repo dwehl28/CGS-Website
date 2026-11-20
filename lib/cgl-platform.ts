@@ -16,6 +16,7 @@ import {
 } from "@/lib/cgl-sgt";
 import {
   auditCglSquareCatalogMappings,
+  cancelCglSquareSubscription,
   verifyCglSquareConnection,
 } from "@/lib/cgl-square";
 import {
@@ -1073,6 +1074,10 @@ async function cancellationFor(identity: CglIdentity, membershipId: string) {
       policy?.approved === true && config.legal?.approved === true,
     policyVersion: String(policy?.version ?? "unapproved-draft"),
     rulesVersion: CGL_RULES_VERSION,
+    providerManaged:
+      Boolean(membership.square_subscription_id) &&
+      (membership.metadata as CglData | null | undefined)?.environment ===
+        "production",
   };
 }
 export async function executeCglMemberAction(
@@ -1158,13 +1163,20 @@ export async function executeCglMemberAction(
         409,
         "quote_changed",
       );
+    const providerCancellation = quote.providerManaged
+      ? await cancelCglSquareSubscription(
+          identity.id,
+          membershipId,
+          quote.effectiveAt,
+        )
+      : null;
     return rpc("cgl_command", {
       p_action: action,
       p_actor: identity.id,
       p_payload: {
         member_id: identity.id,
         membership_id: membershipId,
-        quote,
+        quote: { ...quote, providerCancellation },
         reason: reasonSchema.parse(body.reason),
       },
     });

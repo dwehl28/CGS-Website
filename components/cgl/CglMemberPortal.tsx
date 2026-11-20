@@ -183,12 +183,15 @@ export function CglSquareQuoteSummary({
 }) {
   const intervals: Record<string, string> = { annual: "year", monthly: "month", weekly: "week" };
   const isTest = str(quote.environment ?? row(quote.readiness).environment, "sandbox") !== "production";
+  const monthly = quote.planCode === "monthly" && quote.recurring === true;
   return (
     <div className={s.notice}>
       <strong>Payment summary{isTest ? " · TEST" : ""}</strong>
-      <p>{isTest ? "Initial test charge" : "Charge today"}: {aud(quote.amountCents)}</p>
+      <p>{monthly ? "Standard monthly price" : isTest ? "Initial test charge" : "Charge today"}: {aud(quote.amountCents)}</p>
       <p>Currency: AUD</p>
-      <p>{quote.recurring === true
+      <p>{monthly
+        ? `Square may prorate today's first charge to the next first of the month. It then renews at ${aud(quote.amountCents)} on the first of each month until cancelled. The exact first charge is shown before authorisation.`
+        : quote.recurring === true
         ? `Automatic ${isTest ? "test " : ""}renewal: ${aud(quote.amountCents)} every ${intervals[str(quote.billingInterval)] ?? "confirmed billing period"}. Square shows the exact next billing date before authorisation.`
         : `One-off ${isTest ? "test " : ""}payment. This purchase does not automatically renew.`}</p>
       <p>{str(quote.notice ?? quote.disclosure, `Review the amount and membership disclosures before authorising this ${isTest ? "test " : ""}payment.`)}</p>
@@ -1284,7 +1287,9 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
             >
               <div className={s.notice}>{billingIsTest
                 ? "Square Sandbox only. All test prices are AUD. Test payments do not activate real membership access."
-                : "Secure live Square checkout in AUD. Recurring memberships remain unavailable until their renewal flow completes final verification."}</div>
+                : recurringCheckoutEnabled
+                  ? "Secure live Square checkout in AUD. Annual, monthly and weekly memberships renew automatically until cancelled; only the $100 Season Pass requires a season."
+                  : "Secure live Square checkout in AUD. Recurring memberships are temporarily unavailable while their connection is checked."}</div>
               <div className={s.formGrid}>
                 <label className={s.field}>
                   Plan
