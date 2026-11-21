@@ -354,10 +354,10 @@ test("member commands bind account ownership to the verified identity rather tha
     email: "forged@example.invalid",
     displayName: "Forged",
   });
-  assert.equal(calls.rpc[0][1].p_actor, MEMBER);
-  assert.equal(calls.rpc[0][1].p_payload.member_id, MEMBER);
-  assert.equal(calls.rpc[0][1].p_payload.email, identity.email);
-  assert.equal(calls.rpc[0][1].p_payload.display_name, identity.displayName);
+  assert.equal(calls.rpc[0][0], "cgl_claim_or_join_account");
+  assert.equal(calls.rpc[0][1].p_account_id, MEMBER);
+  assert.equal(calls.rpc[0][1].p_email, identity.email);
+  assert.equal(calls.rpc[0][1].p_display_name, identity.displayName);
 });
 
 test("member SGT links preserve long numeric IDs as strings and reject unsafe links or numeric truncation", async () => {

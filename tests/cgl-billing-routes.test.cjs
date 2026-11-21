@@ -45,10 +45,30 @@ function harness(options={}) {
     })},
     'next/server':{after(fn){calls.after.push(fn);}},
   };
-  return{calls,checkout:compile('app/api/cgl/checkout/route.ts',mocks),sync:compile('app/api/cgl/billing/sync/route.ts',mocks),webhook:compile('app/api/cgl/square-webhook/route.ts',mocks),recovery:compile('app/api/cgl/billing/reconcile/route.ts',mocks)};
+  return{calls,checkout:compile('app/api/cgl/checkout/route.ts',mocks),guest:compile('app/api/cgl/guest-checkout/route.ts',mocks),sync:compile('app/api/cgl/billing/sync/route.ts',mocks),webhook:compile('app/api/cgl/square-webhook/route.ts',mocks),recovery:compile('app/api/cgl/billing/reconcile/route.ts',mocks)};
 }
 function post(pathname,body,headers={}){return new Request('https://example.test'+pathname,{method:'POST',headers:{authorization:'Bearer member','content-type':'application/json',...headers},body:JSON.stringify(body)});}
 const purchase={planCode:'monthly',requestKey:checkoutId,termsAccepted:true,termsVersion,acceptedAmountCents:2995};
+test('guest checkout needs no CGS login and binds exact contact and SGT details to one protected intent',async()=>{
+  const saved=process.env.SUPABASE_SERVICE_ROLE_KEY;
+  process.env.SUPABASE_SERVICE_ROLE_KEY='test-only-service-role-secret-with-enough-entropy';
+  try {
+    const h=harness({environment:'production',intent:{id:checkoutId,member_id:memberId,membership_id:'33333333-3333-4333-8333-333333333333',checkout_channel:'guest',amount_cents:2900,recurring:false,environment:'production',terms_snapshot:{terms_version:termsVersion}}});
+    const response=await h.guest.POST(new Request('https://example.test/api/cgl/guest-checkout',{method:'POST',headers:{origin:'https://example.test','content-type':'application/json','x-forwarded-for':'203.0.113.20'},body:JSON.stringify({displayName:'Guest Golfer',email:'Guest@Example.test',sgtUsername:'GuestGolfer',planCode:'casual_registration',requestKey:checkoutId,termsAccepted:true,termsVersion,acceptedAmountCents:2900})}));
+    assert.equal(response.status,200);
+    const body=await response.json();
+    assert.match(body.accessKey,/^[A-Za-z0-9_-]{43}$/);
+    assert.equal(h.calls.rpc[0][0],'cgl_prepare_guest_square_checkout');
+    assert.equal(h.calls.rpc[0][1].p_email,'guest@example.test');
+    assert.equal(h.calls.rpc[0][1].p_sgt_username,'GuestGolfer');
+    assert.match(h.calls.rpc[0][1].p_access_key_hash,/^[0-9a-f]{64}$/);
+    assert.match(h.calls.rpc[0][1].p_rate_fingerprint,/^[0-9a-f]{64}$/);
+    assert.equal(h.calls.checkout[0][0].member_id,memberId);
+    assert.equal(h.calls.checkout[0][1].guestAccessKey,body.accessKey);
+  } finally {
+    if(saved==null)delete process.env.SUPABASE_SERVICE_ROLE_KEY;else process.env.SUPABASE_SERVICE_ROLE_KEY=saved;
+  }
+});
 test('checkout rejects unauthenticated, cross-origin and client-account overrides before provider or database changes',async()=>{
   for(const [body,headers,status] of [[purchase,{authorization:'Bearer legacy-admin'},401],[purchase,{origin:'https://other.test'},403],[{...purchase,memberId:'other'}, {},400]]){
     const h=harness(); assert.equal((await h.checkout.POST(post('/api/cgl/checkout',body,headers))).status,status);

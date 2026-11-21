@@ -47,7 +47,6 @@ function acceptedTermsVersion(checkout: CglSquareCheckout) {
 
 export async function GET(request: Request) {
   try {
-    await getCglMemberIdentity(request);
     const planCode = new URL(request.url).searchParams.get("planCode");
     const { data: plan, error } = await getSupabaseAdmin()
       .from("cgl_plans")
@@ -101,6 +100,7 @@ export async function POST(request: Request) {
     verifyCglOrigin(request);
     // Bearer authentication is verified by Supabase; the existing shared admin token cannot buy a membership.
     const member = await getCglMemberIdentity(request);
+    const memberId = member.memberId ?? member.id;
     const readiness = await getCglSquareOperationalReadiness();
     if (!readiness.ready)
       throw new CglSquareError(
@@ -133,7 +133,7 @@ export async function POST(request: Request) {
         .from("cgl_square_checkout_intents")
         .select("id,member_id,membership_id,environment,plan_code,season_id,amount_cents,recurring,square_plan_variation_id,square_link_id,square_order_id,payment_link_url,state,terms_snapshot")
         .eq("id", body.data.checkoutId)
-        .eq("member_id", member.id)
+        .eq("member_id", memberId)
         .eq("environment", readiness.environment)
         .eq("state", "pending")
         .maybeSingle();
@@ -198,7 +198,7 @@ export async function POST(request: Request) {
         ? "cgl_prepare_square_live_checkout"
         : "cgl_prepare_square_checkout",
       {
-        p_member_id: member.id,
+        p_member_id: memberId,
         p_plan_code: purchase.planCode,
         p_season_id: seasonId,
         p_request_key: purchase.requestKey,

@@ -62,6 +62,7 @@ export function isCglSquareEnvironmentRecord(
 }
 export interface CglIdentity {
   id: string;
+  memberId?: string;
   email: string;
   appMetadata: CglData;
   displayName: string;
@@ -280,8 +281,23 @@ export async function getCglMemberIdentity(
       401,
       "unauthenticated",
     );
+  const accountMembers = await rows(
+    "cgl_members",
+    { account_id: data.user.id },
+    "id",
+  );
+  let memberId = accountMembers[0]?.id as string | undefined;
+  if (!memberId) {
+    const legacyMembers = await rows(
+      "cgl_members",
+      { id: data.user.id },
+      "id",
+    );
+    memberId = legacyMembers[0]?.id as string | undefined;
+  }
   return {
     id: data.user.id,
+    memberId,
     email: data.user.email,
     appMetadata: data.user.app_metadata ?? {},
     displayName: String(
@@ -847,6 +863,7 @@ export async function getCglPublicSnapshot() {
 }
 
 export async function getCglMemberSnapshot(identity: CglIdentity) {
+  const memberId = identity.memberId ?? identity.id;
   const [
     memberRows,
     settings,
@@ -868,23 +885,23 @@ export async function getCglMemberSnapshot(identity: CglIdentity) {
     plans,
     giftItems,
   ] = await Promise.all([
-    rows("cgl_members", { id: identity.id }),
+    rows("cgl_members", { id: memberId }),
     rows("cgl_settings"),
-    rows("cgl_memberships", { member_id: identity.id }),
-    rows("cgl_payments", { member_id: identity.id }),
-    rows("cgl_season_entries", { member_id: identity.id }),
-    rows("cgl_division_assignments", { member_id: identity.id }),
-    rows("cgl_results", { member_id: identity.id }),
-    rows("cgl_credit_lots", { member_id: identity.id }),
-    rows("cgl_credit_transactions", { member_id: identity.id }),
-    rows("cgl_orders", { member_id: identity.id }),
-    rows("cgl_gifts", { member_id: identity.id }),
-    rows("cgl_notifications", { member_id: identity.id }),
+    rows("cgl_memberships", { member_id: memberId }),
+    rows("cgl_payments", { member_id: memberId }),
+    rows("cgl_season_entries", { member_id: memberId }),
+    rows("cgl_division_assignments", { member_id: memberId }),
+    rows("cgl_results", { member_id: memberId }),
+    rows("cgl_credit_lots", { member_id: memberId }),
+    rows("cgl_credit_transactions", { member_id: memberId }),
+    rows("cgl_orders", { member_id: memberId }),
+    rows("cgl_gifts", { member_id: memberId }),
+    rows("cgl_notifications", { member_id: memberId }),
     rows("cgl_catalogue", { active: true }),
     rows("cgl_seasons"),
     rows("cgl_weeks"),
     rows("cgl_calculations"),
-    rows("cgl_sgt_link_requests", { member_id: identity.id }),
+    rows("cgl_sgt_link_requests", { member_id: memberId }),
     rows("cgl_plans"),
     rows("cgl_gift_items"),
   ]);
@@ -909,7 +926,7 @@ export async function getCglMemberSnapshot(identity: CglIdentity) {
     const week = weeks.find((w) => w.id === result.week_id),
       calculation = current.find((c) => c.week_id === result.week_id);
     const points = (calculation?.rows as CglData[] | undefined)?.find(
-      (row) => row.playerId === identity.id,
+      (row) => row.playerId === memberId,
     );
     return {
       ...result,
@@ -981,7 +998,7 @@ export async function getCglMemberSnapshot(identity: CglIdentity) {
     member: member
       ? { ...member, private_notes: undefined }
       : {
-          id: identity.id,
+          id: memberId,
           email: identity.email,
           display_name: identity.displayName,
           sgt_username: trial?.sgt_username ?? null,
@@ -1058,7 +1075,11 @@ function planForRules(plan: CglData): MembershipPlan {
   };
 }
 async function cancellationFor(identity: CglIdentity, membershipId: string) {
-  const membership = await one("cgl_memberships", membershipId, identity.id);
+  const membership = await one(
+    "cgl_memberships",
+    membershipId,
+    identity.memberId ?? identity.id,
+  );
   if (isCglSandboxRecord(membership))
     throw new CglApiError(
       "Sandbox cancellation requests remain disabled until the season-boundary terms and provider workflow are approved. Contact CGS to end a test subscription.",
@@ -1121,34 +1142,27 @@ export async function executeCglMemberAction(
   body: CglData,
 ) {
   const action = text(60).parse(body.action);
+  const memberId = identity.memberId ?? identity.id;
   if (action === "join") {
     const trial =
       identity.appMetadata.cgl && typeof identity.appMetadata.cgl === "object"
         ? (identity.appMetadata.cgl as CglData)
         : {};
-    return rpc("cgl_command", {
-      p_action: "join",
-      p_actor: identity.id,
-      p_payload: {
-        member_id: identity.id,
-        email: identity.email,
-        display_name: identity.displayName,
-        sgt_username:
-          typeof trial.sgt_username === "string"
-            ? sgtUsername.parse(trial.sgt_username)
-            : null,
-        sgt_id:
-          typeof trial.sgt_id === "string"
-            ? z
-                .string()
-                .regex(/^\d{8,30}$/)
-                .parse(trial.sgt_id)
-            : null,
-        metadata: {
-          source: "existing_cgs_auth",
-          trial_membership: trial.membership_status === "trial",
-        },
-        reason: "Member joined CGL using their existing CGS account",
+    return rpc("cgl_claim_or_join_account", {
+      p_account_id: identity.id,
+      p_email: identity.email,
+      p_display_name: identity.displayName,
+      p_sgt_username:
+        typeof trial.sgt_username === "string"
+          ? sgtUsername.parse(trial.sgt_username)
+          : null,
+      p_sgt_id:
+        typeof trial.sgt_id === "string"
+          ? z.string().regex(/^\d{8,30}$/).parse(trial.sgt_id)
+          : null,
+      p_metadata: {
+        source: "existing_cgs_auth",
+        trial_membership: trial.membership_status === "trial",
       },
     });
   }
@@ -1157,7 +1171,7 @@ export async function executeCglMemberAction(
       p_action: action,
       p_actor: identity.id,
       p_payload: {
-        member_id: identity.id,
+        member_id: memberId,
         sgt_username: sgtUsername.parse(body.sgtUsername ?? body.sgt_username),
         sgt_id: z
           .string()
@@ -1201,7 +1215,7 @@ export async function executeCglMemberAction(
       );
     const providerCancellation = quote.providerManaged
       ? await cancelCglSquareSubscription(
-          identity.id,
+          memberId,
           membershipId,
           quote.effectiveAt,
         )
@@ -1210,7 +1224,7 @@ export async function executeCglMemberAction(
       p_action: action,
       p_actor: identity.id,
       p_payload: {
-        member_id: identity.id,
+        member_id: memberId,
         membership_id: membershipId,
         quote: { ...quote, providerCancellation },
         reason: reasonSchema.parse(body.reason),
@@ -1220,7 +1234,7 @@ export async function executeCglMemberAction(
   if (action === "redeem")
     return {
       id: await rpc("cgl_redeem", {
-        p_member_id: identity.id,
+        p_member_id: memberId,
         p_catalogue_id: uuid.parse(body.catalogueId ?? body.catalogue_id),
         p_quantity: z
           .number()
@@ -1237,7 +1251,7 @@ export async function executeCglMemberAction(
       p_actor: identity.id,
       p_payload: {
         id: uuid.parse(body.id),
-        member_id: identity.id,
+        member_id: memberId,
         reason: "Member read notification",
       },
     });
@@ -1259,7 +1273,7 @@ export async function executeCglMemberAction(
         reason: "This competition is not currently open for entry.",
         billingWarning: false,
       };
-    return getCglEligibility(identity.id, week);
+    return getCglEligibility(memberId, week);
   }
   throw new CglApiError("This member action is not supported.");
 }

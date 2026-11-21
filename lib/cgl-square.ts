@@ -21,6 +21,7 @@ export type CglSquareCheckout = {
   recurring: boolean; square_plan_variation_id: string | null; payment_link_url: string | null;
   square_link_id?: string | null; square_order_id?: string | null; season_id: string | null;
   environment?: CglSquareEnvironment;
+  checkout_channel?: "account" | "guest";
   terms_snapshot?: Data | null;
 };
 function object(value: unknown): Data { return value && typeof value === "object" && !Array.isArray(value) ? value as Data : {}; }
@@ -297,7 +298,7 @@ export function buildCglSquareCheckout(
   const environment = checkout.environment ?? getCglSquareReadiness().environment;
   if (!Object.hasOwn(SQUARE_API, environment)) invalid("The CGL checkout environment is invalid.");
   // Hosted checkout selects the customer from buyer input. Its template preserves
-  // our authenticated website identities; email and customer_id are not proof.
+  // our immutable participant identities; email and customer_id are not proof.
   const label = environment === "sandbox" ? "Sandbox test" : "Crossodog Golf League";
   const lineItem = catalogItem?.id
     ? { catalog_object_id: catalogItem.id, quantity: "1" }
@@ -399,10 +400,25 @@ async function recoverCglSquareCheckout(checkout: CglSquareCheckout, redirectUrl
   requireUnpaidCheckoutOrder(order);
   return url;
 }
-export async function createCglSquareCheckout(checkout: CglSquareCheckout) {
+export async function createCglSquareCheckout(
+  checkout: CglSquareCheckout,
+  options: { guestAccessKey?: string } = {},
+) {
   const config = getConfig(true);
   const environment = checkout.environment ?? config.environment;
   if (environment !== config.environment) invalid("The saved checkout belongs to a different Square environment.");
+  const channel = checkout.checkout_channel ?? "account";
+  const guestAccessKey = options.guestAccessKey;
+  if (channel === "guest" && !/^[A-Za-z0-9_-]{43}$/.test(guestAccessKey ?? "")) {
+    invalid("A valid guest checkout return key is required.");
+  }
+  if (channel === "account" && guestAccessKey) {
+    invalid("An account checkout cannot use a guest return key.");
+  }
+  const redirect = new URL(channel === "guest" ? "/cgl/join" : "/cgl/dashboard", config.notificationUrl);
+  redirect.searchParams.set("checkout", checkout.id);
+  if (guestAccessKey) redirect.searchParams.set("guest", guestAccessKey);
+  const redirectUrl = redirect.href;
   if (environment === "production" && checkout.recurring && !getCglSquareReadiness().subscriptionActionsEnabled) {
     throw new CglSquareError("Recurring Square membership checkout is not yet enabled. Choose a one-off option or contact CGS.", 409, "square_recurring_disabled");
   }
@@ -410,7 +426,8 @@ export async function createCglSquareCheckout(checkout: CglSquareCheckout) {
   if (checkout.payment_link_url) {
     if (!checkout.square_link_id || !checkout.square_order_id || !isCglSquareCheckoutUrl(checkout.payment_link_url, environment)) invalid("The stored checkout needs reconciliation before reuse.");
     const link = object((await squareRequest(`/online-checkout/payment-links/${encodeURIComponent(checkout.square_link_id)}`)).payment_link);
-    if (link.id !== checkout.square_link_id || link.order_id !== checkout.square_order_id || !string(link.url) || !isCglSquareCheckoutUrl(String(link.url), environment)) invalid("The saved Square checkout is unavailable.");
+    const savedOptions = object(link.checkout_options);
+    if (link.id !== checkout.square_link_id || link.order_id !== checkout.square_order_id || !string(link.url) || !isCglSquareCheckoutUrl(String(link.url), environment) || (channel === "guest" ? savedOptions.redirect_url !== redirectUrl : Boolean(savedOptions.redirect_url) && savedOptions.redirect_url !== redirectUrl)) invalid("The saved Square checkout is unavailable.");
     const order = object((await squareRequest(`/orders/${encodeURIComponent(checkout.square_order_id)}`)).order), proof = checkoutLinkFromOrder(order);
     if (!proof || proof.order_id !== checkout.square_order_id || proof.intent_id !== checkout.id || proof.member_id !== checkout.member_id || proof.membership_id !== checkout.membership_id || order.state === "COMPLETED" || order.state === "CANCELED") invalid("The saved checkout is no longer payable. Reconcile its result before another.");
     requireUnpaidCheckoutOrder(order);
@@ -420,7 +437,6 @@ export async function createCglSquareCheckout(checkout: CglSquareCheckout) {
   if (checkout.recurring) {
     ({ catalogItemVariationId } = await retrieveVariation(checkout.square_plan_variation_id!, checkout));
   }
-  const redirectUrl = new URL(`/cgl/dashboard?checkout=${checkout.id}`, config.notificationUrl).href;
   let response: Data;
   try {
     response = await squareRequest("/online-checkout/payment-links", { method: "POST", body: JSON.stringify(buildCglSquareCheckout(checkout, config.locationId, redirectUrl, catalogItemVariationId ? { id: catalogItemVariationId } : null)) });

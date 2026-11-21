@@ -422,7 +422,7 @@ export default function CglOverview({ children }: { children?: ReactNode }) {
         </p>
         <div className={styles.joinChecklist}>
           <span>
-            <Check size={15} /> CGS account
+            <Check size={15} /> CGS account optional
           </span>
           <span>
             <Check size={15} /> Linked SGT player details
@@ -432,7 +432,7 @@ export default function CglOverview({ children }: { children?: ReactNode }) {
           </span>
         </div>
         <div className={styles.joinBottom}>
-          <span>Registration and payments will open after testing.</span>
+          <span>Registration and secure AUD payments are open.</span>
           <Link href="/cgl/leaderboard">
             Explore the preview <ChevronRight size={16} />
           </Link>

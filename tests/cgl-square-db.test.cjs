@@ -17,6 +17,7 @@ test.before(async () => {
     "20261111001557_cgl_square_production_one_off.sql",
     "20261114143000_cgl_square_production_recurring.sql",
     "20261120122500_cgl_retire_stale_square_checkout.sql",
+    "20261121044246_cgl_guest_checkout.sql",
   ])
     await db.exec(
       fs.readFileSync(
@@ -858,6 +859,7 @@ test("Sandbox records and all privileged RPCs are inaccessible to browser roles"
     "cgl_square_webhook_events",
     "cgl_square_invoice_states",
     "cgl_square_season_entitlements",
+    "cgl_guest_checkout_attempts",
   ])
     assert.equal(
       (
@@ -879,6 +881,8 @@ test("Sandbox records and all privileged RPCs are inaccessible to browser roles"
     "cgl_claim_square_live_events(text,integer,text)",
     "cgl_fail_square_event(text,uuid,text,boolean)",
     "cgl_retire_stale_square_checkout(uuid,uuid,text,text)",
+    "cgl_prepare_guest_square_checkout(text,text,text,text,uuid,uuid,integer,text,timestamp with time zone,text)",
+    "cgl_claim_or_join_account(uuid,text,text,text,text,jsonb)",
   ])
     assert.equal(
       (
@@ -889,6 +893,102 @@ test("Sandbox records and all privileged RPCs are inaccessible to browser roles"
       ).rows[0].allowed,
       false,
     );
+});
+
+test("guest checkout creates one account-optional participant and safely reuses its intent", async () => {
+  await db.exec(`
+    update cgl_settings
+    set value='{"approved":true,"version":"${TERMS_VERSION}","recurring_approved":true,"approved_products":["annual","monthly","weekly","casual_registration","casual_season"]}'::jsonb
+    where key='legal';
+    update cgl_settings
+    set value='{"approved":true,"mode":"paid_term"}'::jsonb
+    where key='cancellation_policy';
+    update cgl_settings
+    set value='{"checkout_enabled":true,"launch_approved":true,"live_entitlements":true,"recurring_enabled":true}'::jsonb
+    where key='square_production';
+  `);
+  const requestKey = randomUUID();
+  const args = [
+    "guest@example.test",
+    "Guest Golfer",
+    "GuestGolfer",
+    "casual_registration",
+    null,
+    requestKey,
+    2900,
+    "a".repeat(64),
+    new Date(Date.now() + 86400000).toISOString(),
+    "b".repeat(64),
+  ];
+  const first = (
+    await db.query(
+      "select cgl_prepare_guest_square_checkout($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) value",
+      args,
+    )
+  ).rows[0].value;
+  const replay = (
+    await db.query(
+      "select cgl_prepare_guest_square_checkout($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) value",
+      args,
+    )
+  ).rows[0].value;
+  assert.equal(replay.id, first.id);
+  assert.equal(first.checkout_channel, "guest");
+  assert.equal(first.guest_access_key_hash, "a".repeat(64));
+  const participant = (
+    await db.query(
+      "select id,account_id,email,sgt_username from cgl_members where id=$1",
+      [first.member_id],
+    )
+  ).rows[0];
+  assert.equal(participant.account_id, null);
+  assert.equal(participant.email, "guest@example.test");
+  assert.equal(participant.sgt_username, "GuestGolfer");
+  assert.equal(
+    (await db.query("select count(*)::int n from cgl_members where lower(email)='guest@example.test'")).rows[0].n,
+    1,
+  );
+  await assert.rejects(
+    db.query(
+      "select cgl_prepare_guest_square_checkout($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
+      [
+        "different@example.test",
+        "Other Golfer",
+        "GuestGolfer",
+        "casual_registration",
+        null,
+        randomUUID(),
+        2900,
+        "c".repeat(64),
+        new Date(Date.now() + 86400000).toISOString(),
+        "d".repeat(64),
+      ],
+    ),
+  );
+});
+
+test("a verified account claims the guest participant without moving its financial history", async () => {
+  const participant = (
+    await db.query("select id from cgl_members where lower(email)='guest@example.test'")
+  ).rows[0];
+  const accountId = randomUUID();
+  await db.query("insert into auth.users values($1)", [accountId]);
+  const claimed = (
+    await db.query(
+      "select cgl_claim_or_join_account($1,$2,$3,$4,$5,$6) value",
+      [accountId, "guest@example.test", "Guest Golfer", "GuestGolfer", null, {}],
+    )
+  ).rows[0].value;
+  assert.equal(claimed.id, participant.id);
+  assert.equal(claimed.account_id, accountId);
+  assert.equal(
+    (await db.query("select count(*)::int n from cgl_members where account_id=$1", [accountId])).rows[0].n,
+    1,
+  );
+  assert.equal(
+    (await db.query("select count(*)::int n from cgl_memberships where member_id=$1", [participant.id])).rows[0].n,
+    1,
+  );
 });
 
 test("stale checkout retirement atomically cancels only its pending membership", async () => {

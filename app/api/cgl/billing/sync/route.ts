@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     const input = z.object({ checkoutId: z.uuid().optional() }).strict().safeParse(JSON.parse(raw || "{}"));
     if (!input.success)
       return Response.json({ error: "Choose a valid checkout from your account." }, { status: 400 });
-    return Response.json(await syncCglSquareMember(identity.id, input.data.checkoutId), {
+    return Response.json(await syncCglSquareMember(identity.memberId ?? identity.id, input.data.checkoutId), {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {

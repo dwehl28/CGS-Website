@@ -60,7 +60,7 @@ const faq = [
   ],
   [
     "Do I need an SGT account?",
-    "Yes. Use your existing CGS account and link your SGT username and numeric SGT ID. CGS checks the link before treating scores or a handicap as verified. Never share your SGT password.",
+    "Yes, an SGT identity is required for tournament and score matching. A CGS website account is optional: enter your exact SGT username when purchasing, or link your SGT profile from a CGS account. Never share your SGT password.",
   ],
   [
     "Which scores count towards the championship?",
@@ -80,7 +80,7 @@ const faq = [
   ],
   [
     "Can I cancel my membership?",
-    "Yes. Cancel a recurring membership from your member dashboard. Square stops the next renewal at the end of the period already paid for, and your access remains active until that paid-through date. Casual Registration and the Season Pass are one-off purchases and do not automatically renew.",
+    "Yes. Account holders can cancel a recurring membership from the member dashboard. If you purchased without an account, contact CGS using the purchase email and Square receipt. Cancellation stops the next renewal at the end of the period already paid for, and access remains active until that paid-through date. Casual Registration and the Season Pass are one-off purchases and do not automatically renew.",
   ],
   [
     "Are trial results part of the 2027 championship?",
@@ -910,8 +910,8 @@ export default function CglPublicExperience({
               </Link>
             </div>
             <p style={{ fontSize: 11, marginTop: 15 }}>
-              Already testing with us? Your CGS account and linked SGT
-              scorecards are in the trial hub.
+              Already testing with us? Your linked SGT scorecards remain in
+              the trial hub, whether or not you use a CGS website account.
             </p>
           </div>
         </section>
@@ -985,8 +985,8 @@ export default function CglPublicExperience({
             {[
               [
                 "01",
-                "Join CGS, link SGT",
-                "One CGS account. Your verified SGT identity.",
+                "Choose a plan, identify your SGT profile",
+                "Buy with or without a CGS account. Your exact SGT identity connects the competition data.",
               ],
               [
                 "02",
@@ -1087,8 +1087,9 @@ export default function CglPublicExperience({
             <p>
               Casual Registration is a $29 one-off AUD payment for 12 months
               and does not automatically renew. It is not tied to one season.
-              season. Annual, monthly and weekly memberships renew automatically
-              at the disclosed cadence until cancelled from the member dashboard.
+              Annual, monthly and weekly memberships renew automatically at the
+              disclosed cadence until cancelled from the member dashboard or,
+              for an account-free purchase, by contacting CGS.
             </p>
             <Link className={s.textLink} href="/cgl/terms">
               Review pricing and policy status
@@ -1191,8 +1192,9 @@ export default function CglPublicExperience({
               <p>
                 Spend credits on available CGS merchandise, equipment and
                 sponsor rewards. Each item shows its credit price. Credits stay
-                with your account after cancellation and expire 18 months from
-                issue.
+                with your participant record after cancellation and expire 18
+                months from issue. A CGS account is required only to redeem them
+                through the private dashboard.
               </p>
               <div className={s.actions}>
                 <Link
@@ -1269,7 +1271,7 @@ export default function CglPublicExperience({
               [
                 CheckCircle2,
                 "Keep track of everything",
-                "Your rounds, best-eight points, published achievements and rewards all come together in your CGS account.",
+                "Live public standings work without a CGS account. An optional account adds a private dashboard for rounds, rewards and billing.",
               ],
             ].map(([Icon, t, b]) => {
               const Mark = Icon as typeof Globe2;

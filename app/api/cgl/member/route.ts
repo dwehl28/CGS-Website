@@ -14,18 +14,19 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     const identity = await getCglMemberIdentity(request);
+    const memberId = identity.memberId ?? identity.id;
     const snapshot = await getCglMemberSnapshot(identity);
     const readiness = await getCglSquareOperationalReadiness();
     const [{ data: checkouts, error }, { data: seasonEntitlements }] = await Promise.all([getSupabaseAdmin()
       .from("cgl_square_checkout_intents")
       .select("id,plan_code,season_id,amount_cents,recurring,state,environment,terms_snapshot,created_at,completed_at")
-      .eq("member_id", identity.id)
+      .eq("member_id", memberId)
       .eq("environment", readiness.environment)
       .order("created_at", { ascending: false })
       .limit(25), getSupabaseAdmin()
         .from("cgl_square_season_entitlements")
         .select("checkout_id,season_id,paid_at,expires_at,environment")
-        .eq("member_id", identity.id)
+        .eq("member_id", memberId)
         .eq("environment", readiness.environment)
         .limit(25)]);
     return Response.json(

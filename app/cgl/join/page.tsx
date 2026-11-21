@@ -1,4 +1,4 @@
-import CglMemberPortal from "@/components/cgl/CglMemberPortal";
+import CglGuestCheckout from "@/components/cgl/CglGuestCheckout";
 export default function CglJoin() {
-  return <CglMemberPortal join />;
+  return <CglGuestCheckout />;
 }

@@ -549,6 +549,70 @@
   border-left: 0;
   background: transparent;
 }
+.guestCheckout {
+  align-items: start;
+  margin-top: 28px;
+}
+.guestAssurance {
+  position: sticky;
+  top: 96px;
+  overflow: hidden;
+  color: #fff;
+  border-color: rgba(166, 234, 0, 0.4);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(166, 234, 0, 0.2), transparent 38%),
+    linear-gradient(145deg, #061b38, #092957 70%, #0d3568);
+}
+.guestAssurance h2,
+.guestAssurance strong {
+  color: #fff;
+}
+.guestAssurance p {
+  color: rgba(255, 255, 255, 0.78);
+}
+.guestPoint {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 16px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+.guestPoint p {
+  margin: 4px 0 0;
+}
+.guestSuccess {
+  margin: 24px 0;
+  border-color: rgba(127, 191, 0, 0.55);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(166, 234, 0, 0.22), transparent 32%),
+    #f7ffe8;
+}
+.guestSummary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 20px 0;
+}
+.guestSummary div {
+  padding: 14px;
+  border: 1px solid rgba(6, 27, 56, 0.14);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+}
+.guestSummary dt {
+  color: #61718a;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.guestSummary dd {
+  margin: 5px 0 0;
+  color: #061b38;
+  font-weight: 850;
+  text-transform: capitalize;
+}
 .reviewStep {
   color: #167ba5;
   font-size: 11px;
@@ -968,6 +1032,12 @@
   }
   .formGrid {
     grid-template-columns: 1fr;
+  }
+  .guestAssurance {
+    position: static;
+  }
+  .guestSummary {
+    grid-template-columns: 1fr 1fr;
   }
   .adminLayout {
     grid-template-columns: 1fr;

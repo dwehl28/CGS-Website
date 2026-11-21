@@ -35,13 +35,13 @@ const documents = [
   },
   {
     title: "Eligibility and fair use",
-    status: "Account holder responsibility",
-    text: "The member must provide accurate account information and comply with published competition, conduct and eligibility rules. A purchase does not guarantee entry after a deadline, access to a full event, a prize, simulator hire or SGT services. CGS may suspend access for fraud, chargeback abuse or serious rule breaches while preserving any rights that apply under law.",
+    status: "Participant responsibility",
+    text: "The member must provide accurate contact and SGT identity information and comply with published competition, conduct and eligibility rules. A CGS website account is optional. A purchase does not guarantee entry after a deadline, access to a full event, a prize, simulator hire or SGT services. CGS may suspend access for fraud, chargeback abuse or serious rule breaches while preserving any rights that apply under law.",
   },
   {
     title: "Changes, cancellations and refunds",
     status: "Consumer rights preserved",
-    text: "A recurring membership can be cancelled from the member dashboard. Cancellation stops the next automatic renewal at the end of the current paid billing period, and access remains available until that paid-through date. Cancellation does not automatically refund the current paid period. One-off purchases do not need an automatic-renewal cancellation. Contact CGS promptly about a duplicate charge, payment error, inability to access a purchased service or a materially changed or cancelled event. Nothing in these terms excludes, restricts or modifies rights or remedies that cannot lawfully be excluded under the Australian Consumer Law.",
+    text: "A recurring membership can be cancelled from the member dashboard. A participant who purchased without an account can request cancellation by contacting CGS using the purchase email and Square receipt. Cancellation stops the next automatic renewal at the end of the current paid billing period, and access remains available until that paid-through date. Cancellation does not automatically refund the current paid period. One-off purchases do not need an automatic-renewal cancellation. Contact CGS promptly about a duplicate charge, payment error, inability to access a purchased service or a materially changed or cancelled event. Nothing in these terms excludes, restricts or modifies rights or remedies that cannot lawfully be excluded under the Australian Consumer Law.",
   },
   {
     title: "Privacy and records",
@@ -83,7 +83,7 @@ export default function CglTermsPage() {
         <p>
           For billing, access, cancellation or refund help, email{" "}
           <a href={`mailto:${siteConfig.email}`}>{siteConfig.email}</a>. Please
-          include the email used for your CGS account and your receipt or
+          include the email used for your purchase and your receipt or
           payment reference, but never send card details by email.
         </p>
       </article>
