@@ -278,6 +278,7 @@
   line-height: 1.7;
 }
 .textLink {
+  min-height: 42px;
   font-size: 12px;
   font-weight: 750;
   color: #116688;
@@ -410,17 +411,40 @@
   border-radius: 4px;
   background: white;
 }
+
+.dataFreshness {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin-bottom: 12px;
+  border-left: 4px solid #8bce00;
+  padding: 11px 14px;
+  color: #52667b;
+  background: #eef6e6;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.dataFreshness span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dataFreshness svg {
+  color: #609400;
+}
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 14px;
   text-align: left;
   white-space: nowrap;
 }
 .table th {
   background: #edf3f6;
   color: #5a6d79;
-  font-size: 10px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-weight: 750;
@@ -448,7 +472,7 @@
   text-align: left;
   padding: 14px 17px;
   color: #526b7c;
-  font-size: 12px;
+  font-size: 13px;
 }
 .filters {
   display: flex;
@@ -1013,7 +1037,7 @@
     font-size: 23px;
   }
   .sectionHead .textLink {
-    font-size: 10px;
+    font-size: 12px;
   }
   .panel {
     padding: 21px;
@@ -1064,5 +1088,1045 @@
   }
   .metric {
     padding: 16px;
+  }
+
+  .tableWrap {
+    overflow-x: clip;
+  }
+
+  .table {
+    font-size: 13px;
+  }
+
+  .table th,
+  .table td {
+    padding: 13px 9px;
+  }
+
+  .optionalColumn {
+    display: none;
+  }
+}
+
+/* Season 1 public experience */
+.seasonHero {
+  position: relative;
+  min-height: min(720px, calc(100svh - 205px));
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(290px, 0.75fr);
+  align-items: end;
+  gap: clamp(30px, 6vw, 90px);
+  overflow: hidden;
+  padding: clamp(34px, 6vw, 86px);
+  color: white;
+  background: #061a38;
+  border-bottom: 8px solid #9ce600;
+  box-shadow: 0 28px 70px rgba(6, 26, 56, 0.2);
+}
+
+.seasonHeroImage {
+  object-fit: cover;
+  object-position: center;
+  filter: saturate(1.07) contrast(1.03);
+}
+
+.seasonHeroShade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(90deg, rgba(3, 15, 36, 0.98) 0%, rgba(4, 22, 49, 0.9) 38%, rgba(4, 22, 49, 0.4) 67%, rgba(3, 15, 36, 0.3) 100%),
+    linear-gradient(0deg, rgba(3, 15, 36, 0.9) 0%, transparent 58%);
+}
+
+.seasonHeroContent,
+.heroRoundCard,
+.heroImageNote {
+  position: relative;
+  z-index: 2;
+}
+
+.seasonHeroContent {
+  max-width: 760px;
+}
+
+.seasonHeroBrand {
+  width: clamp(160px, 17vw, 230px);
+  display: flex;
+  margin-bottom: 30px;
+  padding: 7px 13px 7px 8px;
+  background: white;
+  box-shadow: 7px 7px 0 #9ce600;
+  clip-path: polygon(0 0, 100% 0, 92% 100%, 0 100%);
+}
+
+.seasonHeroBrand img {
+  width: 100%;
+  height: auto;
+}
+
+.heroKicker {
+  display: block;
+  margin-bottom: 10px;
+  color: #cfff72;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.seasonHero h1 {
+  max-width: 780px;
+  margin: 0;
+  color: white;
+  font-size: clamp(4rem, 8.8vw, 9.2rem);
+  font-style: italic;
+  font-weight: 950;
+  letter-spacing: -0.075em;
+  line-height: 0.76;
+  text-transform: uppercase;
+  text-shadow: 0 10px 30px rgba(0, 0, 0, 0.26);
+}
+
+.seasonHero h1 em {
+  color: #9ce600;
+  font-style: inherit;
+}
+
+.seasonHeroContent > p {
+  max-width: 630px;
+  margin: 34px 0 0;
+  color: #d7e2ee;
+  font-size: clamp(1rem, 1.5vw, 1.22rem);
+  line-height: 1.65;
+}
+
+.heroSecondary {
+  min-height: 45px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.46);
+  padding: 11px 20px;
+  color: white;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.heroTrust {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 18px;
+  margin-top: 25px;
+  color: #bdcbe0;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.heroTrust span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.heroTrust span::before {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #9ce600;
+  content: "";
+}
+
+.heroRoundCard {
+  align-self: end;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1.1fr;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-top: 5px solid #9ce600;
+  padding: 24px;
+  background: rgba(4, 20, 46, 0.86);
+  box-shadow: 13px 13px 0 rgba(156, 230, 0, 0.17);
+  backdrop-filter: blur(10px);
+}
+
+.heroRoundCard > span,
+.heroRoundCard > p {
+  grid-column: 1 / -1;
+}
+
+.heroRoundCard > span {
+  color: #cfff72;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.heroRoundCard > div {
+  display: grid;
+  justify-items: center;
+}
+
+.heroRoundCard strong {
+  color: white;
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  line-height: 1;
+}
+
+.heroRoundCard small {
+  color: #b9c8dc;
+  font-size: 0.62rem;
+  font-weight: 750;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.heroRoundCard > b {
+  color: #9ce600;
+  font-size: 1.2rem;
+}
+
+.heroRoundCard .heroRoundTotal strong {
+  color: #9ce600;
+}
+
+.heroRoundCard > p {
+  margin: 10px 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  padding-top: 15px;
+  color: #d3ddeb;
+  font-size: 0.76rem;
+  text-align: center;
+}
+
+.heroImageNote {
+  position: absolute;
+  right: 18px;
+  bottom: 12px;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.62rem;
+}
+
+.seasonOverview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(300px, 0.65fr);
+  gap: clamp(24px, 4vw, 50px);
+  align-items: start;
+}
+
+.howCard {
+  position: sticky;
+  top: 162px;
+  overflow: hidden;
+  padding: clamp(27px, 4vw, 42px);
+  color: white;
+  background:
+    linear-gradient(145deg, rgba(156, 230, 0, 0.08), transparent 45%),
+    #061a38;
+  border-bottom: 6px solid #9ce600;
+}
+
+.howCard > span {
+  color: #9ce600;
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.howCard h2 {
+  margin: 9px 0 28px;
+  color: white;
+  font-size: clamp(1.75rem, 3vw, 2.65rem);
+}
+
+.howCard > div {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.13);
+  padding: 17px 0;
+}
+
+.howCard > div > b {
+  color: #9ce600;
+  font-size: 0.75rem;
+}
+
+.howCard p {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  color: #b9c7da;
+  font-size: 0.8rem;
+}
+
+.howCard p strong {
+  color: white;
+  font-size: 0.96rem;
+}
+
+.howCard > a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  margin-top: 20px;
+  color: #cfff72;
+  font-size: 0.8rem;
+  font-weight: 850;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.standingsFrame {
+  border-top: 5px solid #061a38;
+  padding: clamp(18px, 3vw, 30px);
+  background: white;
+  box-shadow: 0 18px 50px rgba(6, 26, 56, 0.08);
+}
+
+.divisionLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 17px;
+}
+
+.divisionLegend span {
+  padding: 7px 11px;
+  color: #27415e;
+  background: #edf4e6;
+  font-size: 0.71rem;
+  font-weight: 800;
+}
+
+.membershipTeaser {
+  display: grid;
+  grid-template-columns: minmax(290px, 0.75fr) minmax(0, 1.25fr);
+  gap: 30px;
+  padding: clamp(28px, 5vw, 58px);
+  color: white;
+  background:
+    linear-gradient(115deg, transparent 0 69%, rgba(156, 230, 0, 0.08) 69% 70%, transparent 70%),
+    #061a38;
+  border-bottom: 7px solid #9ce600;
+}
+
+.membershipTeaserCopy > span {
+  color: #9ce600;
+  font-size: 0.71rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.membershipTeaserCopy h2 {
+  margin: 8px 0 13px;
+  color: white;
+  font-size: clamp(2.2rem, 4vw, 4.1rem);
+}
+
+.membershipTeaserCopy p {
+  margin: 0 0 22px;
+  color: #bdcada;
+  font-size: 0.88rem;
+}
+
+.membershipOptions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.membershipOptions a {
+  min-height: 128px;
+  display: grid;
+  align-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-left: 4px solid #9ce600;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.membershipOptions a:hover {
+  background: rgba(156, 230, 0, 0.11);
+}
+
+.membershipOptions span {
+  color: #9ce600;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.membershipOptions strong {
+  color: white;
+  font-size: 1rem;
+}
+
+.membershipOptions b {
+  color: white;
+  font-size: 1.6rem;
+}
+
+.presenterBand {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 35px;
+  margin-top: 46px;
+  border: 1px solid #cfdacf;
+  padding: clamp(27px, 4vw, 48px);
+  background:
+    linear-gradient(100deg, #fff, #f0f8e4),
+    white;
+}
+
+.presenterBand span {
+  color: #5f8e10;
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.presenterBand h2 {
+  max-width: 740px;
+  margin: 8px 0;
+  font-size: clamp(1.75rem, 3vw, 3rem);
+}
+
+.presenterBand p {
+  max-width: 770px;
+  margin: 0;
+  color: #5f7187;
+}
+
+.presenterBand > div > a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  margin-top: 18px;
+  color: #355f00;
+  font-size: 0.8rem;
+  font-weight: 850;
+  text-decoration: underline;
+  text-decoration-color: #9ce600;
+  text-decoration-thickness: 3px;
+  text-underline-offset: 5px;
+}
+
+.presenterBand img {
+  width: clamp(100px, 13vw, 170px);
+  height: auto;
+}
+
+.calendarIntro {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(340px, 0.85fr);
+  gap: clamp(30px, 5vw, 70px);
+  margin-bottom: 20px;
+  padding: clamp(28px, 5vw, 54px);
+  color: white;
+  background: #061a38;
+  border-bottom: 7px solid #9ce600;
+}
+
+.calendarIntro > div:first-child > span {
+  color: #9ce600;
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.calendarIntro h2 {
+  margin: 8px 0 16px;
+  color: white;
+  font-size: clamp(2rem, 4vw, 4rem);
+}
+
+.calendarIntro p {
+  margin: 0;
+  color: #bdcada;
+}
+
+.calendarDates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.calendarDates div {
+  display: grid;
+  align-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-left: 3px solid #9ce600;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.calendarDates span {
+  color: #aebed1;
+  font-size: 0.67rem;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.calendarDates strong {
+  color: white;
+  font-size: 0.86rem;
+}
+
+.seasonRoadmap {
+  display: grid;
+  grid-template-columns: minmax(250px, 0.62fr) minmax(0, 1.38fr);
+  gap: clamp(24px, 5vw, 58px);
+  align-items: start;
+}
+
+.seasonRoadmapIntro > span,
+.creditExplainer > div > span {
+  color: #5f8e10;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.seasonRoadmapIntro h2,
+.creditExplainer h2 {
+  margin: 8px 0 13px;
+  font-size: clamp(2rem, 4vw, 3.7rem);
+}
+
+.seasonRoadmapIntro p,
+.creditExplainer p {
+  margin: 0;
+  color: #5e7185;
+}
+
+.seasonRoadmapGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.seasonRoadmapGrid article {
+  min-height: 180px;
+  display: grid;
+  align-content: start;
+  border: 1px solid #d7e1d7;
+  border-top: 5px solid #a9b6c3;
+  padding: 23px;
+  background: white;
+}
+
+.seasonRoadmapGrid article > span {
+  color: #6a7b8c;
+  font-size: 0.67rem;
+  font-weight: 850;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.seasonRoadmapGrid article > strong {
+  margin-top: 9px;
+  color: #061a38;
+  font-size: 1.25rem;
+}
+
+.seasonRoadmapGrid article > p {
+  margin: 8px 0 0;
+  color: #657688;
+  font-size: 0.78rem;
+}
+
+.seasonRoadmapGrid article > small {
+  align-self: end;
+  margin-top: 20px;
+  color: #6d7d8c;
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.seasonRoadmapGrid .activeSeasonCard {
+  border-color: #accd7a;
+  border-top-color: #9ce600;
+  background: #f5faed;
+}
+
+.seasonRoadmapGrid .activeSeasonCard > a {
+  align-self: end;
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  margin-top: 16px;
+  color: #315c00;
+  font-size: 0.75rem;
+  font-weight: 850;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.membershipCompareWrap {
+  overflow-x: auto;
+  border-top: 5px solid #9ce600;
+  background: white;
+  box-shadow: 0 18px 50px rgba(6, 26, 56, 0.08);
+}
+
+.membershipCompare {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  color: #203a58;
+  font-size: 0.82rem;
+}
+
+.membershipCompare caption {
+  padding: 16px 20px 9px;
+  color: #687a8c;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.membershipCompare th,
+.membershipCompare td {
+  border-bottom: 1px solid #e1e8e1;
+  padding: 16px 18px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.membershipCompare thead th {
+  color: white;
+  background: #061a38;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.membershipCompare thead th:first-child {
+  color: #9ce600;
+}
+
+.membershipCompare tbody th {
+  color: #061a38;
+  background: #f3f7f1;
+  font-size: 0.75rem;
+}
+
+.membershipCompare tbody tr:last-child th,
+.membershipCompare tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.creditExplainer {
+  display: grid;
+  grid-template-columns: minmax(270px, 0.75fr) minmax(0, 1.25fr);
+  gap: clamp(24px, 5vw, 58px);
+  border-left: 7px solid #9ce600;
+  padding: clamp(28px, 5vw, 52px);
+  background: white;
+}
+
+.creditExplainer dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin: 0;
+}
+
+.creditExplainer dl > div {
+  min-height: 105px;
+  display: grid;
+  align-content: center;
+  border: 1px solid #dce5dc;
+  padding: 17px;
+  background: #f7faf5;
+}
+
+.creditExplainer dt {
+  color: #638b27;
+  font-size: 0.67rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.creditExplainer dd {
+  margin: 4px 0 0;
+  color: #061a38;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.miniFormat {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr) auto);
+  align-items: center;
+  gap: 9px;
+  margin-top: 24px;
+  border-top: 1px solid #dce4df;
+  padding-top: 20px;
+}
+
+.miniFormat span {
+  color: #67798c;
+  font-size: 0.67rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.miniFormat strong {
+  font-size: 1.65rem;
+}
+
+.miniFormat b {
+  color: #76af00;
+}
+
+.entryChecklist ul {
+  display: grid;
+  gap: 8px;
+  margin: 17px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entryChecklist li {
+  position: relative;
+  padding-left: 22px;
+  color: #53677d;
+  font-size: 0.84rem;
+}
+
+.entryChecklist li::before {
+  position: absolute;
+  left: 0;
+  top: 0.45em;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #8acb00;
+  content: "";
+}
+
+.competitionSubnav {
+  position: sticky;
+  top: 132px;
+  z-index: 20;
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  margin-top: 14px;
+  border: 1px solid #d4ded4;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 10px 28px rgba(6, 26, 56, 0.08);
+  backdrop-filter: blur(12px);
+}
+
+.competitionSubnav a {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 14px;
+  color: #52677c;
+  font-size: 0.75rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.competitionSubnav a:hover,
+.competitionSubnav a:focus-visible {
+  color: #061a38;
+  background: #eff8e5;
+}
+
+.playerDirectoryIntro {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 28px;
+  margin-bottom: 22px;
+  border-left: 6px solid #9ce600;
+  padding: 20px 24px;
+  background: white;
+}
+
+.playerDirectoryIntro > div {
+  display: grid;
+}
+
+.playerDirectoryIntro strong {
+  font-size: 2.1rem;
+  line-height: 1;
+}
+
+.playerDirectoryIntro span {
+  color: #687a8b;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.playerDirectoryIntro p {
+  max-width: 780px;
+  margin: 0;
+  color: #596d82;
+  font-size: 0.85rem;
+}
+
+.playerDirectory {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.playerDirectory > a {
+  min-height: 92px;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+  border: 1px solid #d6e0d5;
+  padding: 16px;
+  background: white;
+}
+
+.playerDirectory > a:hover {
+  border-color: #9ac958;
+  box-shadow: 0 12px 28px rgba(6, 26, 56, 0.08);
+}
+
+.playerInitial {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  color: white;
+  background: #061a38;
+  font-size: 1.2rem;
+  font-weight: 900;
+  clip-path: polygon(12% 0, 100% 0, 88% 100%, 0 100%);
+}
+
+.playerDirectory > a > span:nth-child(2) {
+  min-width: 0;
+  display: grid;
+}
+
+.playerDirectory strong {
+  overflow: hidden;
+  font-size: 0.9rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playerDirectory small {
+  color: #6f8091;
+  font-size: 0.7rem;
+}
+
+.playerDirectory b {
+  color: #5f8e10;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.prizeSchedule {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.prizeSchedule article {
+  border-top: 5px solid #9ce600;
+  padding: 24px;
+  color: white;
+  background: #061a38;
+}
+
+.prizeSchedule article:nth-child(n + 3) {
+  border-top-color: white;
+  background: #0b3267;
+}
+
+.prizeSchedule article > span {
+  color: #b8c6d7;
+  font-size: 0.67rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.prizeSchedule h2 {
+  margin: 4px 0 22px;
+  color: white;
+  font-size: 1.7rem;
+}
+
+.prizeSchedule article > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 11px 0;
+}
+
+.prizeSchedule small {
+  color: #bdcadd;
+}
+
+.prizeSchedule strong {
+  color: #9ce600;
+  font-size: 1.25rem;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .seasonHero {
+    grid-template-columns: 1fr;
+    min-height: 700px;
+  }
+
+  .heroRoundCard {
+    max-width: 560px;
+  }
+
+  .seasonOverview {
+    grid-template-columns: 1fr;
+  }
+
+  .howCard {
+    position: static;
+  }
+
+  .playerDirectory {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .prizeSchedule {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .seasonRoadmap,
+  .creditExplainer {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .seasonHero {
+    min-height: 720px;
+    padding: 36px 20px;
+  }
+
+  .seasonHeroShade {
+    background:
+      linear-gradient(90deg, rgba(3, 15, 36, 0.94), rgba(4, 22, 49, 0.58)),
+      linear-gradient(0deg, rgba(3, 15, 36, 0.96), transparent 60%);
+  }
+
+  .seasonHero h1 {
+    font-size: clamp(3.8rem, 19vw, 6rem);
+  }
+
+  .seasonHeroContent > p {
+    margin-top: 27px;
+    font-size: 0.96rem;
+  }
+
+  .heroRoundCard {
+    padding: 17px;
+  }
+
+  .membershipTeaser,
+  .calendarIntro {
+    grid-template-columns: 1fr;
+  }
+
+  .membershipOptions {
+    margin-top: 4px;
+  }
+
+  .presenterBand {
+    grid-template-columns: 1fr;
+  }
+
+  .presenterBand img {
+    width: 100px;
+  }
+
+  .seasonRoadmapGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .miniFormat {
+    grid-template-columns: 1fr auto auto;
+  }
+
+  .competitionSubnav {
+    top: 74px;
+    margin-inline: -16px;
+    border-inline: 0;
+    padding-inline: 16px;
+  }
+
+  .playerDirectoryIntro {
+    grid-template-columns: 1fr;
+    gap: 11px;
+  }
+}
+
+@media (max-width: 540px) {
+  .seasonHero {
+    min-height: 760px;
+  }
+
+  .seasonHeroBrand {
+    margin-bottom: 25px;
+  }
+
+  .heroTrust {
+    display: grid;
+  }
+
+  .heroRoundCard {
+    gap: 7px;
+  }
+
+  .heroRoundCard > p {
+    font-size: 0.69rem;
+  }
+
+  .membershipOptions,
+  .calendarDates,
+  .playerDirectory,
+  .prizeSchedule,
+  .seasonRoadmapGrid,
+  .creditExplainer dl {
+    grid-template-columns: 1fr;
+  }
+
+  .membershipOptions a {
+    min-height: 108px;
   }
 }

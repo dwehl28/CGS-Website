@@ -3,20 +3,39 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeft, ArrowUpRight, UserRound, FlaskConical } from "lucide-react";
-import type { ReactNode } from "react";
+import {
+  FlaskConical,
+  House,
+  Menu,
+  Radio,
+  UserRound,
+  X,
+} from "lucide-react";
+import { useState, type ReactNode } from "react";
 
 import styles from "./CglShell.module.css";
 
-const links = [
-  { href: "/cgl", label: "The clubhouse" },
-  { href: "/cgl/live", label: "Live tournament" },
+const primaryLinks = [
+  { href: "/cgl", label: "Home" },
   { href: "/cgl/competition", label: "Competition" },
   { href: "/cgl/leaderboard", label: "Leaderboards" },
-  { href: "/cgl/calendar", label: "Seasons" },
-  { href: "/cgl/prizes", label: "Prizes & rewards" },
+  { href: "/cgl/calendar", label: "Season" },
+  { href: "/cgl/players", label: "Players" },
+  { href: "/cgl/prizes", label: "Prizes" },
   { href: "/cgl/memberships", label: "Memberships" },
 ];
+
+const supportLinks = [
+  { href: "/cgl/how-it-works", label: "How it works" },
+  { href: "/cgl/rules", label: "Rules & handicaps" },
+  { href: "/cgl/faq", label: "FAQs" },
+  { href: "/cgl/archive", label: "Results archive" },
+];
+
+function isActive(pathname: string, href: string) {
+  if (href === "/cgl") return pathname === href;
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export default function CglShell({
   children,
@@ -26,6 +45,7 @@ export default function CglShell({
   oneOffSalesOpen?: boolean;
 }) {
   const pathname = usePathname();
+  const [menuOpen, setMenuOpen] = useState(false);
   const seasonOnePreview = pathname.startsWith("/cgl/preview/season-1");
   const legacyPreview =
     pathname.startsWith("/cgl/preview") ||
@@ -41,17 +61,21 @@ export default function CglShell({
     pathname.includes("/ParTeeTime") ||
     pathname.includes("/GreenMachine");
 
+  const closeMenu = () => setMenuOpen(false);
+
   return (
     <div className={styles.shell}>
       <a href="#cgl-main" className={styles.skip}>
         Skip to content
       </a>
+
       <header className={styles.header}>
         <div className={styles.headerInner}>
           <Link
             href="/cgl"
             className={styles.brand}
             aria-label="CGL — Crossodog Golf League home"
+            onClick={closeMenu}
           >
             <span className={styles.brandPlate}>
               <Image
@@ -63,44 +87,63 @@ export default function CglShell({
               />
             </span>
             <span className={styles.brandName}>
-              <strong>Competition clubhouse</strong>
+              <strong>Crossodog Golf League</strong>
               <small>Season 1 · 2027</small>
             </span>
           </Link>
+
           <div className={styles.headerActions}>
-            <Link href="/" className={styles.back}>
-              <ArrowLeft size={14} /> CGS home
+            <Link href="/cgl/live" className={styles.liveLink}>
+              <Radio size={16} aria-hidden="true" /> Live
             </Link>
             <Link href="/cgl/dashboard" className={styles.account}>
-              <UserRound size={14} /> My clubhouse
+              <UserRound size={17} aria-hidden="true" />
+              <span>My clubhouse</span>
             </Link>
+            <button
+              type="button"
+              className={styles.menuButton}
+              aria-expanded={menuOpen}
+              aria-controls="cgl-navigation"
+              aria-label={menuOpen ? "Close navigation" : "Open navigation"}
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              {menuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
           </div>
         </div>
-        <div className={styles.navWrap}>
+
+        <div
+          id="cgl-navigation"
+          className={`${styles.navWrap} ${menuOpen ? styles.navOpen : ""}`}
+        >
           <div className={styles.navInner}>
             <nav aria-label="CGL navigation" className={styles.navigation}>
-              {links.map((link) => {
-                const matchPath = link.href.startsWith("/cgl/players")
-                  ? "/cgl/players/"
-                  : link.href.startsWith("/cgl/rounds")
-                    ? "/cgl/rounds/"
-                    : link.href;
-                const active =
-                  link.href === "/cgl"
-                    ? pathname === link.href
-                    : pathname.startsWith(matchPath);
+              {primaryLinks.map((link) => {
+                const active = isActive(pathname, link.href);
                 return (
                   <Link
                     key={link.href}
                     href={link.href}
                     aria-current={active ? "page" : undefined}
+                    onClick={closeMenu}
                   >
                     {link.label}
                   </Link>
                 );
               })}
-              <Link href="/cgl/how-it-works">How it works</Link>
             </nav>
+            <div className={styles.mobileSupport}>
+              <p>League support</p>
+              {supportLinks.map((link) => (
+                <Link key={link.href} href={link.href} onClick={closeMenu}>
+                  {link.label}
+                </Link>
+              ))}
+              <Link href="/" onClick={closeMenu}>
+                <House size={16} aria-hidden="true" /> CGS home
+              </Link>
+            </div>
           </div>
         </div>
       </header>
@@ -108,7 +151,7 @@ export default function CglShell({
       {legacyPreview ? (
         <div className={styles.preview}>
           <div>
-            <FlaskConical size={15} aria-hidden="true" />
+            <FlaskConical size={17} aria-hidden="true" />
             <strong>Design preview</strong>
             <span>
               {seasonOnePreview
@@ -119,21 +162,14 @@ export default function CglShell({
         </div>
       ) : (
         <div className={styles.launch}>
-          <span>
+          <span className={styles.launchStatus} aria-hidden="true" />
+          <strong>
             {oneOffSalesOpen
-              ? "NOW OPEN · $29 CASUAL REGISTRATION"
-              : "MEMBER REVIEW · MEMBERSHIP SALES ARE CLOSED"}
-          </span>
-          <Link
-            href={
-              oneOffSalesOpen
-                ? "/cgl/join?plan=casual_registration"
-                : "/cgl/preview/2027"
-            }
-          >
-            {oneOffSalesOpen ? "Join CGL" : "See example standings"}{" "}
-            <ArrowUpRight size={12} />
-          </Link>
+              ? "CGL memberships and registrations are open"
+              : "CGL Season 1 registrations"}
+          </strong>
+          <span>Play without creating an account.</span>
+          <Link href="/cgl/join">View membership options</Link>
         </div>
       )}
 
@@ -142,36 +178,64 @@ export default function CglShell({
       </main>
 
       <footer className={styles.footer}>
-        <div>
+        <div className={styles.footerBrand}>
           <Link href="/cgl" className={styles.footerLogo} aria-label="CGL home">
             <Image
               src="/cgl/cgl-logo-official.jpg"
               width={1914}
               height={816}
               alt="Crossodog Golf League"
+                priority
             />
           </Link>
-          <p>Your simulator. Your schedule. Your league.</p>
+          <p>Two courses. Eighteen holes. One national simulator league.</p>
         </div>
-        <div className={styles.footerLinks}>
-          <Link href="/cgl/rules">Rules & handicaps</Link>
-          <Link href="/cgl/faq">FAQs</Link>
-          <Link href="/cgl/archive">Results archive</Link>
-          <Link href="/cgl/terms">Membership policies</Link>
-          <Link href="/privacy">
-            Privacy <ArrowUpRight size={12} />
-          </Link>
-          <Link href="/cgl/trial">
-            SGT trial <ArrowUpRight size={12} />
-          </Link>
-          <Link href="/cgl/live">
-            Live tournament <ArrowUpRight size={12} />
-          </Link>
+
+        <div className={styles.footerNav}>
+          <div>
+            <strong>Compete</strong>
+            <Link href="/cgl/competition">Current competition</Link>
+            <Link href="/cgl/leaderboard">Leaderboards</Link>
+            <Link href="/cgl/calendar">Season calendar</Link>
+            <Link href="/cgl/players">Players</Link>
+          </div>
+          <div>
+            <strong>Join</strong>
+            <Link href="/cgl/memberships">Memberships</Link>
+            <Link href="/cgl/how-it-works">How it works</Link>
+            <Link href="/cgl/rules">Rules & handicaps</Link>
+            <Link href="/cgl/faq">FAQs</Link>
+          </div>
+          <div>
+            <strong>Account</strong>
+            <Link href="/cgl/dashboard">My clubhouse</Link>
+            <Link href="/cgl/live">Live tournament</Link>
+            <Link href="/cgl/trial">SGT trial</Link>
+            <Link href="/cgl/terms">Membership policies</Link>
+          </div>
         </div>
-        <p className={styles.footerNote}>
-          A Crossodog Golf Society league. Official CGSBunker SGT results update
-          throughout live play. Trial results remain separate.
-        </p>
+
+        <div className={styles.presenter}>
+          <span>Presented by</span>
+          <Image
+            src="/cgl/cgs-logo-official.png"
+            width={640}
+            height={640}
+            alt="Crossodog Golf Society"
+          />
+        </div>
+
+        <div className={styles.footerBase}>
+          <p>
+            Official CGSBunker SGT results update throughout live play. Trial
+            results remain separate.
+          </p>
+          <div>
+            <Link href="/privacy">Privacy</Link>
+            <Link href="/cgl/archive">Archive</Link>
+            <Link href="/">CGS home</Link>
+          </div>
+        </div>
       </footer>
     </div>
   );

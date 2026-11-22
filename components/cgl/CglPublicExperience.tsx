@@ -3,20 +3,24 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
-  ArrowRight,
-  ArrowUpRight,
   Award,
   CheckCircle2,
+  ExternalLink,
   Flag,
   Globe2,
-  Layers3,
   ShieldCheck,
   Target,
   Trophy,
-  Users,
   Wallet,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
+import {
+  CglConditionsPanel,
+  CglRoundSpotlight,
+  CglSeasonFacts,
+  CglSeasonTimeline,
+  getCglFeatureWeek,
+} from "./CglSeasonExperience";
 import {
   aud,
   date,
@@ -30,29 +34,6 @@ import {
   type CglSnapshot,
 } from "./cgl-ui";
 import s from "./Cgl2027.module.css";
-
-const formats = [
-  [
-    "01",
-    "Aggregate Championship",
-    "Two nine-hole rounds, same course. Both net scores count.",
-  ],
-  [
-    "02",
-    "Redemption Championship",
-    "Two nine-hole attempts, same course. Your best eligible score counts.",
-  ],
-  [
-    "03",
-    "World Tour Championship",
-    "Two nine-hole rounds, different courses. Combined net score.",
-  ],
-  [
-    "04",
-    "Elements Championship",
-    "Two nine-hole rounds, different courses and conditions. Combined net score.",
-  ],
-];
 const faq = [
   [
     "Where can I play?",
@@ -146,7 +127,6 @@ function SectionHead({
       {href ? (
         <Link className={s.textLink} href={href}>
           {link ?? "View all"}
-          <ArrowRight size={14} />
         </Link>
       ) : null}
     </div>
@@ -300,7 +280,18 @@ export function CglStandingsTable({
   );
   const source: CglRow[] =
     mode === "points"
-      ? rows(data.standings)
+      ? rows(data.standings).map((record) => ({
+          ...record,
+          played:
+            record.events_played ??
+            record.rounds_played ??
+            record.rounds_counted ??
+            record.counted_weeks ??
+            0,
+          wins: record.wins ?? record.first ?? 0,
+          top_three:
+            record.top_three ?? record.top3 ?? record.podiums ?? 0,
+        }))
       : weeklyScope.map((r) => ({
           ...r,
           position:
@@ -429,6 +420,17 @@ export function CglStandingsTable({
           </div>
         </>
       ) : null}
+      <div className={s.dataFreshness} role="status">
+        <span>
+          <CheckCircle2 size={15} aria-hidden="true" /> Verified SGT source
+        </span>
+        <span>Snapshot updated {date(data.updated_at, true)}</span>
+        <span>
+          {source.length
+            ? "Published CGL standings"
+            : "No official Season 1 standings published"}
+        </span>
+      </div>
       {data.status === "loading" ? (
         <div className={s.empty} role="status">
           Loading published results…
@@ -448,6 +450,13 @@ export function CglStandingsTable({
                   ["username", "Player"],
                   ["division", "Grade"],
                   ["handicap", "HCP"],
+                  ...(mode === "points"
+                    ? [
+                        ["played", "Played"],
+                        ["wins", "Wins"],
+                        ["top_three", "Top 3"],
+                      ]
+                    : []),
                   [
                     mode === "points" ? "points" : "score",
                     mode === "points"
@@ -459,6 +468,11 @@ export function CglStandingsTable({
                 ].map(([key, label]) => (
                   <th
                     key={key}
+                    className={
+                      ["handicap", "played", "wins", "top_three"].includes(key)
+                        ? s.optionalColumn
+                        : undefined
+                    }
                     scope="col"
                     aria-sort={
                       sort === key
@@ -500,7 +514,14 @@ export function CglStandingsTable({
                       {str(r.division ?? r.division_code ?? r.grade)}
                     </span>
                   </td>
-                  <td>{str(r.handicap)}</td>
+                  <td className={s.optionalColumn}>{str(r.handicap)}</td>
+                  {mode === "points" ? (
+                    <>
+                      <td className={s.optionalColumn}>{str(r.played, "0")}</td>
+                      <td className={s.optionalColumn}>{str(r.wins, "0")}</td>
+                      <td className={s.optionalColumn}>{str(r.top_three, "0")}</td>
+                    </>
+                  ) : null}
                   <td>
                     <strong>
                       {str(
@@ -522,7 +543,7 @@ export function CglStandingsTable({
                         target="_blank"
                         rel="noreferrer"
                       >
-                        Open <ArrowUpRight size={11} />
+                        Open <ExternalLink size={11} />
                       </a>
                     ) : (
                       "Pending link"
@@ -714,7 +735,6 @@ export function CglPricing({ data }: { data: CglSnapshot }) {
               </ul>
               <Link className={s.primary} href={`/cgl/join?plan=${p.id}`}>
                 Choose {p.name.toLowerCase()}
-                <ArrowRight size={13} />
               </Link>
             </article>
           );
@@ -730,42 +750,196 @@ export function CglPricing({ data }: { data: CglSnapshot }) {
   );
 }
 
+function MembershipComparison() {
+  const benefits = [
+    ["Access", "All four seasons", "All four seasons", "All four seasons", "Chosen seasons"],
+    ["Billing", "A$249 yearly", "A$29.95 monthly", "A$8.95 weekly", "A$29 for 12 months"],
+    ["Season entry", "Included while active", "Included while active", "Included while active", "A$100 per chosen season"],
+    ["Weekly credits", "Double", "Double", "Double", "Standard"],
+    ["Prize eligibility", "Included", "Included", "Included", "With an active Season Pass"],
+    ["Renewal", "Yearly", "Monthly", "Every seven days", "No automatic renewal"],
+  ];
+  return (
+    <div className={s.membershipCompareWrap}>
+      <table className={s.membershipCompare}>
+        <caption>Membership inclusions and payment cadence</caption>
+        <thead>
+          <tr>
+            <th scope="col">Compare</th>
+            <th scope="col">Annual</th>
+            <th scope="col">Monthly</th>
+            <th scope="col">Weekly</th>
+            <th scope="col">Casual</th>
+          </tr>
+        </thead>
+        <tbody>
+          {benefits.map(([label, ...values]) => (
+            <tr key={label}>
+              <th scope="row">{label}</th>
+              {values.map((value, index) => (
+                <td key={`${label}-${index}`}>{value}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function MembershipTeaser({ data }: { data: CglSnapshot }) {
+  const plans = rows(data.plans);
+  const options = [
+    ["annual", "Annual", 24900, "Best value"],
+    ["monthly", "Monthly", 2995, "Flexible"],
+    ["weekly", "Weekly", 895, "Pay weekly"],
+    ["casual_registration", "Casual", 2900, "No renewal"],
+  ] as const;
+  return (
+    <div className={s.membershipTeaser}>
+      <div className={s.membershipTeaserCopy}>
+        <span>Memberships open</span>
+        <h2>Join your way.</h2>
+        <p>
+          Start now with or without a CGS website account. Every Square charge
+          is in AUD and your exact SGT username links you to competition data.
+        </p>
+        <Link className={s.primary} href="/cgl/memberships">
+          Compare memberships
+        </Link>
+      </div>
+      <div className={s.membershipOptions}>
+        {options.map(([code, name, fallback, note]) => {
+          const plan = plans.find((item) => item.code === code || item.id === code);
+          return (
+            <Link href={`/cgl/join?plan=${code}`} key={code}>
+              <span>{note}</span>
+              <strong>{name}</strong>
+              <b>{aud(plan?.price_cents ?? fallback)}</b>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function PlayerDirectory({ data }: { data: CglSnapshot }) {
+  const players = rows(data.players)
+    .filter((player) => {
+      const status = str(player.status, "active").toLowerCase();
+      return status !== "deleted" && status !== "hidden";
+    })
+    .sort((a, b) => playerName(a).localeCompare(playerName(b)));
+  const standings = rows(data.standings);
+  return players.length ? (
+    <div className={s.playerDirectory}>
+      {players.map((player) => {
+        const name = playerName(player);
+        const standing = standings.find(
+          (record) =>
+            record.member_id === player.id || playerName(record) === name,
+        );
+        return (
+          <Link
+            href={`/cgl/players/${encodeURIComponent(name)}`}
+            key={str(player.id, name)}
+          >
+            <span className={s.playerInitial}>{name.charAt(0).toUpperCase()}</span>
+            <span>
+              <strong>{name}</strong>
+              <small>
+                {str(
+                  standing?.division ?? player.division ?? player.grade,
+                  "Division pending",
+                )}
+              </small>
+            </span>
+            <b>
+              {standing
+                ? `${str(standing.total_points ?? standing.points, "0")} pts`
+                : "Profile"}
+            </b>
+          </Link>
+        );
+      })}
+    </div>
+  ) : (
+    <CglEmpty title="The Season 1 field is forming">
+      Public player profiles will appear here as registrations are approved and
+      SGT identities are linked. A CGS website account is not required to enter.
+    </CglEmpty>
+  );
+}
+
 function Calendar({ data }: { data: CglSnapshot }) {
-  const seasons = rows(data.seasons);
   return (
     <>
-      <div className={s.notice}>
-        The inaugural launch is planned for March 2027. Exact dates, courses and
-        entry deadlines are still to be confirmed.
+      <div className={s.calendarIntro}>
+        <div>
+          <span>Season 1 · Hidden Gems Tour</span>
+          <h2>Thirteen weeks. One complete championship.</h2>
+          <p>
+            Qualification opens across three Mondays in February. The ten-round
+            championship begins Monday 1 March 2027, with the best eight results
+            counting towards the title.
+          </p>
+        </div>
+        <div className={s.calendarDates}>
+          <div>
+            <span>Registration</span>
+            <strong>1 February 2027</strong>
+          </div>
+          <div>
+            <span>Qualification</span>
+            <strong>8 February 2027</strong>
+          </div>
+          <div>
+            <span>Championship</span>
+            <strong>1 March 2027</strong>
+          </div>
+          <div>
+            <span>Final round opens</span>
+            <strong>3 May 2027</strong>
+          </div>
+        </div>
       </div>
-      <div className={s.schedule}>
-        {(seasons.length
-          ? seasons
-          : formats.map(([n, name, description]) => ({
-              id: n,
-              name,
-              description,
-            }))
-        ).map((se: CglRow, i) => (
-          <article className={s.scheduleRow} key={str(se.id)}>
-            <strong>{String(i + 1).padStart(2, "0")}</strong>
-            <div>
-              <h3>{str(se.name)}</h3>
-              <p>
-                {str(
-                  se.description,
-                  formats[i]?.[2] ?? "See the published season format.",
-                )}
-              </p>
-              <p>
-                {se.starts_at
-                  ? `${date(se.starts_at)} — ${date(se.ends_at)}`
-                  : "13 weeks · 3 qualifying + 10 championship"}
-              </p>
-            </div>
-            <span className={s.badge}>{str(se.status, "Dates pending")}</span>
+      <CglSeasonFacts />
+      <div className={s.section}>
+        <CglSeasonTimeline data={data} />
+      </div>
+      <section className={`${s.section} ${s.seasonRoadmap}`}>
+        <div className={s.seasonRoadmapIntro}>
+          <span>2027 roadmap</span>
+          <h2>One year. Four distinct seasons.</h2>
+          <p>
+            Season 1 is the only published competition plan. Later seasons are
+            visible so players can understand the annual structure without us
+            inventing dates, courses or formats before they are approved.
+          </p>
+        </div>
+        <div className={s.seasonRoadmapGrid}>
+          <article className={s.activeSeasonCard}>
+            <span>Season 1 · Published plan</span>
+            <strong>Hidden Gems Tour</strong>
+            <p>Qualification from 8 February. Championship from 1 March.</p>
+            <Link href="/cgl/competition">Open competition centre</Link>
           </article>
-        ))}
+          {[2, 3, 4].map((seasonNumber) => (
+            <article key={seasonNumber}>
+              <span>Season {seasonNumber} · Planning</span>
+              <strong>To be announced</strong>
+              <p>Dates, courses and format have not been published.</p>
+              <small>Registration is not yet open</small>
+            </article>
+          ))}
+        </div>
+      </section>
+      <div className={s.notice}>
+        Opening dates are confirmed for the Season 1 plan. Course pairs and
+        conditions remain proposed until each SGT event is verified. Exact close
+        times will come from the published event window rather than an assumed
+        weekly deadline.
       </div>
     </>
   );
@@ -813,13 +987,187 @@ function Rules() {
   );
 }
 
+function CglHome({ data }: { data: CglSnapshot }) {
+  const feature = getCglFeatureWeek(data);
+  return (
+    <div className={s.page}>
+      <section className={s.seasonHero}>
+        <Image
+          src="/cgl/cgl-hidden-gems-hero.webp"
+          alt="Illustrative coastal golf course at sunrise"
+          fill
+          priority
+          sizes="(max-width: 860px) 100vw, 1480px"
+          className={s.seasonHeroImage}
+        />
+        <div className={s.seasonHeroShade} />
+        <div className={s.seasonHeroContent}>
+          <div className={s.seasonHeroBrand}>
+            <Image
+              src="/cgl/cgl-logo-official.jpg"
+              width={1914}
+              height={816}
+              alt="Crossodog Golf League"
+              priority
+            />
+          </div>
+          <span className={s.heroKicker}>Season 1 · 2027</span>
+          <h1>
+            Hidden Gems
+            <br />
+            <em>Tour</em>
+          </h1>
+          <p>
+            Two courses. Eighteen holes. One championship race. Discover
+            lesser-known GSPro courses, compete in your division and follow the
+            season from anywhere.
+          </p>
+          <div className={s.actions}>
+            <Link className={s.primary} href="/cgl/join">
+              Join CGL
+            </Link>
+            <Link className={s.heroSecondary} href="/cgl/competition">
+              Explore Season 1
+            </Link>
+          </div>
+          <div className={s.heroTrust}>
+            <span>Account optional</span>
+            <span>Square checkout in AUD</span>
+            <span>Results powered by SGT</span>
+          </div>
+        </div>
+        <aside className={s.heroRoundCard} aria-label="Season 1 format">
+          <span>Every championship round</span>
+          <div>
+            <strong>9</strong>
+            <small>Course A</small>
+          </div>
+          <b>+</b>
+          <div>
+            <strong>9</strong>
+            <small>Course B</small>
+          </div>
+          <b>=</b>
+          <div className={s.heroRoundTotal}>
+            <strong>18</strong>
+            <small>Combined holes</small>
+          </div>
+          <p>Best eight championship results count.</p>
+        </aside>
+        <small className={s.heroImageNote}>Illustrative CGL course imagery</small>
+      </section>
+
+      <CglSeasonFacts />
+
+      <section className={s.section}>
+        <SectionHead
+          label="Play next"
+          title="The round in front of you."
+          text="Opening dates come from the confirmed Season 1 plan. Exact closing windows, courses and settings are clearly marked until verified in SGT."
+        />
+        <CglRoundSpotlight data={data} />
+      </section>
+
+      <section className={`${s.section} ${s.seasonOverview}`}>
+        <div>
+          <SectionHead
+            label="Season path"
+            title="Know what is coming."
+            text="The next four scheduled releases, from qualification through the championship."
+            href="/cgl/calendar"
+            link="Full Season 1 calendar"
+          />
+          <CglSeasonTimeline data={data} limit={4} />
+        </div>
+        <aside className={s.howCard}>
+          <span>How the chase works</span>
+          <h2>Simple to enter. Worth following.</h2>
+          {[
+            ["Join", "Choose a membership or casual registration. A CGS account is optional."],
+            ["Play", "Complete both nine-hole rounds in GSPro before the published close."],
+            ["Follow", "SGT results flow into CGL standings, profiles and weekly honours."],
+          ].map(([title, text], index) => (
+            <div key={title}>
+              <b>{String(index + 1).padStart(2, "0")}</b>
+              <p>
+                <strong>{title}</strong>
+                {text}
+              </p>
+            </div>
+          ))}
+          <Link href="/cgl/how-it-works">See the complete player journey</Link>
+        </aside>
+      </section>
+
+      <section className={s.section}>
+        <SectionHead
+          label="The championship"
+          title="Two divisions. One live chase."
+          text="Published A and B Grade standings update from verified results. No placeholder scores or fictional players are shown."
+          href="/cgl/leaderboard"
+          link="Open full leaderboard"
+        />
+        <div className={s.standingsFrame}>
+          <div className={s.divisionLegend}>
+            <span>A Grade · 9.9 and lower</span>
+            <span>B Grade · 10.0 and higher</span>
+          </div>
+          <CglStandingsTable compact data={data} />
+        </div>
+      </section>
+
+      <section className={s.section}>
+        <SectionHead
+          label="Weekly honours"
+          title="Every great round has a story."
+          text="Lowest net, lowest gross and closest to the pin are verified before credits are awarded."
+          href="/cgl/prizes"
+          link="See prizes and rewards"
+        />
+        <WeeklyHonours data={data} />
+      </section>
+
+      <section className={s.section}>
+        <MembershipTeaser data={data} />
+      </section>
+
+      <section className={s.presenterBand}>
+        <div>
+          <span>Presented by Crossodog Golf Society</span>
+          <h2>Built for golfers who want more from every round.</h2>
+          <p>
+            CGL brings the competition, stories and rivalries of the society to
+            GSPro players wherever they choose to play.
+          </p>
+          <Link href="/contact">Partner with CGL</Link>
+        </div>
+        <Image
+          src="/cgl/cgs-logo-official.png"
+          width={640}
+          height={640}
+          alt="Crossodog Golf Society"
+        />
+      </section>
+
+      {data.status === "error" ? (
+        <p className={`${s.notice} ${s.error}`} role="alert">
+          {str(data.message)} The confirmed Season 1 schedule remains available
+          while the live feed reconnects.
+        </p>
+      ) : null}
+
+      <span className={s.visuallyHidden}>
+        Featured competition: {feature.name}, opening {feature.openingLabel}.
+      </span>
+    </div>
+  );
+}
+
 export default function CglPublicExperience({
   section = "home",
-  children,
   previewData,
 }: {
   section?: string;
-  children?: ReactNode;
   previewData?: CglSnapshot;
 }) {
   const remoteData = useCglPublic(!previewData);
@@ -832,195 +1180,8 @@ export default function CglPublicExperience({
   const weeklyResults = rows(data.results).filter(
     (r) => r.week_id === latestPublishedWeek?.id,
   );
-  const season =
-    rows(data.seasons).find(
-      (se) => se.status === "active" || se.status === "published",
-    ) ?? rows(data.seasons)[0];
-  if (section === "home")
-    return (
-      <div className={s.page}>
-        <section className={s.hero}>
-          <div className={s.heroContent}>
-            <div className={s.eyebrow}>Crossodog Golf League · 2027</div>
-            <h1>
-              Your round.
-              <br />
-              Your rivals.
-              <br />
-              <span>Your clubhouse.</span>
-            </h1>
-            <p>
-              A simulator league with something to play for. Follow your scores,
-              celebrate the standouts and chase your division title — wherever
-              you play GSPro.
-            </p>
-            <div className={s.actions}>
-              <Link className={s.primary} href="/cgl/live">
-                Open Live SGT clubhouse
-                <ArrowRight size={15} />
-              </Link>
-              <Link className={s.secondary} href="/cgl/trial">
-                Explore the trial league
-              </Link>
-            </div>
-          </div>
-          <div className={s.heroAside}>
-            <div className={s.seasonCard}>
-              <div className={s.seasonTop}>
-                <div>
-                  <small>Inaugural season</small>
-                  <h2>{str(season?.name, "The chase starts here.")}</h2>
-                  <span className={s.status}>
-                    {str(season?.status, "2027 season in preparation")}
-                  </span>
-                </div>
-                <Image
-                  src="/cgl/cgl-logo-official.jpg"
-                  width={1914}
-                  height={816}
-                  alt="Crossodog Golf League"
-                  priority
-                />
-              </div>
-              <div className={s.seasonDetail}>
-                <div>
-                  <span>Planned launch</span>
-                  <strong>
-                    {season?.starts_at
-                      ? date(season.starts_at)
-                      : "March 2027 · TBC"}
-                  </strong>
-                </div>
-                <div>
-                  <span>Championship</span>
-                  <strong>Best 8 of 10 weeks</strong>
-                </div>
-                <div>
-                  <span>Divisions</span>
-                  <strong>A Grade / B Grade</strong>
-                </div>
-                <div>
-                  <span>Play anywhere</span>
-                  <strong>GSPro + SGT</strong>
-                </div>
-              </div>
-              <Link href="/cgl/calendar">
-                Meet the four seasons
-                <ArrowRight size={15} />
-              </Link>
-            </div>
-            <p style={{ fontSize: 11, marginTop: 15 }}>
-              Already testing with us? Your linked SGT scorecards remain in
-              the trial hub, whether or not you use a CGS website account.
-            </p>
-          </div>
-        </section>
-        <div className={s.formatBar}>
-          {[
-            [Globe2, "Any GSPro simulator", "At home or at a facility"],
-            [Users, "Two handicap divisions", "A fair chase for your title"],
-            [
-              Layers3,
-              "Four seasons, four formats",
-              "A new challenge each season",
-            ],
-            [Wallet, "CGS Credits", "Earn them. Enjoy the rewards."],
-          ].map(([Icon, title, sub]) => {
-            const Mark = Icon as typeof Globe2;
-            return (
-              <div key={String(title)}>
-                <Mark size={22} />
-                <div>
-                  <strong>{String(title)}</strong>
-                  <span>{String(sub)}</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <section className={s.section}>
-          <SectionHead
-            label="The honours board"
-            title="Great rounds deserve the spotlight."
-            text="Three weekly prizes across the whole field. One prize per player. Full members earn double credits."
-            href="/cgl/prizes"
-            link="Prizes & rewards"
-          />
-          <WeeklyHonours data={data} />
-        </section>
-        <section className={s.section}>
-          <SectionHead
-            label="The championship"
-            title="Follow the chase."
-            text="Division standings, weekly net and gross scores, and direct access to each player's CGL history."
-            href="/cgl/leaderboard"
-            link="Full leaderboard"
-          />
-          <CglStandingsTable compact data={data} />
-        </section>
-        <section className={`${s.section} ${s.grid2}`}>
-          <article className={`${s.panel} ${s.darkPanel}`}>
-            <div className={s.eyebrow} style={{ color: "#93bdcf" }}>
-              Made for your game
-            </div>
-            <h2 style={{ fontSize: 29 }}>
-              Your numbers.
-              <br />
-              All in one place.
-            </h2>
-            <p>
-              Scores, handicap, championship points and weekly achievements.
-              Your player dashboard brings your CGL season together, with SGT
-              scorecards one click away.
-            </p>
-            <div className={s.actions}>
-              <Link href="/cgl/dashboard" className={s.primary}>
-                Open your clubhouse
-                <ArrowRight size={14} />
-              </Link>
-            </div>
-          </article>
-          <article className={s.panel}>
-            <div className={s.eyebrow}>How it works</div>
-            {[
-              [
-                "01",
-                "Choose a plan, identify your SGT profile",
-                "Buy with or without a CGS account. Your exact SGT identity connects the competition data.",
-              ],
-              [
-                "02",
-                "Play the available rounds",
-                "Check the fixture, choose your sim, meet the deadline.",
-              ],
-              [
-                "03",
-                "Follow every result",
-                "Your division chase, personal stats and earned rewards.",
-              ],
-            ].map(([n, title, body]) => (
-              <div className={s.step} key={n}>
-                <span>{n}</span>
-                <div>
-                  <h3>{title}</h3>
-                  <p>{body}</p>
-                </div>
-              </div>
-            ))}
-          </article>
-        </section>
-        {children ? <section className={s.section}>{children}</section> : null}
-        <section className={s.section}>
-          <SectionHead
-            label="Find your way in"
-            title="A plan for the way you play."
-            href="/cgl/memberships"
-            link="Membership details"
-          />
-          <CglPricing data={data} />
-        </section>
-      </div>
-    );
+  const featureWeek = getCglFeatureWeek(data);
+  if (section === "home") return <CglHome data={data} />;
   const titles: Record<string, [string, string, string]> = {
     memberships: [
       "Memberships",
@@ -1028,9 +1189,9 @@ export default function CglPublicExperience({
       "Choose a full membership for all four seasons, or take the casual route and enter the seasons you want.",
     ],
     calendar: [
-      "The 2027 calendar",
-      "Four seasons. A full year to chase.",
-      "Every season has three qualification weeks and ten championship weeks. Published dates and available fixtures will appear here.",
+      "Season 1 · 2027",
+      "The Hidden Gems Tour calendar.",
+      "Three qualification weeks lead into ten championship rounds. Every round combines nine holes from two different courses.",
     ],
     leaderboard: [
       "Results & standings",
@@ -1038,9 +1199,9 @@ export default function CglPublicExperience({
       "Browse verified weekly scores and follow the best-eight championship in each division.",
     ],
     competition: [
-      "Current competition",
-      "Your next round starts here.",
-      "Published events will include the course, format, conditions, eligibility and closing time.",
+      "Competition centre",
+      "Everything for your next round.",
+      "Courses, opening dates, conditions, eligibility and live results in one place. Unverified details are labelled rather than guessed.",
     ],
     annual: [
       "Annual championship",
@@ -1051,6 +1212,11 @@ export default function CglPublicExperience({
       "Prizes & rewards",
       "Play for more than a number.",
       "Weekly achievements across the field. Season champions in each division. CGS Credits to spend on eligible rewards.",
+    ],
+    players: [
+      "CGL players",
+      "The people behind the scores.",
+      "Browse approved public profiles, follow division positions and open each player's verified CGL history.",
     ],
     rules: [
       "Rules & handicaps",
@@ -1082,6 +1248,14 @@ export default function CglPublicExperience({
       {section === "memberships" ? (
         <>
           <CglPricing data={data} />
+          <section className={s.section}>
+            <SectionHead
+              label="Compare plans"
+              title="Choose the access that fits your season."
+              text="Every paid option is available now. A website account is optional at checkout, and all charges are shown in AUD before payment."
+            />
+            <MembershipComparison />
+          </section>
           <div className={`${s.panel} ${s.section}`}>
             <h2>Before you confirm</h2>
             <p>
@@ -1093,7 +1267,6 @@ export default function CglPublicExperience({
             </p>
             <Link className={s.textLink} href="/cgl/terms">
               Review pricing and policy status
-              <ArrowRight size={13} />
             </Link>
           </div>
         </>
@@ -1115,45 +1288,109 @@ export default function CglPublicExperience({
           </section>
         </>
       ) : null}
+      {section === "players" ? (
+        <>
+          <div className={s.playerDirectoryIntro}>
+            <div>
+              <strong>{rows(data.players).length}</strong>
+              <span>public player profiles</span>
+            </div>
+            <p>
+              Profiles only use approved CGL and SGT competition information.
+              Purchase can be completed without an account; players can link an
+              optional CGS account later.
+            </p>
+          </div>
+          <PlayerDirectory data={data} />
+        </>
+      ) : null}
       {section === "competition" ? (
         <>
-          <div className={s.schedule}>
-            {rows(data.weeks)
-              .filter((w) => w.status === "published" || w.status === "open")
-              .map((w) => (
-                <article className={s.scheduleRow} key={str(w.id)}>
-                  <Flag />
-                  <div>
-                    <h3>
-                      {str(w.name, `Championship week ${str(w.week_number)}`)}
-                    </h3>
-                    <p>
-                      {str(w.course_name, "Course details in SGT")} · Closes{" "}
-                      {date(w.closes_at, true)}
-                    </p>
-                  </div>
-                  <Link className={s.smallButton} href="/cgl/dashboard">
-                    Check eligibility
-                    <ArrowRight size={13} />
-                  </Link>
-                </article>
-              ))}
+          <CglRoundSpotlight data={data} />
+          <nav className={s.competitionSubnav} aria-label="Competition sections">
+            <a href="#round-format">Round format</a>
+            <a href="#course-conditions">Course & conditions</a>
+            <a href="#player-results">Player results</a>
+            <a href="#weekly-honours">Weekly honours</a>
+            <Link href="/cgl/rules">Rules</Link>
+          </nav>
+          <div id="round-format" className={`${s.grid2} ${s.section}`}>
+            <article className={s.panel}>
+              <div className={s.eyebrow}>Round format</div>
+              <h2>Two nines become one result.</h2>
+              <p>
+                Complete nine holes on each published course. Your two eligible
+                net scores combine into one 18-hole competition result for the
+                week.
+              </p>
+              <div className={s.miniFormat}>
+                <span>Course A</span><strong>9</strong><b>+</b>
+                <span>Course B</span><strong>9</strong><b>=</b>
+                <span>Weekly result</span><strong>18</strong>
+              </div>
+            </article>
+            <article className={`${s.panel} ${s.entryChecklist}`}>
+              <div className={s.eyebrow}>Before you play</div>
+              <h2>Ready for {featureWeek.name}?</h2>
+              <ul>
+                <li>Use the exact SGT username linked to your CGL entry.</li>
+                <li>Confirm both published courses and competition settings.</li>
+                <li>Finish both rounds before the published close time.</li>
+                <li>Check your scorecard and report any issue promptly.</li>
+              </ul>
+              <div className={s.actions}>
+                <Link className={s.primary} href="/cgl/join">
+                  Enter CGL
+                </Link>
+                <Link className={s.secondary} href="/cgl/dashboard">
+                  Check my eligibility
+                </Link>
+              </div>
+            </article>
           </div>
-          {!rows(data.weeks).some(
-            (w) => w.status === "published" || w.status === "open",
-          ) ? (
-            <CglEmpty title="The next 2027 event is being prepared">
-              No 2027 event is open yet. The separate SGT trial is available
-              now, with official tournament and player scorecard views.
-            </CglEmpty>
-          ) : null}
+          <section id="course-conditions" className={s.section}>
+            <SectionHead
+              label="Course setup"
+              title="Conditions at a glance."
+              text="Pending settings are deliberately left pending until the corresponding SGT event is verified."
+            />
+            <CglConditionsPanel week={featureWeek} />
+          </section>
+          <section className={s.section}>
+            <SectionHead
+              label="Coming up"
+              title="The next rounds."
+              text="Course selections stay marked as proposed until the corresponding SGT event is verified."
+              href="/cgl/calendar"
+              link="Full season calendar"
+            />
+            <CglSeasonTimeline data={data} limit={5} />
+          </section>
+          <section id="player-results" className={s.section}>
+            <SectionHead
+              label="Results"
+              title="Verified player scores."
+              text="Switch between weekly net, weekly gross and championship points. Official scorecard links appear only when supplied by SGT."
+              href="/cgl/leaderboard"
+              link="Full leaderboard"
+            />
+            <CglStandingsTable data={data} initialMode="net" />
+          </section>
+          <section id="weekly-honours" className={s.section}>
+            <SectionHead
+              label="Weekly honours"
+              title="The performances that earn the spotlight."
+              href="/cgl/prizes"
+              link="Prize details"
+            />
+            <WeeklyHonours data={data} />
+          </section>
           <div className={s.actions}>
-            <Link className={s.primary} href="/cgl/trial">
-              Open the trial competition
-              <ArrowRight size={14} />
+            <Link className={s.primary} href="/cgl/leaderboard">
+              Follow live standings
             </Link>
-            <Link className={s.secondary} href="/cgl/calendar">
-              Season calendar
+            <Link className={s.secondary} href="/cgl/rules">
+              Competition rules
             </Link>
           </div>
         </>
@@ -1164,7 +1401,6 @@ export default function CglPublicExperience({
           <div className={s.actions}>
             <Link className={s.secondary} href="/cgl/leaderboard">
               Division standings
-              <ArrowRight size={14} />
             </Link>
           </div>
         </>
@@ -1172,18 +1408,41 @@ export default function CglPublicExperience({
       {section === "prizes" ? (
         <>
           <WeeklyHonours data={data} />
+          <div className={`${s.prizeSchedule} ${s.section}`}>
+            <article>
+              <span>Seasonal championship</span>
+              <h2>A Grade</h2>
+              <div><small>Champion</small><strong>$500</strong></div>
+              <div><small>Runner-up</small><strong>$200</strong></div>
+            </article>
+            <article>
+              <span>Seasonal championship</span>
+              <h2>B Grade</h2>
+              <div><small>Champion</small><strong>$200</strong></div>
+              <div><small>Runner-up</small><strong>$100</strong></div>
+            </article>
+            <article>
+              <span>Annual championship</span>
+              <h2>A Grade</h2>
+              <div><small>Champion</small><strong>$500</strong></div>
+              <div><small>Runner-up</small><strong>$100</strong></div>
+            </article>
+            <article>
+              <span>Annual championship</span>
+              <h2>B Grade</h2>
+              <div><small>Champion</small><strong>$300</strong></div>
+              <div><small>Runner-up</small><strong>$100</strong></div>
+            </article>
+          </div>
           <div className={`${s.grid2} ${s.section}`}>
             <article className={s.panel}>
               <Trophy size={25} />
-              <h2 style={{ marginTop: 18 }}>Season champions</h2>
+              <h2 style={{ marginTop: 18 }}>Championship prize eligibility</h2>
               <p>
-                Proposed allocation: A Grade champion{" "}
-                {aud(row(row(data.settings).prizes).a_cash_cents ?? 30000)}{" "}
-                cash; B Grade champion{" "}
-                {str(row(row(data.settings).prizes).b_credits, "300")} CGS
-                Credits. Eligible casual entrants can win the same season prize
-                as full members. Final published eligibility and prize terms
-                apply.
+                Eligible full members and casual Season Pass entrants compete
+                for the same division cash prizes. Results, membership status
+                and competition integrity checks are reviewed before winners
+                are confirmed.
               </p>
             </article>
             <article className={s.panel}>
@@ -1202,16 +1461,31 @@ export default function CglPublicExperience({
                   className={s.smallButton}
                 >
                   View your rewards
-                  <ArrowRight size={13} />
                 </Link>
               </div>
             </article>
           </div>
+          <section className={`${s.section} ${s.creditExplainer}`}>
+            <div>
+              <span>CGS Credits</span>
+              <h2>Rewards with a clear value.</h2>
+              <p>
+                Credits are issued as whole numbers and can be redeemed against
+                eligible items in the CGS Rewards Store.
+              </p>
+            </div>
+            <dl>
+              <div><dt>Value</dt><dd>2 credits = A$1</dd></div>
+              <div><dt>Expiry</dt><dd>18 months from issue</dd></div>
+              <div><dt>Ownership</dt><dd>Not transferable or redeemable for cash</dd></div>
+              <div><dt>Offers</dt><dd>Cannot be stacked unless explicitly stated</dd></div>
+            </dl>
+          </section>
           <div className={s.notice}>
-            Prizes are confirmed after results are reviewed and published.
-            Weekly priority starts with net, then gross, then CTP. The published
-            event rules control the final order. Cash prizes and final
-            conditions require CGS approval before activation.
+            This is the approved public prize schedule for the redesign. The
+            existing automated prize configuration has not been changed in this
+            preview and must be aligned before live entitlements are activated.
+            Weekly priority starts with net, then gross, then CTP.
           </div>
         </>
       ) : null}
@@ -1236,7 +1510,6 @@ export default function CglPublicExperience({
           <div className={s.actions}>
             <Link className={s.secondary} href="/cgl/trial">
               View trial results
-              <ArrowRight size={14} />
             </Link>
             <Link className={s.textLink} href="/cgl/preview/2027">
               2027 presentation preview
@@ -1285,13 +1558,15 @@ export default function CglPublicExperience({
             })}
           </div>
           <section className={s.section}>
-            <SectionHead title="Four ways to challenge your game" />
+            <SectionHead
+              title="The Season 1 journey"
+              text="Confirmed opening dates, with proposed course pairs clearly labelled until SGT verification."
+            />
             <Calendar data={data} />
           </section>
           <div className={s.actions}>
             <Link href="/cgl/join" className={s.primary}>
               Join the clubhouse
-              <ArrowRight size={14} />
             </Link>
             <Link href="/cgl/rules" className={s.secondary}>
               Read the rules
