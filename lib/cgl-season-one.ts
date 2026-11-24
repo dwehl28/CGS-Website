@@ -7,13 +7,14 @@ export const CGL_CASH_PRIZE_CENTS = {
 export const CGL_SEASON_ONE_CREDITS = { full: { net: 20, gross: 20, ctp: 10 }, casual: { net: 10, gross: 10, ctp: 5 } } as const;
 
 export type CglSeasonPhase = "qualification" | "championship";
-export type CglCourseSegment = "front_9" | "back_9" | null;
+export type CglCourseSegment = "front_9" | "back_9" | "full_18" | null;
 
 export type CglCourseProposal = {
   name: string;
   segment: CglCourseSegment;
   sgtCourseId: string | null;
   verified: boolean;
+  par?: number;
 };
 
 export type CglRoundConditions = {
@@ -22,7 +23,34 @@ export type CglRoundConditions = {
   greenFirmness: "Soft" | "Medium" | "Firm";
   greenSpeed: 9 | 10 | 11;
   teeCategory: "Forward-Regular" | "Regular" | "Regular+" | "Back";
+  format?: string;
+  holes?: number;
+  targetYards?: readonly [number, number];
+  pinDifficulty?: string;
+  weather?: string;
+  mulligans?: boolean;
+  attempts?: number;
 };
+
+export const CGL_QUALIFIER_CONDITIONS = {
+  format: "Individual stroke play",
+  holes: 18,
+  teeCategory: "Regular",
+  targetYards: [6000, 6300],
+  wind: "Calm",
+  fairwayFirmness: "Medium",
+  greenFirmness: "Medium",
+  greenSpeed: 10,
+  pinDifficulty: "Standard / medium",
+  weather: "Clear",
+  mulligans: false,
+  attempts: 1,
+} as const satisfies CglRoundConditions;
+
+// Public SGT links and observed settings, not CGL event or handicap approval.
+export const CGL_QUALIFIER_SGT_TOUR = "4265";
+export const CGL_QUALIFIER_SGT_EVENTS = ["85268", "85269", "85270"] as const;
+export const CGL_QUALIFIER_SGT_LISTED_SETTINGS = { tee: "Blue", pins: "Saturday", putting: "Normal", gimmies: "6 feet" } as const;
 
 export type CglRoundProposal = {
   weekNumber: number;
@@ -30,7 +58,7 @@ export type CglRoundProposal = {
   phaseRound: number;
   openingDate: string;
   closingDate: string | null;
-  courses: readonly [CglCourseProposal, CglCourseProposal];
+  courses: readonly [CglCourseProposal, CglCourseProposal?];
   conditions: CglRoundConditions | null;
 };
 
@@ -39,6 +67,10 @@ const course = (name: string): CglCourseProposal => ({
   segment: null,
   sgtCourseId: null,
   verified: false,
+});
+
+const fullCourse = (name: string, par: number): CglCourseProposal => ({
+  ...course(name), segment: "full_18", par,
 });
 
 function closingDate(openingDate: string, days: number) {
@@ -53,8 +85,8 @@ const qualificationRounds: readonly CglRoundProposal[] = [
     phaseRound: 1,
     openingDate: "2027-02-08",
     closingDate: "2027-02-14",
-    courses: [course("Assiniboine"), course("Club Sports Belvédère")],
-    conditions: null,
+    courses: [fullCourse("Club Sports Belvédère", 72)],
+    conditions: CGL_QUALIFIER_CONDITIONS,
   },
   {
     weekNumber: 2,
@@ -62,8 +94,8 @@ const qualificationRounds: readonly CglRoundProposal[] = [
     phaseRound: 2,
     openingDate: "2027-02-15",
     closingDate: "2027-02-21",
-    courses: [course("Trail Creek"), course("Fessenden")],
-    conditions: null,
+    courses: [fullCourse("Trail Creek Golf Course", 72)],
+    conditions: CGL_QUALIFIER_CONDITIONS,
   },
   {
     weekNumber: 3,
@@ -71,8 +103,8 @@ const qualificationRounds: readonly CglRoundProposal[] = [
     phaseRound: 3,
     openingDate: "2027-02-22",
     closingDate: "2027-02-28",
-    courses: [course("Gilbert Plains"), course("Dixie")],
-    conditions: null,
+    courses: [fullCourse("Gilbert Plains Country Club", 71)],
+    conditions: CGL_QUALIFIER_CONDITIONS,
   },
 ];
 
@@ -304,12 +336,14 @@ export function validateCglSeasonOnePlan(
       errors.push(`Week ${round.weekNumber} has an invalid opening date.`);
     if (round.closingDate !== closingDate(round.openingDate, round.phase === "qualification" ? 7 : 21))
       errors.push(`Week ${round.weekNumber} has the wrong proposed submission window.`);
-    if (new Set(round.courses.map((item) => item.name)).size !== 2)
+    if (round.phase === "qualification" && (round.courses.length !== 1 || round.courses[0].segment !== "full_18" || !round.courses[0].par))
+      errors.push(`Week ${round.weekNumber} must use one complete 18-hole course.`);
+    if (round.phase === "championship" && (!round.courses[1] || round.courses[0].name === round.courses[1].name))
       errors.push(`Week ${round.weekNumber} must use two different courses.`);
     for (const item of round.courses) {
-      if (item.verified || item.sgtCourseId || item.segment)
+      if (item && (item.verified || item.sgtCourseId || (round.phase === "championship" && item.segment)))
         errors.push(
-          `Week ${round.weekNumber} course ${item.name} must remain draft until SGT verification.`,
+        `Week ${round.weekNumber} course ${item.name} must remain draft until SGT verification.`,
         );
     }
     if (round.phase === "championship" && !round.conditions)
@@ -368,19 +402,22 @@ export function buildCglSeasonOneAdminDraft() {
       closes_at: `${round.closingDate}T23:59:59+10:00`,
       status: "draft",
       course_name: round.courses[0].name,
-      second_course_name: round.courses[1].name,
+      second_course_name: round.courses[1]?.name ?? null,
       sgt_tournament_id: null,
       sgt_tour_id: null,
       conditions: round.conditions ?? {},
       config: {
         planned_open_date: round.openingDate,
         planned_close_date: round.closingDate,
-        course_a: { ...round.courses[0], segment: "front_9" },
-        course_b: { ...round.courses[1], segment: "back_9" },
+        ...(round.phase === "qualification" ? {
+          candidate_sgt_event_id: CGL_QUALIFIER_SGT_EVENTS[round.phaseRound - 1],
+          candidate_sgt_tour_id: CGL_QUALIFIER_SGT_TOUR,
+        } : {}),
+        course_a: { ...round.courses[0], segment: round.phase === "qualification" ? "full_18" : "front_9" },
+        ...(round.courses[1] ? { course_b: { ...round.courses[1], segment: "back_9" } } : {}),
         event_approved: false,
         course_verification: "required",
-        conditions_verification:
-          round.phase === "championship" ? "required" : "not_configured",
+        conditions_verification: "required",
       },
     })),
   };

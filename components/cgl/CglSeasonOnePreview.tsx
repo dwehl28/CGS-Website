@@ -96,7 +96,7 @@ export default function CglSeasonOnePreview() {
           </h1>
           <p className={styles.intro}>
             Discover the courses nobody talks about. Two different nine-hole
-            layouts every round, with a fresh pairing and a new challenge each
+            layouts every championship round, with a fresh pairing and a new challenge each
             week.
           </p>
           <div className={styles.heroActions}>
@@ -216,11 +216,10 @@ export default function CglSeasonOnePreview() {
         <div className={styles.phaseHeader}>
           <div>
             <span>Phase 01</span>
-            <h3>Qualification</h3>
+            <h3>THE ROAD TO SEASON 1</h3>
           </div>
           <p>
-            Three rounds to verify eligibility and establish the season handicap
-            before divisions lock.
+            Three courses. Three rounds. Fifty-four holes to get championship-ready.
           </p>
         </div>
         <div className={styles.qualifierGrid}>
@@ -232,10 +231,10 @@ export default function CglSeasonOnePreview() {
                   {formatCglPlanDate(round.openingDate, true)}
                 </time>
               </div>
-              <CourseLine marker="A" name={round.courses[0].name} />
-              <CourseLine marker="B" name={round.courses[1].name} />
+              <CourseLine marker="18" name={round.courses[0].name} />
+              <p>Par {round.courses[0].par} · Individual stroke play · Calm · Stimp 10</p>
               <div className={styles.draftLabel}>
-                <CircleDashed size={13} /> Draft course pairing
+                <CircleDashed size={13} /> SGT event verification required
               </div>
             </article>
           ))}
@@ -263,7 +262,7 @@ export default function CglSeasonOnePreview() {
               <div className={styles.matchup}>
                 <CourseLine marker="A" name={round.courses[0].name} />
                 <span className={styles.plus}>+</span>
-                <CourseLine marker="B" name={round.courses[1].name} />
+                <CourseLine marker="B" name={round.courses[1]?.name ?? "Pending course"} />
               </div>
               <div className={styles.conditionStrip}>
                 <span>

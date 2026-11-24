@@ -7,7 +7,8 @@ import {
   isValidAdminAppAccessToken,
 } from "@/lib/admin-auth";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { buildCglSeasonOneAdminDraft, CGL_SEASON_ONE_RULES, CGL_CASH_PRIZE_CENTS, CGL_SEASON_ONE_CREDITS } from "@/lib/cgl-season-one";
+import { buildCglSeasonOneAdminDraft, CGL_SEASON_ONE_RULES, CGL_CASH_PRIZE_CENTS, CGL_SEASON_ONE_CREDITS, CGL_QUALIFIER_CONDITIONS, CGL_QUALIFIER_SGT_EVENTS, CGL_QUALIFIER_SGT_TOUR, CGL_SEASON_ONE_PLAN } from "@/lib/cgl-season-one";
+import { sgtScorecardHoles, sgtRow, sgtFirst, sgtRows } from "@/lib/cgl-sgt-live";
 import {
   CglSgtError,
   connectCglSgt,
@@ -839,10 +840,11 @@ export async function getCglPublicSnapshot() {
       results_published,
       review_until: provisional.get(id)?.review_until,
       ...((config as CglData | undefined)?.event_approved === true && visibleSeasons.some((season) => season.id===season_id && isSeasonOne(season)) ? {
-        course_a: publicFixtureFields((config as CglData).course_a, ["segment", "tee", "verified"]),
+        course_a: publicFixtureFields((config as CglData).course_a, ["segment", "tee", "verified", "par", "yards"]),
         course_b: publicFixtureFields((config as CglData).course_b, ["segment", "tee", "verified"]),
         sgt_tournament_b_id: typeof (config as CglData).sgt_tournament_b_id === "string" ? (config as CglData).sgt_tournament_b_id : undefined,
-        conditions: publicFixtureFields(conditions,["wind","greenFirmness","fairwayFirmness","greenSpeed","teeCategory"]),
+        conditions: { ...publicFixtureFields(conditions,["wind","greenFirmness","fairwayFirmness","greenSpeed","teeCategory"]),
+          ...publicFixtureFields((config as CglData).verified_play_settings,["pins","putting","gimmies"]) },
       } : {}),
     }),
   );
@@ -975,6 +977,16 @@ export async function getCglMemberSnapshot(identity: CglIdentity) {
   const [managedCards, memberEnrolments] = member && managedSeason ? await Promise.all([
     rows("cgl_qualifying_cards",{season_id:managedSeason.id,member_id:memberId}),rows("cgl_event_enrolments",{member_id:memberId}),
   ]) : [[],[]];
+  const verifiedCards = managedCards.filter((card)=>card.sgt_player_id===member?.sgt_id);
+  const qualificationProgress = member && managedSeason ? {
+    target: (verifiedCards[0] ? verifiedCards[0].path==="established" : member.handicap_status==="verified") ? 18 : 54,
+    holes: verifiedCards.reduce((total,card)=>total+Number(card.holes),0),
+    handicap_verified: member.handicap_status==="verified" && !!member.sgt_verified_at,
+    rounds: visibleWeeks.filter((week)=>week.season_id===managedSeason.id && week.phase==="qualification").map((week)=>({
+      name:week.name, verified:verifiedCards.some((card)=>card.week_id===week.id),
+      enrolled:memberEnrolments.some((entry)=>entry.week_id===week.id && entry.state==="confirmed" && entry.sgt_player_id===member.sgt_id && JSON.stringify(entry.event_ids)===JSON.stringify(fixtureEventIds(week))),
+    })),
+  } : null;
   const roundAccess = member && managedSeason ? visibleWeeks.filter((week) => week.season_id===managedSeason.id && ["published","open"].includes(String(week.status)) && Date.parse(String(week.closes_at))+1000>now).map((week) => {
     const access = evaluateCglEligibility({member,memberships,entries:entries.filter((entry)=>entry.season_id===managedSeason.id),plans,season:managedSeason,week,
       at:new Date(now).toISOString(),ignoreEnrolment:false,cards:managedCards,enrolments:memberEnrolments.filter((item)=>item.week_id===week.id),divisions:divisions.filter((item)=>item.season_id===managedSeason.id)});
@@ -1056,6 +1068,7 @@ export async function getCglMemberSnapshot(identity: CglIdentity) {
     payments: payments.filter((record) => !isCglSandboxRecord(record)),
     entries: entries.filter((record) => !isCglSandboxRecord(record)),
     round_access: roundAccess,
+    qualification_progress: qualificationProgress,
     billing: {
       environment: "sandbox",
       livePaymentsEnabled: false,
@@ -1800,6 +1813,8 @@ async function importResults(actor: CglActor, body: CglData, reason: string) {
     );
   const source = sourceUrl.parse(body.sourceUrl ?? body.source_url);
   const managed = isSeasonOne(season);
+  if (managed && week.phase === "qualification")
+    throw new CglApiError("Use the verified 18-hole qualifier import in Season 1 launch. Qualifiers do not enter championship results.", 409);
   if (week.sgt_tournament_id) {
     const tournament = new URL(source).pathname.match(
       /^\/(?:tournament|scorecard|embed\/tournament)\/(\d+)(?:\/|$)/,
@@ -2136,6 +2151,31 @@ export async function executeCglAdminAction(actor: CglActor, body: CglData) {
     const tournaments = await rows("cgl_sgt_tournaments");
     if (![aId, ...(bId ? [bId] : [])].every((id) => tournaments.some((t) => String(t.sgt_tournament_id) === id)))
       throw new CglApiError("Both SGT event references must already be present in the synced club cache.", 409);
+    if (week.phase === "qualification") {
+      const planned = CGL_SEASON_ONE_PLAN.rounds.find((round) => round.phase === "qualification" && round.weekNumber === week.week_number)?.courses[0];
+      const tournament = tournaments.find((item) => String(item.sgt_tournament_id) === aId)!;
+      const normalize = (value: unknown) => String(value ?? "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const day = (value: unknown) => new Date(Date.parse(String(value)) + 36_000_000).toISOString().slice(0, 10);
+      const holeCount = String(tournament.number_holes ?? "").trim();
+      if (!planned || !planned.par || aId !== CGL_QUALIFIER_SGT_EVENTS[Number(week.week_number)-1] || String(tournament.sgt_tour_id)!==CGL_QUALIFIER_SGT_TOUR ||
+        bId || normalize(tournament.course_name) !== normalize(planned.name) ||
+        (holeCount && !/^18(?:\s*holes?)?$/i.test(holeCount)) || tournament.stableford === true ||
+        (tournament.start_date && tournament.start_date !== day(week.opens_at)) || (tournament.end_date && tournament.end_date !== day(week.closes_at)))
+        throw new CglApiError("The synced SGT event must match the scheduled course, one full 18 and the Brisbane date range.", 409);
+      const settings = configOf(season).qualifier_play_settings;
+      if (!settings || body.handicapCounting !== true) throw new CglApiError("Approve the shared playing settings and check handicap contribution in SGT first.");
+      const yards = z.number().int().min(4500).max(8000).parse(body.yards);
+      if ((yards < 6000 || yards > 6300) && body.teeException !== true)
+        throw new CglApiError("Review the best available regular tee and document why it is outside the target yardage.");
+      const { course_b: _courseB, sgt_tournament_b_id: _eventB, ctp_hole: _ctp, ...prior } = configOf(week);
+      void _courseB; void _eventB; void _ctp;
+      return rpc("cgl_admin_save", { p_entity: "week", p_record: {id:week.id, course_name:planned.name, second_course_name:null,
+        sgt_tournament_id:aId, sgt_tour_id:CGL_QUALIFIER_SGT_TOUR, conditions:CGL_QUALIFIER_CONDITIONS, config:{...prior,course_a:{...planned, verified:true,
+          sgtCourseId:text(150).parse(body.courseA), version:text(80).parse(body.courseVersion), tee:text(120).parse(body.teeA), yards},
+          event_approved:true, handicap_counting_verified:true, verified_play_settings:settings, course_verification:"verified", conditions_verification:"verified",
+          verified_opens_at:week.opens_at, verified_closes_at:week.closes_at,
+        }},p_actor:actor.id,p_reason:reason });
+    }
     const readCourse = (suffix: "A" | "B") => ({
       sgtCourseId: text(150).parse(body[`course${suffix}`]),
       segment: z.enum(["front_9","back_9"]).parse(body[`nine${suffix}`]),
@@ -2155,15 +2195,73 @@ export async function executeCglAdminAction(actor: CglActor, body: CglData) {
       verified_opens_at: week.opens_at, verified_closes_at: week.closes_at,
     } }, p_actor: actor.id, p_reason: reason });
   }
+  if (action === "approve_qualifier_settings") {
+    permission(actor,"manage_seasons");
+    const season = await one("cgl_seasons",uuid.parse(body.seasonId));
+    if (!isSeasonOne(season) || body.approved !== true) throw new CglApiError("Explicit approval is required for the shared qualifier settings.");
+    const settings = {pins:text(100).parse(body.pins),putting:text(100).parse(body.putting),gimmies:text(100).parse(body.gimmies)};
+    const linked = await rows("cgl_weeks",{season_id:season.id,phase:"qualification"});
+    const current = sgtRow(configOf(season).qualifier_play_settings);
+    if (linked.some((week)=>configOf(week).event_approved===true) && Object.entries(settings).some(([key,value])=>current[key]!==value))
+      throw new CglApiError("The shared settings are locked after a qualifier is verified.");
+    return rpc("cgl_admin_save",{p_entity:"season",p_record:{id:season.id,config:{...configOf(season),qualifier_play_settings:settings}},p_actor:actor.id,p_reason:reason});
+  }
+  if (action === "import_qualifier_scorecard") {
+    permission(actor,"manage_members");
+    if (body.approved !== true) throw new CglApiError("Confirm the eligible SGT scorecard before importing.");
+    const [week, member] = await Promise.all([one("cgl_weeks",uuid.parse(body.weekId)),one("cgl_members",uuid.parse(body.memberId))]);
+    const eventId = String(week.sgt_tournament_id ?? "");
+    const course = sgtRow(configOf(week).course_a);
+    if (week.phase!=="qualification" || week.status==="draft" || configOf(week).event_approved!==true || course.segment!=="full_18" || !/^\d+$/.test(eventId) || !member.sgt_verified_at || !member.sgt_id ||
+      !isSeasonOne(await one("cgl_seasons",String(week.season_id))))
+      throw new CglApiError("A verified Season 1 full-round event and verified SGT identity are required.");
+    const id = text(120).parse(body.scorecardId);
+    const source = (await rows("cgl_sgt_tournaments",{sgt_tournament_id:Number(eventId)}))[0];
+    const matching = sgtRows(source?.scorecards).filter((card)=>String(sgtFirst(card,["scorecard_id","scorecardId","round_id","roundId","id"]))===id);
+    const card = matching[0];
+    if (matching.length!==1 || String(sgtFirst(card,["game_id","gameid","gameId","sgt_player_id","player_id","playerId","user_id","userId"]))!==String(member.sgt_id))
+      throw new CglApiError("The synced scorecard must match that unique SGT player ID. Sync SGT or check the correct card ID.",409);
+    const cardCourse = sgtFirst(card,["course_id","courseId","courseid"]);
+    if (cardCourse != null && String(cardCourse)!==String(course.sgtCourseId)) throw new CglApiError("The scorecard course ID does not match the verified qualifier.",409);
+    const holes = sgtScorecardHoles(card);
+    if (holes.length!==18 || holes.some((hole,i)=>hole.hole!==i+1 || !Number.isInteger(hole.gross) || Number(hole.gross)<1) ||
+      (holes.every((hole)=>hole.par!=null) && holes.reduce((total,hole)=>total+Number(hole.par),0)!==Number(course.par)))
+      throw new CglApiError("The synced scorecard must contain a complete, matching 18-hole round.",409);
+    const playedAt = z.string().datetime({offset:true}).parse(body.playedAt);
+    const cachedCompletion = sgtFirst(card,["completed_at","completedAt","played_at","playedAt"]);
+    if (cachedCompletion && Number.isFinite(Date.parse(String(cachedCompletion))) && Date.parse(String(cachedCompletion))!==Date.parse(playedAt))
+      throw new CglApiError("The recorded completion time must match the synced SGT card.");
+    const access = await getCglEligibility(String(member.id),week,playedAt);
+    if (!access.eligible) throw new CglApiError(access.reason ?? "The golfer was not eligible when this card was played.",409);
+    return rpc("cgl_record_qualifying_card",{p_record:{season_id:week.season_id,member_id:member.id,sgt_player_id:member.sgt_id,
+      scorecard_id:id,week_id:week.id,path:z.enum(["established","new"]).parse(body.path),holes:18,played_at:playedAt,
+      gross:holes.reduce((total,hole)=>total+Number(hole.gross),0),source_url:`https://simulatorgolftour.com/tournament/${eventId}`},p_actor:actor.id,p_reason:reason});
+  }
   if (action === "record_qualifying_card") {
     permission(actor, "manage_members");
     const [member, season] = await Promise.all([one("cgl_members", uuid.parse(body.memberId)), one("cgl_seasons", uuid.parse(body.seasonId))]);
-    if (!isSeasonOne(season) || !member.sgt_id || !member.sgt_verified_at) throw new CglApiError("Verify the player's SGT account before counting qualification holes.");
+    if (!isSeasonOne(season) || !member.sgt_id || !member.sgt_verified_at || body.approved!==true) throw new CglApiError("Verify the player's SGT account and approve the external SGT card before counting holes.");
+    const source = sourceUrl.parse(body.sourceUrl);
+    const eventId = z.string().regex(/^\d{1,15}$/).parse(body.eventId);
+    const localEvents = await rows("cgl_weeks",{season_id:season.id,phase:"qualification"});
+    if (CGL_QUALIFIER_SGT_EVENTS.some((known)=>known===eventId) || localEvents.some((week)=>String(week.sgt_tournament_id)===eventId)) throw new CglApiError("Import a dedicated qualifier through its fixture rather than as an external card.");
     return rpc("cgl_record_qualifying_card", { p_record: {
       season_id: season.id, member_id: member.id, sgt_player_id: member.sgt_id, scorecard_id: text(120).parse(body.scorecardId),
       path: z.enum(["established","new"]).parse(body.path), holes: z.union([z.literal(9),z.literal(18)]).parse(body.holes),
-      played_at: z.string().datetime({offset:true}).parse(body.playedAt), source_url: sourceUrl.parse(body.sourceUrl),
+      played_at: z.string().datetime({offset:true}).parse(body.playedAt), source_url: source,
     }, p_actor: actor.id, p_reason: reason });
+  }
+  if (action === "verify_qualifier_handicap") {
+    permission(actor,"manage_members");
+    const [member, season] = await Promise.all([one("cgl_members",uuid.parse(body.memberId)),one("cgl_seasons",uuid.parse(body.seasonId))]);
+    if (!isSeasonOne(season) || !member.sgt_verified_at || body.approved!==true || String(member.sgt_id)!==String(body.playerId))
+      throw new CglApiError("Verify the official handicap for this player's exact SGT identity.");
+    const cards = (await rows("cgl_qualifying_cards",{season_id:season.id,member_id:member.id})).filter((card)=>card.sgt_player_id===member.sgt_id);
+    const holes = cards.reduce((total,card)=>total+Number(card.holes),0);
+    if (holes < (cards[0]?.path==="established" ? 18 : 54)) throw new CglApiError("The qualification-hole requirement is not yet met.",409);
+    const reference = sourceUrl.parse(body.sourceUrl);
+    return rpc("cgl_admin_save",{p_entity:"member",p_record:{id:member.id,handicap:z.number().min(-20).max(54).parse(body.handicap),
+      qualifying_holes:holes,handicap_status:"verified",handicap_verified_at:new Date().toISOString()},p_actor:actor.id,p_reason:`${reason} | SGT handicap evidence: ${reference}`});
   }
   if (action === "verify_guest_sgt") {
     permission(actor,"manage_members");

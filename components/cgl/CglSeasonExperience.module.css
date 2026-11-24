@@ -509,3 +509,29 @@
     border-bottom: 0;
   }
 }
+.qualifierSection {
+  margin-block: 36px;
+  padding: clamp(18px, 3vw, 36px);
+  background: radial-gradient(ellipse at top right, #d4e9be 0%, transparent 48%), #edf4e8;
+  border-top: 5px solid #83bf16;
+  color: #142b42;
+}
+.qualifierIntro > span, .qualifierCard > div > span, .qualifierCourse > span {
+  color: #315d1c;
+  font-size: .75rem;
+  font-weight: 850;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.qualifierIntro h2 { font-size: clamp(1.65rem, 3vw, 3rem); font-weight: 900; margin: .2em 0; }
+.qualifierGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
+.qualifierCard { display: grid; gap: 10px; align-content: start; border: 1px solid #cadbc1; padding: clamp(14px, 2.2vw, 22px); background: white; }
+.qualifierCard > div { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; }
+.qualifierCard b { color: #284d0b; background: #edf6d9; padding: 4px 7px; font-size: .74rem; }
+.qualifierCard h3 { font-size: 1.2rem; font-weight: 850; }
+.qualifierCard p, .qualifierCard small, .qualifierNote { font-size: .86rem; line-height: 1.5; }
+.qualifierCard a { color: #284d0b; font-weight: 800; text-decoration: underline; align-content: center; min-height: 44px; }
+.qualifierNote { margin-top: 15px; }
+.qualifierCourse { padding: 18px; background: #edf4e8; border-left: 5px solid #83bf16; color: #142b42; }
+.qualifierCourse > strong { display: block; margin-block: 6px; font-size: 1.25rem; }
+@media (max-width: 720px) { .qualifierGrid { grid-template-columns: 1fr; } }

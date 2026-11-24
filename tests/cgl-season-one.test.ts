@@ -29,11 +29,11 @@ test("Season 1 proposal contains the agreed three-plus-ten calendar", () => {
     Array.from({ length: 13 }, (_, index) => index + 1),
   );
   assert.deepEqual(
-    plan.rounds[0].courses.map((course) => course.name),
-    ["Assiniboine", "Club Sports Belvédère"],
+    plan.rounds[0].courses.map((course) => course?.name),
+    ["Club Sports Belvédère"],
   );
   assert.deepEqual(
-    plan.rounds[12].courses.map((course) => course.name),
+    plan.rounds[12].courses.map((course) => course?.name),
     ["County Louth Golf Club", "Princes Golf Club — Dunes & Shore"],
   );
   assert.deepEqual(season.validateCglSeasonOnePlan(), []);
@@ -41,14 +41,26 @@ test("Season 1 proposal contains the agreed three-plus-ten calendar", () => {
 
 test("course pairings cannot accidentally present draft SGT details as verified", () => {
   for (const round of season.CGL_SEASON_ONE_PLAN.rounds) {
-    assert.equal(new Set(round.courses.map((course) => course.name)).size, 2);
+    assert.equal(new Set(round.courses.map((course) => course?.name)).size, round.phase === "qualification" ? 1 : 2);
     assert.ok(round.closingDate && round.closingDate > round.openingDate);
     for (const course of round.courses) {
+      assert.ok(course);
       assert.equal(course.verified, false);
       assert.equal(course.sgtCourseId, null);
-      assert.equal(course.segment, null);
+      assert.equal(course.segment, round.phase === "qualification" ? "full_18" : null);
     }
   }
+});
+
+test("the three qualifiers use one complete approved-name course and identical proposed conditions", () => {
+  const draft = season.buildCglSeasonOneAdminDraft();
+  const qualifiers = draft.weeks.slice(0,3);
+  assert.deepEqual(qualifiers.map((week)=>[week.course_name,week.config.course_a.par]),[
+    ["Club Sports Belvédère",72],["Trail Creek Golf Course",72],["Gilbert Plains Country Club",71],
+  ]);
+  assert.equal(qualifiers.every((week)=>week.second_course_name===null && !week.config.course_b && week.config.course_a.segment==="full_18"),true);
+  assert.equal(qualifiers.every((week)=>week.conditions===season.CGL_QUALIFIER_CONDITIONS),true);
+  assert.ok(draft.weeks.slice(3).every((week)=>week.config.course_a.segment==="front_9" && week.config.course_b?.segment==="back_9"));
 });
 
 test("championship condition progression remains editable proposal data", () => {

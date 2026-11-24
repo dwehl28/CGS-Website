@@ -30,6 +30,65 @@ function compileModule(relative, overrides = {}) {
 }
 const engine = compileModule("lib/cgl-engine.ts");
 const seasonOne = compileModule("lib/cgl-season-one.ts");
+const sgtLive = compileModule("lib/cgl-sgt-live.ts");
+
+test("a qualifier imports a synced full card only for the enrolled, verified SGT player", async () => {
+  const earlier = new Date(Date.now()-72*3600000).toISOString();
+  const played = new Date(Date.now()-24*3600000).toISOString();
+  const later = new Date(Date.now()+72*3600000).toISOString();
+  const playerId = "9811223344";
+  const holes = Array.from({length:18},(_,i)=>({hole:i+1,par:4,gross:5}));
+  const synced = {scorecard_id:"official-card",player_id:playerId,course_id:"build-1",completed_at:played,holes};
+  const week = {id:WEEK,season_id:SEASON,week_number:1,phase:"qualification",status:"published",sgt_tournament_id:"103",opens_at:earlier,closes_at:later,
+    config:{event_approved:true,course_a:{segment:"full_18",par:72,sgtCourseId:"build-1"}}};
+  const tables = {
+    cgl_weeks:[week],cgl_members:[{id:MEMBER,sgt_id:playerId,sgt_verified_at:earlier,eligibility:"active"}],
+    cgl_seasons:[{id:SEASON,status:"active",starts_at:earlier,ends_at:later,config:{regulation:seasonOne.CGL_SEASON_ONE_RULES,schedule_approved:true,entry_opens_at:earlier}}],
+    cgl_plans:[{code:"annual",full_member:true}],cgl_memberships:[{member_id:MEMBER,plan_code:"annual",state:"active",starts_at:earlier,paid_through:later}],
+    cgl_sgt_tournaments:[{sgt_tournament_id:103,scorecards:[synced]}],cgl_event_enrolments:[],
+  };
+  const {platform,calls} = platformHarness(tables);
+  const submit = () => platform.executeCglAdminAction({id:MEMBER,role:"super_admin"},{action:"import_qualifier_scorecard",weekId:WEEK,memberId:MEMBER,scorecardId:"official-card",playedAt:played,path:"new",approved:true,reason:"Verified qualifier eligibility"});
+  await assert.rejects(submit(),/confirmed enrolment/);
+  tables.cgl_event_enrolments.push({week_id:WEEK,member_id:MEMBER,sgt_player_id:playerId,confirmed_at:earlier,state:"confirmed",event_ids:["103"]});
+  synced.holes = holes.slice(0,9);
+  await assert.rejects(submit(),/complete, matching 18-hole/);
+  synced.holes=holes;
+  synced.player_id = "0000000000";
+  await assert.rejects(submit(),/unique SGT player ID/);
+  synced.player_id=playerId;
+  await submit();
+  assert.equal(calls.rpc.length,1);
+  assert.equal(calls.rpc[0][0],"cgl_record_qualifying_card");
+  assert.equal(calls.rpc[0][1].p_record.holes,18);
+  assert.equal(calls.rpc[0][1].p_record.gross,90);
+  assert.equal(calls.rpc[0][1].p_record.week_id,WEEK);
+});
+
+test("member progress advances by 18 verified holes and an 18-hole target does not assign a grade", async () => {
+  const tables = {
+    cgl_members:[{id:MEMBER,sgt_id:"9811223344",sgt_verified_at:"2026-01-01",handicap_status:"qualifying"}],
+    cgl_seasons:[{id:SEASON,status:"active",config:{regulation:seasonOne.CGL_SEASON_ONE_RULES}}],
+    cgl_qualifying_cards:[],
+  };
+  const {platform} = platformHarness(tables);
+  const identity = {id:MEMBER,email:"isolated@example.test",displayName:"Isolated",appMetadata:{}};
+  for (const total of [0,18,36,54]) {
+    const data = await platform.getCglMemberSnapshot(identity);
+    assert.equal(data.qualification_progress.holes,total);
+    assert.equal(data.qualification_progress.target,54);
+    assert.equal(data.qualification_progress.handicap_verified,false);
+    assert.deepEqual(data.divisions,[]);
+    tables.cgl_qualifying_cards.push({season_id:SEASON,member_id:MEMBER,sgt_player_id:"9811223344",path:"new",holes:18,scorecard_id:`card-${total}`});
+  }
+  tables.cgl_qualifying_cards.splice(1);
+  tables.cgl_qualifying_cards[0].path="established";
+  tables.cgl_members[0].handicap_status="verified";
+  const data=await platform.getCglMemberSnapshot(identity);
+  assert.equal(data.qualification_progress.target,18);
+  assert.equal(data.qualification_progress.holes,18);
+  assert.deepEqual(data.divisions,[]);
+});
 
 test("Season 1 requires verified qualification and SGT enrolment without a full-member Season Pass", async () => {
   const before = new Date(Date.now()-72*3600000).toISOString();
@@ -134,6 +193,7 @@ function platformHarness(tables = {}, options = {}) {
     "server-only": {},
     "@/lib/cgl-engine": engine,
     "@/lib/cgl-season-one": seasonOne,
+    "@/lib/cgl-sgt-live": sgtLive,
     "@/lib/supabase-admin": { getSupabaseAdmin: () => database },
     "@/lib/cgl-sgt": {
       CglSgtError: TestSgtError,

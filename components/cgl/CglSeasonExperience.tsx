@@ -11,6 +11,8 @@ import {
 
 import {
   CGL_SEASON_ONE_PLAN,
+  CGL_QUALIFIER_SGT_EVENTS,
+  CGL_QUALIFIER_SGT_LISTED_SETTINGS,
   formatCglPlanDate,
   type CglRoundProposal,
 } from "@/lib/cgl-season-one";
@@ -29,6 +31,8 @@ export type CglDisplayWeek = {
   closingLabel: string;
   courseA: string;
   courseB: string;
+  par?: number;
+  eventId?: string;
   status: string;
   conditions: CglRow;
   proposed: boolean;
@@ -48,10 +52,12 @@ function proposalWeek(round: CglRoundProposal): CglDisplayWeek {
     weekNumber: round.weekNumber,
     opensAt: `${round.openingDate}T00:00:00+10:00`,
     closesAt: null,
-    openingLabel: formatCglPlanDate(round.openingDate),
+    openingLabel: `${formatCglPlanDate(round.openingDate)}${round.phase === "qualification" ? ", 12:00 am AEST (time proposed)" : ""}`,
     closingLabel: round.closingDate ? `Proposed close: ${formatCglPlanDate(round.closingDate, true)}, 11:59:59 pm AEST` : "Closing window to be published",
     courseA: round.courses[0].name,
-    courseB: round.courses[1].name,
+    courseB: round.courses[1]?.name ?? "",
+    par: round.courses[0].par,
+    eventId: round.phase === "qualification" ? CGL_QUALIFIER_SGT_EVENTS[round.phaseRound - 1] : undefined,
     status: "scheduled",
     conditions: (round.conditions ?? {}) as CglRow,
     proposed: true,
@@ -81,7 +87,7 @@ function realWeek(week: CglRow): CglDisplayWeek {
     weekNumber: Number(week.week_number ?? 1),
     opensAt: typeof week.opens_at === "string" ? week.opens_at : null,
     closesAt: typeof week.closes_at === "string" ? week.closes_at : null,
-    openingLabel: date(week.opens_at),
+    openingLabel: date(week.opens_at, phase === "qualification"),
     closingLabel: week.closes_at
       ? `Closes ${date(week.closes_at, true)}`
       : "Closing window to be published",
@@ -90,6 +96,8 @@ function realWeek(week: CglRow): CglDisplayWeek {
       week.second_course_name,
       str(row(config.course_b).name, "Course B"),
     ),
+    par: Number(row(week.course_a).par) || undefined,
+    eventId: /^\d+$/.test(str(week.sgt_tournament_id,"")) && row(week.course_a).segment === "full_18" ? str(week.sgt_tournament_id) : undefined,
     status: str(week.status, "scheduled"),
     conditions: row(week.conditions),
     proposed:
@@ -111,7 +119,7 @@ export function getCglDisplayWeeks(data: CglSnapshot): CglDisplayWeek[] {
       .map((season) => str(season.id)),
   );
   const configured = rows(data.weeks)
-    .filter((week) => officialSeasonIds.has(str(week.season_id)))
+    .filter((week) => officialSeasonIds.has(str(week.season_id)) && (week.phase!=="qualification" || row(week.course_a).segment==="full_18"))
     .map(realWeek)
     .sort((a, b) => a.weekNumber - b.weekNumber);
 
@@ -173,6 +181,11 @@ export function CglCoursePair({
   compact?: boolean;
 }) {
   const conditions = conditionsSummary(week.conditions);
+  if (week.phase === "qualification") return <div className={styles.qualifierCourse}>
+    <span>Individual stroke play · 18 holes{week.par ? ` · Par ${week.par}` : ""}</span>
+    <strong>{week.courseA}</strong>
+    {!compact && conditions ? <p>{conditions}</p> : null}
+  </div>;
   return (
     <div className={`${styles.coursePair} ${compact ? styles.coursePairCompact : ""}`}>
       <article>
@@ -251,9 +264,7 @@ export function CglRoundSpotlight({ data }: { data: CglSnapshot }) {
       </div>
       {week.proposed ? (
         <p className={styles.disclosure}>
-          Course pair and conditions are proposed until verified and published
-          in SGT. The opening date is confirmed; the exact close time will be
-          shown here when configured.
+          The course setup and exact play window need SGT verification and CGL approval before this fixture opens.
         </p>
       ) : null}
       <div className={styles.actions}>
@@ -346,7 +357,7 @@ export function CglSeasonTimeline({
               <span>{week.openingLabel}</span>
               <h3>{week.name}</h3>
             </div>
-            <p>{week.courseA} <b>+</b> {week.courseB}</p>
+            <p>{week.courseA}{week.phase === "championship" ? <> <b>+</b> {week.courseB}</> : <> · 18 holes</>}</p>
             {limit == null ? <p>{week.closingLabel}</p> : null}
           </div>
           <div className={styles.timelineStatus}>
@@ -356,6 +367,33 @@ export function CglSeasonTimeline({
       ))}
     </div>
   );
+}
+
+export function CglQualificationCards({ data }: { data: CglSnapshot }) {
+  const qualifiers = getCglDisplayWeeks(data).filter((week) => week.phase === "qualification");
+  const now = Date.parse(str(data.updated_at,""));
+  return <section className={styles.qualifierSection} aria-labelledby="qualifier-title">
+    <div className={styles.qualifierIntro}>
+      <span>Qualification · February 2027</span>
+      <h2 id="qualifier-title">THE ROAD TO SEASON 1</h2>
+      <p>Three courses. Three rounds. Fifty-four holes to get championship-ready.</p>
+    </div>
+    <div className={styles.qualifierGrid}>
+      {qualifiers.map((week) => {
+        const state = week.proposed ? "Awaiting verification" : now >= Date.parse(week.closesAt ?? "") + 1000 ? "Closed" : now >= Date.parse(week.opensAt ?? "") ? "Open for play" : "Verified · upcoming";
+        return <article key={week.id} className={styles.qualifierCard}>
+          <div><span>Qualifier 0{week.phaseRound}</span><b>{state}</b></div>
+          <h3>{week.courseA}</h3>
+          <p>18 holes · Par {week.par ?? "pending"} · Individual stroke play</p>
+          <p><strong>Opens</strong> {week.openingLabel}<br />{week.closingLabel}</p>
+          <p>Calm wind · Medium fairways and greens target · Stimp 10 · Clear weather · No mulligans · One attempt</p>
+          <p>{week.proposed ? `SGT lists ${CGL_QUALIFIER_SGT_LISTED_SETTINGS.tee} tees, ${CGL_QUALIFIER_SGT_LISTED_SETTINGS.pins} pins and ${CGL_QUALIFIER_SGT_LISTED_SETTINGS.gimmies} gimmies. CGL eligibility checks pending.` : `Pins: ${str(week.conditions.pins)}. Putting: ${str(week.conditions.putting)}. Gimmies: ${str(week.conditions.gimmies)}.`}</p>
+          {week.eventId ? <a href={`https://simulatorgolftour.com/tournament/${week.eventId}`} target="_blank" rel="noreferrer">View SGT event <span aria-hidden>↗</span></a> : <small>SGT event link pending.</small>}
+        </article>;
+      })}
+    </div>
+    <p className={styles.qualifierNote}>One approved 18-hole round for established handicaps; three complete qualifiers for 54 holes on the new-handicap pathway. Approved external SGT rounds can count, including for late entrants. Qualification does not award championship points.</p>
+  </section>;
 }
 
 export function CglSeasonFacts() {
@@ -378,7 +416,7 @@ export function CglSeasonFacts() {
       </div>
       <div>
         <MapPin size={20} aria-hidden="true" />
-        <span>Every round</span>
+        <span>Championship format</span>
         <strong>9 + 9 holes</strong>
       </div>
     </div>

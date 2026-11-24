@@ -18,7 +18,7 @@ import {
 import ClubhouseAdminLogin from "@/components/ClubhouseAdminLogin";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { financialScenario, CGL_DEFAULT_PLANS } from "@/lib/cgl-engine";
-import { CGL_CASH_PRIZE_CENTS, CGL_SEASON_ONE_RULES } from "@/lib/cgl-season-one";
+import { CGL_CASH_PRIZE_CENTS, CGL_QUALIFIER_SGT_EVENTS, CGL_QUALIFIER_SGT_LISTED_SETTINGS, CGL_SEASON_ONE_RULES } from "@/lib/cgl-season-one";
 import { CglHeading, CglEmpty } from "./CglPublicExperience";
 import {
   aud,
@@ -389,6 +389,9 @@ function SeasonOneOperations({ data, busy, send }: { data: CglSnapshot; busy: bo
   const time = (key: string, label: string, initial?: unknown): Field => ({ ...field(key,label,initial),type:"datetime" });
   const memberOptions = rows(data.members).map((item) => ({value:str(item.id),label:str(item.sgt_username ?? item.display_name)}));
   const events = rows(data.sgt_tournaments).map((item) => ({value:str(item.sgt_tournament_id),label:`${str(item.name)} (${str(item.sgt_tournament_id)})`}));
+  const qualifier = week?.phase === "qualification";
+  const candidateEvent = qualifier ? str(week?.sgt_tournament_id ?? CGL_QUALIFIER_SGT_EVENTS[num(week?.week_number)-1], "") : "";
+  const shared = row(config.qualifier_play_settings);
   const dateLine = (value: unknown) => toLocalInput(value).replace("T"," ") || "Not set";
   if (!season) return readOnly ? <CglEmpty title="Season 1 has not been prepared" /> : <OperationForm
     title="Prepare the Hidden Gems Tour" description="Create one draft season and its 13 proposed fixtures. Existing records are never overwritten. This does not open entries or create SGT events."
@@ -407,9 +410,19 @@ function SeasonOneOperations({ data, busy, send }: { data: CglSnapshot; busy: bo
       <label className={s.field}>Working fixture<select value={str(week?.id,"")} onChange={(e)=>setChosen(e.target.value)}>
         {fixtures.map((item) => <option key={str(item.id)} value={str(item.id)}>{str(item.name)} · {str(item.status)}</option>)}
       </select></label>
-      {week && <p>{str(week.course_name)} / {str(week.second_course_name)} · {dateLine(week.opens_at)} to {dateLine(week.closes_at)} AEST. {event.event_approved === true ? "SGT verification recorded." : "Awaiting SGT verification."}</p>}
+      {week && <p>{str(week.course_name)}{qualifier ? " · Holes 1–18" : ` / ${str(week.second_course_name)}`} · {dateLine(week.opens_at)} to {dateLine(week.closes_at)} AEST. {event.event_approved === true ? "SGT verification recorded." : "Awaiting SGT verification."}</p>}
+      {candidateEvent && <a className={s.textLink} href={`https://simulatorgolftour.com/tournament/${candidateEvent}`} target="_blank" rel="noreferrer">Check SGT event {candidateEvent}</a>}
     </article>
-    {!readOnly && week?.status === "draft" && <OperationForm key={`verify-${str(week.id)}`} title="Verify SGT fixture mapping" description="Confirm the actual GSPro builds, selected nines, tees, official par/stroke indexes, conditions, dates and one-attempt rule in SGT. For one event covering both nines, leave Event B blank. Existing working SGT sync remains read-only."
+    {!readOnly && qualifier && <OperationForm title="Approve shared qualifier settings" description="Use the same supported standard/medium pins and approved handicap-eligible putting and gimmies in all three SGT events."
+      action="approve_qualifier_settings" busy={busy} send={send} envelope={false} fields={[hidden("seasonId",season.id),field("pins","Supported pin setting",shared.pins ?? CGL_QUALIFIER_SGT_LISTED_SETTINGS.pins),field("putting","Approved putting setting",shared.putting ?? CGL_QUALIFIER_SGT_LISTED_SETTINGS.putting),field("gimmies","Approved gimmie setting",shared.gimmies ?? CGL_QUALIFIER_SGT_LISTED_SETTINGS.gimmies),check("Approve the shared settings")]} />}
+    {!readOnly && week?.status === "draft" && qualifier && <OperationForm key={`verify-qualifier-${str(week.id)}`} title="Verify the 18-hole SGT qualifier"
+      description="Check the official GSPro course ID and build, supported regular-equivalent tees, holes 1–18, the Brisbane window, matching conditions and one valid attempt. No event is changed at SGT."
+      busy={busy} send={send} action="verify_season_one_event" envelope={false} fields={[hidden("weekId",week.id),pick("eventA","Synced SGT event",events.filter((item)=>item.value===candidateEvent),candidateEvent),
+        field("courseA","Official GSPro course ID",row(event.course_a).sgtCourseId),field("courseVersion","Course build version",row(event.course_a).version),field("teeA","Actual regular-equivalent tee",row(event.course_a).tee ?? CGL_QUALIFIER_SGT_LISTED_SETTINGS.tee),
+        {...field("yards","Selected tee yardage (target 6,000–6,300)",row(event.course_a).yards),type:"number"},
+        {key:"teeException",label:"I documented why the verified tee is outside the target yardage",type:"checkbox"},
+        {key:"handicapCounting",label:"I checked this event contributes to the eligible SGT handicap record",type:"checkbox"},check("I verified the complete event setup in SGT and GSPro")]} />}
+    {!readOnly && week?.status === "draft" && !qualifier && <OperationForm key={`verify-${str(week.id)}`} title="Verify SGT fixture mapping" description="Confirm the actual GSPro builds, selected nines, tees, official par/stroke indexes, conditions, dates and one-attempt rule in SGT. For one event covering both nines, leave Event B blank. Existing working SGT sync remains read-only."
       busy={busy} send={send} action="verify_season_one_event" envelope={false} fields={[hidden("weekId",week.id),
         pick("eventA","Synced SGT event A",events,week.sgt_tournament_id),{...pick("eventB","Synced SGT event B (if separate)",events,event.sgt_tournament_b_id),required:false},
         ...(["A","B"] as const).flatMap((side) => { const course=row(event[`course_${side.toLowerCase()}`]); return [
@@ -419,10 +432,22 @@ function SeasonOneOperations({ data, busy, send }: { data: CglSnapshot; busy: bo
       busy={busy} send={send} action="verify_guest_sgt" envelope={false} fields={[
         pick("memberId","Guest participant",rows(data.members).filter((item)=>!item.account_id && item.sgt_username && !item.sgt_verified_at).map((item)=>({value:str(item.id),label:str(item.sgt_username)}))),
         field("username","Submitted SGT username"),field("playerId","Unique SGT player ID"),field("sourceUrl","Official SGT profile URL"),check("I checked the official ID and confirmed ownership")]} />}
-    {!readOnly && <OperationForm title="Record verified qualification holes" description="Record each approved CGL or external SGT scorecard once. Established handicap: 18 holes. New handicap: 54 holes. Verify handicap and lock the grade in Members after review."
+    {!readOnly && qualifier && event.event_approved === true && week?.status!=="draft" && <OperationForm key={`import-qual-${str(week?.id)}`} title="Import a completed qualifier scorecard" description="Sync SGT first. Enter the official scorecard ID and completion time. CGL will match the unique player ID, confirmed enrolment and all 18 hole scores."
+      busy={busy} send={send} action="import_qualifier_scorecard" envelope={false} fields={[hidden("weekId",week?.id),pick("memberId","Player",memberOptions),
+        pick("path","Qualification path",options(["established","new"])),field("scorecardId","Official SGT scorecard ID"),time("playedAt","Official completion (Brisbane)"),check("I verified eligibility and the official SGT scorecard")]} />}
+    {!readOnly && qualifier && <article className={s.panel}>
+      <h3>Verified qualifier completions</h3>
+      <RecordList items={rows(data.qualifying_cards).filter((card) => card.week_id === week?.id).map((card) => ({...card,
+        player:memberOptions.find((member)=>member.value===card.member_id)?.label, score_status:"Verified"}))}
+        columns={["player","scorecard_id","holes","gross","played_at","path","score_status"]} />
+    </article>}
+    {!readOnly && <OperationForm title="Record a verified external SGT round" description="For approved rounds outside Q1–Q3, including late entrants. Established handicap: 18 holes. New handicap: 54 holes."
       busy={busy} send={send} action="record_qualifying_card" envelope={false} fields={[hidden("seasonId",season.id),pick("memberId","Player",memberOptions),
         pick("path","Qualification path",options(["established","new"])),field("scorecardId","Unique SGT scorecard ID"),{...field("holes","Completed holes: 9 or 18"),type:"number"},
-        time("playedAt","Completion (Brisbane)"),field("sourceUrl","Official SGT scorecard URL")]} />}
+        field("eventId","External SGT event ID"),time("playedAt","Completion (Brisbane)"),field("sourceUrl","Official SGT scorecard URL"),check("I reviewed the external SGT card and confirmed its holes are eligible")]} />}
+    {!readOnly && <OperationForm title="Verify the eligible SGT handicap" description="Use the current accepted handicap from the official SGT record, not a handicap estimated from the number of holes. After approval, assign and lock the grade in Members."
+      busy={busy} send={send} action="verify_qualifier_handicap" envelope={false} fields={[hidden("seasonId",season.id),pick("memberId","Player",memberOptions),
+        field("playerId","Verified SGT player ID"),{...field("handicap","Accepted SGT handicap"),type:"number"},field("sourceUrl","Official SGT handicap reference"),check("I confirmed this is the accepted handicap for the linked SGT identity")]} />}
     {!readOnly && week && <article className={s.panel}>
       <h3>SGT enrolment queue</h3>
       <p>Complete enrolment in SGT, check the unique player ID in each event, then record the result here. Website-account holders receive an inbox notice; contact guest entrants directly.</p>

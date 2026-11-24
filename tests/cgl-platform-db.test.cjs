@@ -19,7 +19,7 @@ test.before(async () => {
       "utf8",
     ),
   );
-  for (const migration of ["20261106202134_cgl_square_sandbox_billing.sql","20261124074223_cgl_season_one_operations.sql"])
+  for (const migration of ["20261106202134_cgl_square_sandbox_billing.sql","20261124074223_cgl_season_one_operations.sql","20261124114437_cgl_full_length_qualifiers.sql"])
     await db.exec(fs.readFileSync(path.resolve(__dirname,"../supabase/migrations",migration),"utf8"));
 });
 test.after(async () => {
@@ -38,7 +38,7 @@ test("Season 1 draft, overlapping fixtures, verified enrolment and transactional
   assert.ok(fixtureRows[4].opens_at < fixtureRows[3].closes_at);
   await assert.rejects(db.query("update cgl_seasons set status='published' where id=$1",[id]),/Approve the Season 1 schedule/);
   await db.query("update cgl_seasons set status='published', starts_at=now()-interval '30 days',ends_at=now()+interval '16 days',qualification_ends_at=now()-interval '21 days',config=config||jsonb_build_object('schedule_approved',true,'entry_opens_at',now()-interval '31 days','calendar_ends_at',now()+interval '2 days') where id=$1",[id]);
-  await assert.rejects(db.query("select cgl_publish_block(array[$1]::uuid[],null,null,'test','Missing verified SGT')",[q1]),/Approve actual SGT event/);
+  await assert.rejects(db.query("select cgl_publish_block(array[$1]::uuid[],null,null,'test','Missing verified SGT')",[q1]),/Approve the single 18-hole SGT qualifier/);
   const approve = (weekId, number, close) => db.query(`update cgl_weeks set sgt_tournament_id=$2,opens_at=now()-interval '10 days',closes_at=now()+$3::interval,
     config=config||'{"event_approved":true,"course_a":{"sgtCourseId":"build-a","segment":"front_9","tee":"White","verified":true},"course_b":{"sgtCourseId":"build-b","segment":"back_9","tee":"Yellow","verified":true},"ctp_hole":"B:12"}'::jsonb
       ||jsonb_build_object('verified_opens_at',now()-interval '10 days','verified_closes_at',now()+$3::interval) where id=$1`,[weekId,number,close]);
@@ -48,17 +48,31 @@ test("Season 1 draft, overlapping fixtures, verified enrolment and transactional
   const player = await member();
   const playerSgt = "9123456789";
   await db.query("update cgl_members set sgt_id=$2,sgt_verified_at=now() where id=$1",[player,playerSgt]);
+  await db.query(`update cgl_seasons set config=config||'{"qualifier_play_settings":{"pins":"Medium","putting":"Manual","gimmies":"Approved"}}'::jsonb where id=$1`,[id]);
+  await db.query(`update cgl_weeks set sgt_tournament_id='103', opens_at=now()-interval '1 day',closes_at=now()+interval '1 day',
+    config=config||jsonb_build_object('event_approved',true,'handicap_counting_verified',true,'verified_opens_at',now()-interval '1 day','verified_closes_at',now()+interval '1 day',
+    'verified_play_settings','{"pins":"Medium","putting":"Manual","gimmies":"Approved"}'::jsonb,'course_a',(config->'course_a')||'{"verified":true,"sgtCourseId":"q1-build","tee":"Regular","version":"1","yards":6150}'::jsonb) where id=$1`,[q1]);
+  await db.query("select cgl_publish_block(array[$1]::uuid[],null,null,'test','Verified full 18 holes')",[q1]);
+  await db.query("select cgl_save_event_enrolment($1,$2,$3,array['103'],'confirmed','Verified qualifier enrolment','test')",[q1,player,playerSgt]);
+  await db.query("update cgl_event_enrolments set confirmed_at=now()-interval '1 hour' where week_id=$1 and member_id=$2",[q1,player]);
+  const qualifierCard={season_id:id,week_id:q1,member_id:player,sgt_player_id:playerSgt,scorecard_id:"unique-full-card",path:"established",holes:18,gross:81,
+    played_at:new Date(Date.now()-60000).toISOString(),source_url:"https://simulatorgolftour.com/tournament/103"};
+  await assert.rejects(db.query("select cgl_record_qualifying_card($1,'test','Check partial')",[{...qualifierCard,holes:9}]),/complete verified 18-hole/);
+  await db.query("select cgl_record_qualifying_card($1,'test','Import approved card')",[qualifierCard]);
+  await db.query("select cgl_record_qualifying_card($1,'test','Replay approved card')",[qualifierCard]);
+  await assert.rejects(db.query("select cgl_record_qualifying_card($1,'test','Duplicate attempt')",[{...qualifierCard,scorecard_id:"second-attempt"}]),/cgl_one_completed_qualifier/);
+  assert.equal((await db.query("select * from cgl_results where week_id=$1",[q1])).rows.length,0);
   const enrol = (playerId) => db.query("select cgl_save_event_enrolment($1,$2,$3,array['102'],'confirmed','Verified test SGT enrolment','test')",[r2,player,playerId]);
   await assert.rejects(enrol("123456780"),/verified, active SGT identity/);
   await enrol(playerSgt);
   await enrol(playerSgt);
-  assert.equal((await db.query("select * from cgl_notifications where member_id=$1",[player])).rows.length,1);
+  assert.equal((await db.query("select * from cgl_notifications where member_id=$1",[player])).rows.length,2);
   const card={season_id:id,member_id:player,sgt_player_id:playerSgt,scorecard_id:"card-a",path:"established",holes:9,played_at:"2026-11-01T00:00:00Z",source_url:"https://simulatorgolftour.com/scorecard/100"};
   const recordCard = (record) => db.query("select cgl_record_qualifying_card($1,'test','Review scorecard fixture')",[record]);
   await recordCard(card);
   await recordCard(card);
   await assert.rejects(recordCard({...card,scorecard_id:"card-b",path:"new"}),/same qualification pathway/);
-  assert.equal((await db.query("select sum(holes)::int as n from cgl_qualifying_cards where member_id=$1",[player])).rows[0].n,9);
+  assert.equal((await db.query("select sum(holes)::int as n from cgl_qualifying_cards where member_id=$1",[player])).rows[0].n,27);
   const [{ id: resultId, updated_at }] = (await db.query(`insert into cgl_results(week_id,member_id,external_id,source_url,gross,net,state)
     values($1,$2,'test-season-row','https://simulatorgolftour.com/tournament/100',70,65,'verified') returning id,updated_at`,[r1,player])).rows;
   const calculation = { rules_version:"test",points_version:{approved:true},source_snapshot:[{id:resultId,updated_at:updated_at.toISOString()}],

@@ -651,6 +651,9 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
   const results = rows(data.results);
   const standings = rows(data.standings)[0];
   const available = rows(data.weeks).filter(availableWeek);
+  const qualification = row(data.qualification_progress);
+  const qualificationTarget = num(qualification.target);
+  const verifiedHoles = Math.min(num(qualification.holes), qualificationTarget);
   const ready = data.status === "ready";
   useEffect(() => {
     if (
@@ -934,6 +937,13 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
           <div className={s.grid2}>
             <article className={s.panel}>
               <div className={s.eyebrow}>On the tee</div>
+              {qualificationTarget > 0 ? <div className={s.notice}>
+                <h3>{qualificationTarget === 18 ? "Handicap verification" : "New handicap qualification"}</h3>
+                <p><strong>{verifiedHoles}/{qualificationTarget} verified holes</strong></p>
+                <progress aria-label="Verified Season 1 qualification holes" value={verifiedHoles} max={qualificationTarget} />
+                <p>{verifiedHoles < qualificationTarget ? "Complete eligible rounds and have the scorecards verified." : qualification.handicap_verified ? "Hole requirement met. Your verified SGT handicap is recorded; championship play also needs a locked grade and event enrolment." : "Hole requirement met. Your eligible SGT handicap still needs verification before a grade can be assigned."}</p>
+                {rows(qualification.rounds).map((round) => <p key={str(round.name)}>{str(round.name)} · {round.verified ? "Scorecard verified" : round.enrolled ? "Enrolled in SGT" : "Awaiting enrolment"}</p>)}
+              </div> : null}
               <h2>
                 {available.length
                   ? str(available[0].name, "Your next competition")

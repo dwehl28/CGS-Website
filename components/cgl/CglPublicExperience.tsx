@@ -18,6 +18,7 @@ import { useState, type ReactNode } from "react";
 import {
   CglConditionsPanel,
   CglRoundSpotlight,
+  CglQualificationCards,
   CglSeasonFacts,
   CglSeasonTimeline,
   getCglFeatureWeek,
@@ -913,8 +914,9 @@ function Calendar({ data }: { data: CglSnapshot }) {
         </div>
       </div>
       <CglSeasonFacts />
+      <CglQualificationCards data={data} />
       <div className={s.section}>
-        <CglSeasonTimeline data={data} />
+        <CglSeasonTimeline data={data} includeQualification={false} />
       </div>
       <section className={`${s.section} ${s.seasonRoadmap}`}>
         <div className={s.seasonRoadmapIntro}>
@@ -1202,7 +1204,7 @@ export default function CglPublicExperience({
     calendar: [
       "Season 1 · 2027",
       "The Hidden Gems Tour calendar.",
-      "Three qualification weeks lead into ten championship rounds. Every round combines nine holes from two different courses.",
+      "Three full 18-hole qualifiers lead into ten championship rounds, each combining nine holes from two different courses.",
     ],
     leaderboard: [
       "Results & standings",
@@ -1318,6 +1320,7 @@ export default function CglPublicExperience({
       {section === "competition" ? (
         <>
           <CglRoundSpotlight data={data} />
+          <CglQualificationCards data={data} />
           {openWeeks.length > 1 ? <section className={s.section}>
             <SectionHead title="All open rounds" text="Championship windows overlap. Play any open round you are eligible for and enrolled in." />
             <div className={s.grid3}>{openWeeks.map((week) => <article className={s.panel} key={str(week.id)}>
@@ -1333,7 +1336,7 @@ export default function CglPublicExperience({
           </nav>
           <div id="round-format" className={`${s.grid2} ${s.section}`}>
             <article className={s.panel}>
-              <div className={s.eyebrow}>Round format</div>
+              <div className={s.eyebrow}>Championship format</div>
               <h2>Two nines become one result.</h2>
               <p>
                 Complete nine holes on each published course. Your two eligible
@@ -1559,7 +1562,7 @@ export default function CglPublicExperience({
           <section className={s.section}>
             <SectionHead
               title="The Season 1 journey"
-              text="Confirmed opening dates, with proposed course pairs clearly labelled until SGT verification."
+              text="Confirmed opening dates, with course settings clearly labelled until SGT verification."
             />
             <Calendar data={data} />
           </section>
