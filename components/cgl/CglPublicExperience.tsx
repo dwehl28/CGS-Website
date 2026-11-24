@@ -1,9 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { CGL_CASH_PRIZE_CENTS } from "@/lib/cgl-season-one";
+import { CGL_CASH_PRIZE_CENTS, getCglCountdownParts, getCglSeasonCountdown } from "@/lib/cgl-season-one";
 import Link from "next/link";
 import {
+  ArrowRight,
   Award,
   CheckCircle2,
   ExternalLink,
@@ -14,13 +15,14 @@ import {
   Trophy,
   Wallet,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   CglConditionsPanel,
   CglRoundSpotlight,
   CglQualificationCards,
   CglSeasonFacts,
   CglSeasonTimeline,
+  getCglDisplayWeeks,
   getCglFeatureWeek,
 } from "./CglSeasonExperience";
 import {
@@ -807,11 +809,11 @@ function MembershipTeaser({ data }: { data: CglSnapshot }) {
   return (
     <div className={s.membershipTeaser}>
       <div className={s.membershipTeaserCopy}>
-        <span>Memberships open</span>
-        <h2>Join your way.</h2>
+        <span>Get ready for Season 1</span>
+        <h2>Pick your membership.</h2>
         <p>
-          Start now with or without a CGS website account. Every Square charge
-          is in AUD and your exact SGT username links you to competition data.
+          Join as a full member or register as a casual and buy a separate
+          Season Pass when season entries open. A CGS website account is optional.
         </p>
         <Link className={s.primary} href="/cgl/memberships">
           Compare memberships
@@ -997,8 +999,53 @@ function Rules() {
   );
 }
 
-function CglHome({ data }: { data: CglSnapshot }) {
-  const feature = getCglFeatureWeek(data);
+function SeasonCountdown({ data, initialClock }: { data: CglSnapshot; initialClock?: number }) {
+  const [now, setNow] = useState(initialClock ?? 0);
+  const season = rows(data.seasons).find((item) => Number(item.year) === 2027 && Number(item.season_number) === 1);
+  const weeks = getCglDisplayWeeks(data);
+  const kickoff = (phase: "qualification" | "championship") =>
+    weeks.find((week) => week.phase === phase && week.phaseRound === 1 && !week.proposed)?.opensAt;
+  const countdown = getCglSeasonCountdown(now, {
+    qualifier: kickoff("qualification"),
+    championship: kickoff("championship"),
+    deadline: typeof season?.ends_at === "string" ? season.ends_at : null,
+  });
+  const target = countdown.target;
+  useEffect(() => {
+    if (!target) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [target]);
+  const values = target && now !== 0 ? getCglCountdownParts(target, now) : [];
+  return (
+    <aside className={s.seasonCountdown} aria-labelledby="cgl-countdown-title">
+      <h2 id="cgl-countdown-title">{countdown.title}</h2>
+      {target ? (
+        <>
+          <dl className={s.countdownDigits} role="timer" aria-label={countdown.title}>
+            {["Days", "Hours", "Minutes", "Seconds"].map((label, i) => (
+              <div key={label}>
+                <dt>{label}</dt>
+                <dd>{values[i] == null ? "--" : String(values[i]).padStart(2, "0")}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className={s.countdownDate}>{countdown.event} <span aria-hidden="true">/</span>{" "}
+            <time dateTime={target}>{date(target)}</time>
+          </p>
+          <p className={s.countdownNote}>{countdown.provisional ? "Brisbane time. Midnight start pending approval." : `${date(target, true)} (Brisbane)`}</p>
+        </>
+      ) : (
+        <p className={s.countdownDate}>{countdown.event}</p>
+      )}
+    </aside>
+  );
+}
+
+function CglHome({ data, initialClock }: { data: CglSnapshot; initialClock?: number }) {
+  const season = rows(data.seasons).find((item) => Number(item.year) === 2027 && Number(item.season_number) === 1);
+  const hasSeasonResults = Boolean(season) && rows(data.results).some((result) => result.season_id === season?.id && !result.provisional);
+  const hasSeasonStandings = Boolean(season) && rows(data.standings).some((standing) => standing.season_id === season?.id);
   return (
     <div className={s.page}>
       <section className={s.seasonHero}>
@@ -1012,32 +1059,21 @@ function CglHome({ data }: { data: CglSnapshot }) {
         />
         <div className={s.seasonHeroShade} />
         <div className={s.seasonHeroContent}>
-          <div className={s.seasonHeroBrand}>
-            <Image
-              src="/cgl/cgl-logo-official.jpg"
-              width={1914}
-              height={816}
-              alt="Crossodog Golf League"
-              priority
-            />
-          </div>
-          <span className={s.heroKicker}>Season 1 · 2027</span>
+          <span className={s.heroKicker}>Crossodog Golf League / 2027</span>
           <h1>
-            Hidden Gems
-            <br />
-            <em>Tour</em>
+            Season <em>1</em>
           </h1>
+          <p className={s.heroTourName}>Hidden Gems Tour</p>
           <p>
-            Two courses. Eighteen holes. One championship race. Discover
-            lesser-known GSPro courses, compete in your division and follow the
-            season from anywhere.
+            Explore lesser-known GSPro courses and compete for the first CGL
+            title. Three 18-hole qualifiers lead into a ten-round championship.
           </p>
-          <div className={s.actions}>
-            <Link className={s.primary} href="/cgl/join">
-              Join CGL
+          <div className={s.heroActions}>
+            <Link className={s.heroBuy} href="/cgl/memberships">
+              Buy a membership <ArrowRight size={19} aria-hidden="true" />
             </Link>
-            <Link className={s.heroSecondary} href="/cgl/competition">
-              Explore Season 1
+            <Link className={s.heroSecondary} href="/cgl/calendar">
+              View the Season 1 calendar
             </Link>
           </div>
           <div className={s.heroTrust}>
@@ -1046,55 +1082,36 @@ function CglHome({ data }: { data: CglSnapshot }) {
             <span>Results powered by SGT</span>
           </div>
         </div>
-        <aside className={s.heroRoundCard} aria-label="Season 1 format">
-          <span>Every championship round</span>
-          <div>
-            <strong>9</strong>
-            <small>Course A</small>
-          </div>
-          <b>+</b>
-          <div>
-            <strong>9</strong>
-            <small>Course B</small>
-          </div>
-          <b>=</b>
-          <div className={s.heroRoundTotal}>
-            <strong>18</strong>
-            <small>Combined holes</small>
-          </div>
-          <p>Best eight championship results count.</p>
-        </aside>
+        <SeasonCountdown data={data} initialClock={initialClock} />
         <small className={s.heroImageNote}>Illustrative CGL course imagery</small>
       </section>
 
       <CglSeasonFacts />
 
       <section className={s.section}>
-        <SectionHead
-          label="Play next"
-          title="The round in front of you."
-          text="Opening dates come from the confirmed Season 1 plan. Exact closing windows, courses and settings are clearly marked until verified in SGT."
-        />
-        <CglRoundSpotlight data={data} />
+        <MembershipTeaser data={data} />
       </section>
+
+      <CglQualificationCards data={data} />
 
       <section className={`${s.section} ${s.seasonOverview}`}>
         <div>
           <SectionHead
             label="Season path"
-            title="Know what is coming."
-            text="The next four scheduled releases, from qualification through the championship."
+            title="The championship rounds."
+            text="Ten rounds across A and B Grade. Your best eight results count."
             href="/cgl/calendar"
             link="Full Season 1 calendar"
           />
-          <CglSeasonTimeline data={data} limit={4} />
+          <CglSeasonTimeline data={data} limit={4} includeQualification={false} />
         </div>
         <aside className={s.howCard}>
           <span>How the chase works</span>
           <h2>Simple to enter. Worth following.</h2>
           {[
             ["Join", "Choose a membership or casual registration. A CGS account is optional."],
-            ["Play", "Complete both nine-hole rounds in GSPro before the published close."],
+            ["Qualify", "Complete the required 18 or 54 verified holes and have your SGT handicap checked."],
+            ["Compete", "Play two nine-hole courses per championship round before the published close."],
             ["Follow", "SGT results flow into CGL standings, profiles and weekly honours."],
           ].map(([title, text], index) => (
             <div key={title}>
@@ -1109,11 +1126,11 @@ function CglHome({ data }: { data: CglSnapshot }) {
         </aside>
       </section>
 
-      <section className={s.section}>
+      {hasSeasonStandings ? <section className={s.section}>
         <SectionHead
           label="The championship"
           title="Two divisions. One live chase."
-          text="Published A and B Grade standings update from verified results. No placeholder scores or fictional players are shown."
+          text="Published A and B Grade standings update from verified results."
           href="/cgl/leaderboard"
           link="Open full leaderboard"
         />
@@ -1122,11 +1139,11 @@ function CglHome({ data }: { data: CglSnapshot }) {
             <span>A Grade · 9.9 and lower</span>
             <span>B Grade · 10.0 and higher</span>
           </div>
-          <CglStandingsTable compact data={data} />
+          <CglStandingsTable compact data={{ ...data, standings: rows(data.standings).filter((standing) => standing.season_id === season?.id) }} />
         </div>
-      </section>
+      </section> : null}
 
-      <section className={s.section}>
+      {hasSeasonResults ? <section className={s.section}>
         <SectionHead
           label="Weekly honours"
           title="Every great round has a story."
@@ -1134,12 +1151,8 @@ function CglHome({ data }: { data: CglSnapshot }) {
           href="/cgl/prizes"
           link="See prizes and rewards"
         />
-        <WeeklyHonours data={data} />
-      </section>
-
-      <section className={s.section}>
-        <MembershipTeaser data={data} />
-      </section>
+        <WeeklyHonours data={{ ...data, weeks: rows(data.weeks).filter((week) => week.season_id === season?.id) }} />
+      </section> : null}
 
       <section className={s.presenterBand}>
         <div>
@@ -1166,9 +1179,6 @@ function CglHome({ data }: { data: CglSnapshot }) {
         </p>
       ) : null}
 
-      <span className={s.visuallyHidden}>
-        Featured competition: {feature.name}, opening {feature.openingLabel}.
-      </span>
     </div>
   );
 }
@@ -1176,9 +1186,11 @@ function CglHome({ data }: { data: CglSnapshot }) {
 export default function CglPublicExperience({
   section = "home",
   previewData,
+  initialClock,
 }: {
   section?: string;
   previewData?: CglSnapshot;
+  initialClock?: number;
 }) {
   const remoteData = useCglPublic(!previewData);
   const data = previewData ?? remoteData;
@@ -1194,7 +1206,7 @@ export default function CglPublicExperience({
   const snapshotAt = Date.parse(str(data.updated_at,""));
   const openWeeks = rows(data.weeks).filter((week) => ["published","open"].includes(str(week.status)) &&
     Date.parse(str(week.opens_at)) <= snapshotAt && Date.parse(str(week.closes_at)) + 1000 > snapshotAt);
-  if (section === "home") return <CglHome data={data} />;
+  if (section === "home") return <CglHome data={data} initialClock={initialClock} />;
   const titles: Record<string, [string, string, string]> = {
     memberships: [
       "Memberships",

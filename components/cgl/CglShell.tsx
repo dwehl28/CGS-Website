@@ -16,13 +16,13 @@ import { useState, type ReactNode } from "react";
 import styles from "./CglShell.module.css";
 
 const primaryLinks = [
-  { href: "/cgl", label: "Home" },
+  { href: "/cgl", label: "Season 1" },
+  { href: "/cgl/memberships", label: "Memberships" },
+  { href: "/cgl/calendar", label: "Calendar" },
   { href: "/cgl/competition", label: "Competition" },
   { href: "/cgl/leaderboard", label: "Leaderboards" },
-  { href: "/cgl/calendar", label: "Season" },
   { href: "/cgl/players", label: "Players" },
   { href: "/cgl/prizes", label: "Prizes" },
-  { href: "/cgl/memberships", label: "Memberships" },
 ];
 
 const supportLinks = [
@@ -169,7 +169,7 @@ export default function CglShell({
               : "Explore CGL membership options"}
           </strong>
           <span>Play without creating an account.</span>
-          <Link href="/cgl/join">View membership options</Link>
+          <Link href="/cgl/memberships">View membership options</Link>
         </div>
       )}
 

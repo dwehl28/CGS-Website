@@ -9,6 +9,27 @@ const seasonUrl = pathToFileURL(
 ).href;
 const season: typeof SeasonOne = await import(seasonUrl);
 
+test("Season 1 countdown starts with Qualification 1 in Brisbane and rolls into the championship", () => {
+  const kickoff = Date.parse("2027-02-08T00:00:00+10:00");
+  const before = season.getCglSeasonCountdown(kickoff - 86_401_000);
+  assert.equal(before.title, "Season 1 starts in");
+  assert.equal(Date.parse(before.target!), kickoff);
+  assert.equal(before.provisional, true);
+  assert.deepEqual(season.getCglCountdownParts(before.target!, kickoff - 86_401_000), [1,0,0,1]);
+  assert.equal(season.getCglSeasonCountdown(kickoff).title, "Championship starts in");
+  assert.deepEqual(season.getCglCountdownParts(before.target!, kickoff + 1000), [0,0,0,0]);
+});
+
+test("countdown prefers published times and does not claim unpublished championship play is live", () => {
+  const qualifier = "2027-02-08T09:00:00+10:00";
+  const before = season.getCglSeasonCountdown(Date.parse("2027-02-08T08:00:00+10:00"), { qualifier });
+  assert.equal(before.target, qualifier);
+  assert.equal(before.provisional, false);
+  const after = season.getCglSeasonCountdown(Date.parse("2027-03-01T12:00:00+10:00"));
+  assert.equal(after.target, null);
+  assert.equal(after.title, "Season 1 schedule");
+});
+
 test("Season 1 proposal contains the agreed three-plus-ten calendar", () => {
   const plan = season.CGL_SEASON_ONE_PLAN;
   assert.equal(plan.rounds.length, 13);

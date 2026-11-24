@@ -1110,14 +1110,15 @@
 
 /* Season 1 public experience */
 .seasonHero {
+  --season-lime: #b5ef32;
   position: relative;
-  min-height: min(720px, calc(100svh - 205px));
+  min-height: clamp(460px, 45vw, 560px);
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(290px, 0.75fr);
-  align-items: end;
-  gap: clamp(30px, 6vw, 90px);
+  grid-template-columns: minmax(0, 1.2fr) minmax(310px, 0.8fr);
+  align-items: center;
+  gap: clamp(22px, 4vw, 58px);
   overflow: hidden;
-  padding: clamp(34px, 6vw, 86px);
+  padding: clamp(32px, 5vw, 72px);
   color: white;
   background: #061a38;
   border-bottom: 8px solid #9ce600;
@@ -1140,7 +1141,7 @@
 }
 
 .seasonHeroContent,
-.heroRoundCard,
+.seasonCountdown,
 .heroImageNote {
   position: relative;
   z-index: 2;
@@ -1148,21 +1149,6 @@
 
 .seasonHeroContent {
   max-width: 760px;
-}
-
-.seasonHeroBrand {
-  width: clamp(160px, 17vw, 230px);
-  display: flex;
-  margin-bottom: 30px;
-  padding: 7px 13px 7px 8px;
-  background: white;
-  box-shadow: 7px 7px 0 #9ce600;
-  clip-path: polygon(0 0, 100% 0, 92% 100%, 0 100%);
-}
-
-.seasonHeroBrand img {
-  width: 100%;
-  height: auto;
 }
 
 .heroKicker {
@@ -1179,11 +1165,11 @@
   max-width: 780px;
   margin: 0;
   color: white;
-  font-size: clamp(4rem, 8.8vw, 9.2rem);
+  font-size: clamp(3.7rem, 9vw, 8.6rem);
   font-style: italic;
   font-weight: 950;
   letter-spacing: -0.075em;
-  line-height: 0.76;
+  line-height: 0.89;
   text-transform: uppercase;
   text-shadow: 0 10px 30px rgba(0, 0, 0, 0.26);
 }
@@ -1194,12 +1180,43 @@
 }
 
 .seasonHeroContent > p {
-  max-width: 630px;
-  margin: 34px 0 0;
+  max-width: 46ch;
+  margin: 12px 0 0;
   color: #d7e2ee;
   font-size: clamp(1rem, 1.5vw, 1.22rem);
   line-height: 1.65;
 }
+
+.seasonHeroContent > .heroTourName {
+  margin-top: 16px;
+  color: var(--season-lime);
+  font-size: clamp(1.35rem, 3vw, 2.35rem);
+  font-weight: 850;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 23px;
+}
+
+.seasonHero a.heroBuy {
+  min-height: 52px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px 21px;
+  background: var(--season-lime);
+  color: #061a38;
+  font-size: .98rem;
+  font-weight: 900;
+}
+
+.seasonHero a.heroBuy:hover { background: #d7fa82; }
 
 .heroSecondary {
   min-height: 45px;
@@ -1217,7 +1234,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 7px 18px;
-  margin-top: 25px;
+  margin-top: 17px;
   color: #bdcbe0;
   font-size: 0.72rem;
   font-weight: 700;
@@ -1237,68 +1254,74 @@
   content: "";
 }
 
-.heroRoundCard {
-  align-self: end;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr auto 1.1fr;
-  align-items: center;
-  gap: 12px;
+.seasonCountdown {
+  min-width: 0;
   border: 1px solid rgba(255, 255, 255, 0.22);
-  border-top: 5px solid #9ce600;
-  padding: 24px;
-  background: rgba(4, 20, 46, 0.86);
-  box-shadow: 13px 13px 0 rgba(156, 230, 0, 0.17);
+  border-top: 5px solid var(--season-lime);
+  padding: clamp(17px, 2.7vw, 36px);
+  background: linear-gradient(148deg, rgba(22, 52, 75, .92), rgba(4, 20, 46, .91));
+  box-shadow: 9px 9px 0 rgba(156, 230, 0, 0.18);
   backdrop-filter: blur(10px);
 }
 
-.heroRoundCard > span,
-.heroRoundCard > p {
-  grid-column: 1 / -1;
-}
-
-.heroRoundCard > span {
-  color: #cfff72;
-  font-size: 0.68rem;
+.seasonCountdown h2 {
+  margin: 0;
+  color: white;
+  font-size: clamp(1.15rem, 2.65vw, 2.05rem);
   font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  line-height: 1.15;
 }
 
-.heroRoundCard > div {
+.countdownDigits {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(4px, 1vw, 10px);
+  margin: 17px 0;
+}
+
+.countdownDigits > div {
+  min-width: 0;
   display: grid;
   justify-items: center;
+  align-content: center;
+  gap: 5px;
+  border: 1px solid #314560;
+  padding: 10px 2px;
+  background: #081d38;
 }
 
-.heroRoundCard strong {
-  color: white;
-  font-size: clamp(2rem, 4vw, 3.4rem);
+.countdownDigits dd {
+  order: -1;
+  margin: 0;
+  color: #f3f8ff;
+  font-size: clamp(1.4rem, 3.35vw, 3rem);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
   line-height: 1;
 }
 
-.heroRoundCard small {
-  color: #b9c8dc;
-  font-size: 0.62rem;
-  font-weight: 750;
-  text-align: center;
-  text-transform: uppercase;
+.countdownDigits > div:first-child dd { color: var(--season-lime); }
+
+.countdownDigits dt {
+  color: #cbd9e9;
+  font-size: clamp(.55rem, 1vw, .68rem);
+  font-weight: 850;
 }
 
-.heroRoundCard > b {
-  color: #9ce600;
-  font-size: 1.2rem;
+.countdownDate {
+  margin: 14px 0 0;
+  color: white;
+  font-size: .88rem;
+  font-weight: 800;
 }
 
-.heroRoundCard .heroRoundTotal strong {
-  color: #9ce600;
-}
+.countdownDate span { color: var(--season-lime); }
 
-.heroRoundCard > p {
-  margin: 10px 0 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
-  padding-top: 15px;
-  color: #d3ddeb;
-  font-size: 0.76rem;
-  text-align: center;
+.countdownNote {
+  margin: 3px 0 0;
+  color: #cbd9e9;
+  font-size: .76rem;
 }
 
 .heroImageNote {
@@ -2002,15 +2025,6 @@
 }
 
 @media (max-width: 1100px) {
-  .seasonHero {
-    grid-template-columns: 1fr;
-    min-height: 700px;
-  }
-
-  .heroRoundCard {
-    max-width: 560px;
-  }
-
   .seasonOverview {
     grid-template-columns: 1fr;
   }
@@ -2035,8 +2049,9 @@
 
 @media (max-width: 760px) {
   .seasonHero {
-    min-height: 720px;
-    padding: 36px 20px;
+    min-height: 0;
+    grid-template-columns: 1fr;
+    padding: 28px 20px 38px;
   }
 
   .seasonHeroShade {
@@ -2046,17 +2061,14 @@
   }
 
   .seasonHero h1 {
-    font-size: clamp(3.8rem, 19vw, 6rem);
+    font-size: clamp(3.25rem, 13.5vw, 6rem);
   }
 
   .seasonHeroContent > p {
-    margin-top: 27px;
     font-size: 0.96rem;
   }
 
-  .heroRoundCard {
-    padding: 17px;
-  }
+  .countdownDigits dd { font-size: clamp(1.4rem, 7vw, 2.55rem); }
 
   .membershipTeaser,
   .calendarIntro {
@@ -2097,25 +2109,8 @@
 }
 
 @media (max-width: 540px) {
-  .seasonHero {
-    min-height: 760px;
-  }
-
-  .seasonHeroBrand {
-    margin-bottom: 25px;
-  }
-
-  .heroTrust {
-    display: grid;
-  }
-
-  .heroRoundCard {
-    gap: 7px;
-  }
-
-  .heroRoundCard > p {
-    font-size: 0.69rem;
-  }
+  .heroBuy, .heroSecondary { width: 100%; }
+  .heroTrust { gap: 5px 12px; }
 
   .membershipOptions,
   .calendarDates,

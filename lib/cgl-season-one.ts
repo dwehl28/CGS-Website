@@ -243,6 +243,36 @@ export const CGL_SEASON_ONE_PLAN = Object.freeze({
 
 export type CglSeasonOnePlan = typeof CGL_SEASON_ONE_PLAN;
 
+export function getCglSeasonCountdown(
+  now: number,
+  schedule: { qualifier?: string | null; championship?: string | null; deadline?: string | null } = {},
+) {
+  const valid = (value?: string | null) => value && Number.isFinite(Date.parse(value)) ? value : null;
+  const qualifier = valid(schedule.qualifier);
+  const championship = valid(schedule.championship);
+  const deadline = valid(schedule.deadline);
+  const qualifierStart = qualifier ?? `${CGL_SEASON_ONE_PLAN.qualificationStartDate}T00:00:00+10:00`;
+  const championshipStart = championship ?? `${CGL_SEASON_ONE_PLAN.championshipStartDate}T00:00:00+10:00`;
+  if (now < Date.parse(qualifierStart)) {
+    return { title: "Season 1 starts in", event: "Qualification 1", target: qualifierStart, provisional: !qualifier };
+  }
+  if (now < Date.parse(championshipStart)) {
+    return { title: "Championship starts in", event: "Round 1", target: championshipStart, provisional: !championship };
+  }
+  const review = deadline && now >= Date.parse(deadline);
+  return {
+    title: review ? "Season 1 results" : championship ? "Follow Season 1" : "Season 1 schedule",
+    event: review ? "Follow the latest verified standings." : "Find published rounds in the competition centre.",
+    target: null,
+    provisional: false,
+  };
+}
+
+export function getCglCountdownParts(target: string, now: number) {
+  const seconds = Math.max(0, Math.ceil((Date.parse(target) - now) / 1000));
+  return [Math.floor(seconds / 86400), Math.floor(seconds / 3600) % 24, Math.floor(seconds / 60) % 60, seconds % 60];
+}
+
 function brisbaneStart(date: string) {
   return new Date(`${date}T00:00:00+10:00`);
 }
