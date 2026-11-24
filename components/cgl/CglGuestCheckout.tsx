@@ -149,8 +149,11 @@ export default function CglGuestCheckout() {
   }, []);
 
   const plans = rows(publicData.plans);
+  const snapshotAt = Date.parse(str(publicData.updated_at,""));
   const seasons = rows(publicData.seasons).filter((season) =>
-    ["registration", "published", "active"].includes(str(season.status)),
+    ["registration", "published", "active"].includes(str(season.status)) &&
+    (!season.entry_opens_at || Date.parse(str(season.entry_opens_at)) <= snapshotAt) &&
+    (!season.ends_at || Date.parse(str(season.ends_at)) > snapshotAt),
   );
 
   const resetReview = (plan = selectedPlan) => {

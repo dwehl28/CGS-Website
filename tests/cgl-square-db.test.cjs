@@ -18,6 +18,7 @@ test.before(async () => {
     "20261114143000_cgl_square_production_recurring.sql",
     "20261120122500_cgl_retire_stale_square_checkout.sql",
     "20261121044246_cgl_guest_checkout.sql",
+    "20261124074223_cgl_season_one_operations.sql",
   ])
     await db.exec(
       fs.readFileSync(
@@ -30,6 +31,18 @@ test.before(async () => {
   );
 });
 test.after(async () => db?.close());
+
+test("account-free Season 1 entrants can verify an official SGT identity without replacing it", async () => {
+  const id = await member();
+  await db.query("update cgl_members set sgt_username='IsolatedSeasonGuest' where id=$1",[id]);
+  const verify = (name, playerId) => db.query("select cgl_verify_guest_sgt($1,$2,$3,'https://simulatorgolftour.com/player/IsolatedSeasonGuest','admin','Reviewed official guest profile')",[id,name,playerId]);
+  await assert.rejects(verify("DifferentUser","9811122233"),/guest checkout username/);
+  await verify("IsolatedSeasonGuest","9811122233");
+  await verify("IsolatedSeasonGuest","9811122233");
+  await assert.rejects(verify("IsolatedSeasonGuest","9811122234"),/cannot be switched/);
+  const [record] = (await db.query("select sgt_id,account_id from cgl_members where id=$1",[id])).rows;
+  assert.deepEqual(record,{sgt_id:"9811122233",account_id:null});
+});
 async function member() {
   const id = randomUUID();
   await db.query("insert into auth.users values($1)", [id]);

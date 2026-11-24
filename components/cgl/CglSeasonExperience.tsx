@@ -49,7 +49,7 @@ function proposalWeek(round: CglRoundProposal): CglDisplayWeek {
     opensAt: `${round.openingDate}T00:00:00+10:00`,
     closesAt: null,
     openingLabel: formatCglPlanDate(round.openingDate),
-    closingLabel: "Closing window to be published",
+    closingLabel: round.closingDate ? `Proposed close: ${formatCglPlanDate(round.closingDate, true)}, 11:59:59 pm AEST` : "Closing window to be published",
     courseA: round.courses[0].name,
     courseB: round.courses[1].name,
     status: "scheduled",
@@ -106,22 +106,17 @@ export function getCglDisplayWeeks(data: CglSnapshot): CglDisplayWeek[] {
   const officialSeasonIds = new Set(
     rows(data.seasons)
       .filter((season) => {
-        const name = `${str(season.name, "")} ${str(season.slug, "")}`.toLowerCase();
-        return Number(season.year) === 2027 || name.includes("hidden-gems");
+        return (Number(season.year) === 2027 && Number(season.season_number) === 1) || str(season.slug) === CGL_SEASON_ONE_PLAN.slug;
       })
       .map((season) => str(season.id)),
   );
   const configured = rows(data.weeks)
-    .filter((week) => {
-      const name = str(week.name, "").toLowerCase();
-      return officialSeasonIds.has(str(week.season_id)) || name.includes("hidden gems");
-    })
+    .filter((week) => officialSeasonIds.has(str(week.season_id)))
     .map(realWeek)
     .sort((a, b) => a.weekNumber - b.weekNumber);
 
-  return configured.length
-    ? configured
-    : CGL_SEASON_ONE_PLAN.rounds.map(proposalWeek);
+  const byNumber = new Map(configured.map((week) => [week.weekNumber,week]));
+  return CGL_SEASON_ONE_PLAN.rounds.map((round) => byNumber.get(round.weekNumber) ?? proposalWeek(round));
 }
 
 export function getCglFeatureWeek(data: CglSnapshot): CglDisplayWeek {
@@ -130,11 +125,10 @@ export function getCglFeatureWeek(data: CglSnapshot): CglDisplayWeek {
   return (
     weeks.find(
       (week) =>
-        ["open", "live"].includes(week.status.toLowerCase()) ||
-        (week.opensAt &&
+        (["open", "live", "published"].includes(week.status.toLowerCase()) && week.opensAt &&
           Date.parse(week.opensAt) <= now &&
           week.closesAt &&
-          Date.parse(week.closesAt) > now),
+          Date.parse(week.closesAt)+1000 > now),
     ) ??
     weeks.find((week) => week.opensAt && Date.parse(week.opensAt) > now) ??
     weeks.at(-1)!
@@ -353,6 +347,7 @@ export function CglSeasonTimeline({
               <h3>{week.name}</h3>
             </div>
             <p>{week.courseA} <b>+</b> {week.courseB}</p>
+            {limit == null ? <p>{week.closingLabel}</p> : null}
           </div>
           <div className={styles.timelineStatus}>
             {week.proposed ? "Courses proposed" : str(week.status)}

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { CGL_CASH_PRIZE_CENTS } from "@/lib/cgl-season-one";
 import Link from "next/link";
 import {
   Award,
@@ -268,7 +269,7 @@ export function CglStandingsTable({
       ? ""
       : week ||
         [...weeks]
-          .filter((w) => w.results_published)
+          .filter((w) => w.results_published || w.review_until)
           .sort((a, b) =>
             str(b.closes_at, "").localeCompare(str(a.closes_at, "")),
           )[0]?.id;
@@ -431,6 +432,12 @@ export function CglStandingsTable({
             : "No official Season 1 standings published"}
         </span>
       </div>
+      {mode !== "points" && weeks.some((item) => item.id === effectiveWeek && item.review_until) ? (
+        <div className={s.notice}>
+          Results are provisional. Review closes {date(weeks.find((item) => item.id === effectiveWeek)?.review_until, true)} Brisbane time.
+          {" "}<Link className={s.textLink} href="/contact">Report a scoring issue</Link> with your SGT username, round and scorecard links. Points and credits are not final.
+        </div>
+      ) : null}
       {data.status === "loading" ? (
         <div className={s.empty} role="status">
           Loading published results…
@@ -441,7 +448,7 @@ export function CglStandingsTable({
             <caption>
               {mode === "points"
                 ? "Championship · best eight of ten · points earned within each division"
-                : "Verified weekly results"}
+                : "Weekly net and gross results"}
             </caption>
             <thead>
               <tr>
@@ -498,6 +505,7 @@ export function CglStandingsTable({
                   <td>
                     {mode !== "points" && r.weekly_tied ? "T" : ""}
                     {str(r.position ?? r.rank)}
+                    {r.provisional ? <span className={s.badge}>Provisional</span> : null}
                     {r.pending ? (
                       <span className={s.badge}>Pending</span>
                     ) : null}
@@ -951,7 +959,7 @@ function Rules() {
       {[
         [
           "Your handicap, verified",
-          "SGT is the source of your playing handicap. Players without an accepted established handicap need 54 eligible holes, with verification against SGT requirements. Qualification runs in the first three weeks.",
+          "SGT is the source of your playing handicap. Season 1 requires 18 verified holes for established handicaps, or 54 eligible holes for new handicaps. Use approved CGL or external SGT rounds. Late entrants may play verified rounds that remain open.",
         ],
         [
           "A division for your game",
@@ -963,7 +971,7 @@ function Rules() {
         ],
         [
           "Countback and fair play",
-          "Tied golf scores use the configured stroke-index countback starting at index 1. Identical CTP distances use the earliest verified qualifying timestamp. Missing detail requires an admin review before a prize is confirmed.",
+          "Season 1 counts back from the hardest hole on Course B, then Course A. An exact points tie shares the occupied points. Weekly prize ties use verified SGT completion times where applicable. The designated par-three CTP uses the first tee shot only. Missing evidence goes to review.",
         ],
         [
           "One weekly prize per player",
@@ -1181,6 +1189,9 @@ export default function CglPublicExperience({
     (r) => r.week_id === latestPublishedWeek?.id,
   );
   const featureWeek = getCglFeatureWeek(data);
+  const snapshotAt = Date.parse(str(data.updated_at,""));
+  const openWeeks = rows(data.weeks).filter((week) => ["published","open"].includes(str(week.status)) &&
+    Date.parse(str(week.opens_at)) <= snapshotAt && Date.parse(str(week.closes_at)) + 1000 > snapshotAt);
   if (section === "home") return <CglHome data={data} />;
   const titles: Record<string, [string, string, string]> = {
     memberships: [
@@ -1252,7 +1263,7 @@ export default function CglPublicExperience({
             <SectionHead
               label="Compare plans"
               title="Choose the access that fits your season."
-              text="Every paid option is available now. A website account is optional at checkout, and all charges are shown in AUD before payment."
+              text="Memberships and Casual Registration are separate from Season 1 entry. A website account is optional at checkout, and all charges are shown in AUD before payment."
             />
             <MembershipComparison />
           </section>
@@ -1307,6 +1318,12 @@ export default function CglPublicExperience({
       {section === "competition" ? (
         <>
           <CglRoundSpotlight data={data} />
+          {openWeeks.length > 1 ? <section className={s.section}>
+            <SectionHead title="All open rounds" text="Championship windows overlap. Play any open round you are eligible for and enrolled in." />
+            <div className={s.grid3}>{openWeeks.map((week) => <article className={s.panel} key={str(week.id)}>
+              <h3>{str(week.name)}</h3><p>{str(week.course_name)} / {str(week.second_course_name)}</p><p>Closes {date(week.closes_at,true)} Brisbane time</p>
+            </article>)}</div>
+          </section> : null}
           <nav className={s.competitionSubnav} aria-label="Competition sections">
             <a href="#round-format">Round format</a>
             <a href="#course-conditions">Course & conditions</a>
@@ -1409,30 +1426,15 @@ export default function CglPublicExperience({
         <>
           <WeeklyHonours data={data} />
           <div className={`${s.prizeSchedule} ${s.section}`}>
-            <article>
-              <span>Seasonal championship</span>
-              <h2>A Grade</h2>
-              <div><small>Champion</small><strong>$500</strong></div>
-              <div><small>Runner-up</small><strong>$200</strong></div>
-            </article>
-            <article>
-              <span>Seasonal championship</span>
-              <h2>B Grade</h2>
-              <div><small>Champion</small><strong>$200</strong></div>
-              <div><small>Runner-up</small><strong>$100</strong></div>
-            </article>
-            <article>
-              <span>Annual championship</span>
-              <h2>A Grade</h2>
-              <div><small>Champion</small><strong>$500</strong></div>
-              <div><small>Runner-up</small><strong>$100</strong></div>
-            </article>
-            <article>
-              <span>Annual championship</span>
-              <h2>B Grade</h2>
-              <div><small>Champion</small><strong>$300</strong></div>
-              <div><small>Runner-up</small><strong>$100</strong></div>
-            </article>
+            {(["seasonal", "annual"] as const).flatMap((period) => (["A","B"] as const).map((division) => {
+              const prize = CGL_CASH_PRIZE_CENTS[period][division];
+              return <article key={`${period}-${division}`}>
+                <span>{period === "seasonal" ? "Seasonal" : "Annual"} championship</span>
+                <h2>{division} Grade</h2>
+                <div><small>Champion</small><strong>{aud(prize.champion)}</strong></div>
+                <div><small>Runner-up</small><strong>{aud(prize.runner_up)}</strong></div>
+              </article>;
+            }))}
           </div>
           <div className={`${s.grid2} ${s.section}`}>
             <article className={s.panel}>
@@ -1482,10 +1484,7 @@ export default function CglPublicExperience({
             </dl>
           </section>
           <div className={s.notice}>
-            This is the approved public prize schedule for the redesign. The
-            existing automated prize configuration has not been changed in this
-            preview and must be aligned before live entitlements are activated.
-            Weekly priority starts with net, then gross, then CTP.
+            Weekly priority is lowest net, then lowest gross, then closest to the pin. Credits are held through results review. Season cash prizes are paid manually by bank transfer, targeting 14 calendar days after the final results are confirmed.
           </div>
         </>
       ) : null}

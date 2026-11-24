@@ -7,6 +7,7 @@ import {
   isValidAdminAppAccessToken,
 } from "@/lib/admin-auth";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { buildCglSeasonOneAdminDraft, CGL_SEASON_ONE_RULES, CGL_CASH_PRIZE_CENTS, CGL_SEASON_ONE_CREDITS } from "@/lib/cgl-season-one";
 import {
   CglSgtError,
   connectCglSgt,
@@ -42,6 +43,15 @@ import {
 } from "@/lib/cgl-engine";
 
 export type CglData = Record<string, unknown>;
+const configOf = (record: CglData) => (record.config ?? {}) as CglData;
+const isSeasonOne = (season: CglData) => configOf(season).regulation === CGL_SEASON_ONE_RULES;
+function fixtureEventIds(week: CglData) {
+  return [week.sgt_tournament_id, configOf(week).sgt_tournament_b_id].filter((value): value is string => typeof value === "string" && value.length > 0);
+}
+function publicFixtureFields(value: unknown, keys: string[]) {
+  const record = (value ?? {}) as CglData;
+  return Object.fromEntries(keys.flatMap((key) => ["string", "number", "boolean"].includes(typeof record[key]) ? [[key,record[key]]] : []));
+}
 export function isCglSandboxRecord(record: CglData) {
   const metadata = record.metadata as CglData | null | undefined;
   return metadata?.environment === "sandbox" ||
@@ -162,28 +172,17 @@ async function rows(
   columns = "*",
 ): Promise<CglData[]> {
   const all: CglData[] = [];
+  const keys: Record<string, string[]> = {
+    cgl_settings:["key"], cgl_plans:["code"], cgl_square_webhook_events:["event_id"], cgl_square_season_entitlements:["checkout_id"],
+    cgl_sgt_connections:["club_slug"], cgl_sgt_tours:["sgt_tour_id"], cgl_sgt_tournaments:["sgt_tournament_id"],
+    cgl_event_enrolments:["week_id","member_id"], cgl_event_reviews:["week_id"], cgl_qualifying_cards:["season_id","scorecard_id"],
+  };
   for (let offset = 0; offset < 100000; offset += 1000) {
     let query = db()
       .from(table)
       .select(columns)
-      .range(offset, offset + 999)
-      .order(
-        table === "cgl_settings"
-          ? "key"
-          : table === "cgl_plans"
-            ? "code"
-            : table === "cgl_square_webhook_events"
-              ? "event_id"
-              : table === "cgl_square_season_entitlements"
-                ? "checkout_id"
-              : table === "cgl_sgt_connections"
-                ? "club_slug"
-                : table === "cgl_sgt_tours"
-                  ? "sgt_tour_id"
-                  : table === "cgl_sgt_tournaments"
-                    ? "sgt_tournament_id"
-            : "id",
-      );
+      .range(offset, offset + 999);
+    for (const key of keys[table] ?? ["id"]) query = query.order(key);
     for (const [key, value] of Object.entries(filters))
       query = value === null ? query.is(key, null) : query.eq(key, value);
     const { data, error } = await query;
@@ -490,7 +489,7 @@ function standingsFrom(
       seasonId: string;
       memberId: string;
       division: string;
-      weekly: { week: number; points: number | null }[];
+      weekly: { week: number; points: number | null; position: number | null }[];
     }
   >();
   for (const calculation of currentCalculations(calculations, weeks)) {
@@ -508,6 +507,7 @@ function standingsFrom(
       group.weekly.push({
         week: Number(week.championship_week),
         points: row.points == null ? null : Number(row.points),
+        position: row.position == null ? null : Number(row.position),
       });
       bySeasonPlayer.set(key, group);
     }
@@ -523,6 +523,9 @@ function standingsFrom(
       division: group.division,
       handicap: member.handicap,
       total_points: summary.total,
+      events_played: group.weekly.length,
+      wins: group.weekly.filter((entry) => entry.position === 1).length,
+      top_three: group.weekly.filter((entry) => entry.position != null && entry.position <= 3).length,
       rounds_counted: summary.roundsCounted,
       counted: summary.counted,
       discarded: summary.discarded,
@@ -531,9 +534,21 @@ function standingsFrom(
       weekly: group.weekly,
     });
   }
+  const managedSeasons = new Set(weeks.filter((week) => configOf(week).event_approved === true).map((week) => week.season_id));
+  function compare(a: CglData,b: CglData) {
+    const points = Number(b.total_points)-Number(a.total_points);
+    if (points || a.season_id !== b.season_id || !managedSeasons.has(a.season_id)) return points;
+    const positions = (record: CglData) => (record.weekly as { position: number | null }[]).map((entry) => entry.position);
+    const left = positions(a), right = positions(b);
+    for (const place of [...new Set([...left,...right].filter((value): value is number => value != null))].sort((x,y) => x-y)) {
+      const difference = right.filter((p) => p===place).length-left.filter((p) => p===place).length;
+      if (difference) return difference;
+    }
+    return 0;
+  }
   result.sort(
     (a, b) =>
-      Number(b.total_points) - Number(a.total_points) ||
+      compare(a,b) ||
       String(a.sgt_username).localeCompare(String(b.sgt_username)),
   );
   for (const row of result)
@@ -543,8 +558,10 @@ function standingsFrom(
         (other) =>
           other.season_id === row.season_id &&
           other.division === row.division &&
-          Number(other.total_points) > Number(row.total_points),
+          compare(other,row) < 0,
       ).length;
+  for (const row of result) if (managedSeasons.has(row.season_id) && result.some((other) =>
+    other !== row && other.season_id===row.season_id && other.division===row.division && other.position===row.position)) row.tiebreak_review = true;
   return result;
 }
 
@@ -671,8 +688,13 @@ export async function getCglPublicSnapshot() {
   );
   const handles = new Map(members.map((m) => [m.id, m.sgt_username]));
   const current = currentCalculations(calculations, visibleWeeks);
+  const reviews = visibleSeasons.some(isSeasonOne) ? await rows("cgl_event_reviews") : [];
+  const provisional = new Map(reviews.filter((review) => !published.has(review.week_id) && visibleWeeks.some((week) => week.id===review.week_id)).map((review) => [review.week_id,review]));
+  const reviewedRows = new Map([...provisional.values()].map((review) => [review.week_id, new Set(
+    ((calculations.find((calc) => calc.id===review.calculation_id)?.source_snapshot ?? []) as CglData[]).map((record) => `${record.id}:${record.updated_at}`),
+  )]));
   const publicResults = results
-    .filter((r) => published.has(r.week_id) && handles.get(r.member_id))
+    .filter((r) => (published.has(r.week_id) || reviewedRows.get(r.week_id)?.has(`${r.id}:${r.updated_at}`)) && handles.get(r.member_id))
     .map((r) => {
       const week = visibleWeeks.find((w) => w.id === r.week_id),
         calculation = current.find((c) => c.week_id === r.week_id);
@@ -696,6 +718,7 @@ export async function getCglPublicSnapshot() {
         holes: r.holes,
         stats: publicStats(r.stats),
         played_at: r.played_at,
+        provisional: !published.has(r.week_id),
       };
     });
   const rawStandings = standingsFrom(calculations, visibleWeeks, members);
@@ -765,6 +788,7 @@ export async function getCglPublicSnapshot() {
       ends_at,
       qualification_ends_at,
       status,
+      config,
     }) => ({
       id,
       slug,
@@ -776,6 +800,8 @@ export async function getCglPublicSnapshot() {
       ends_at,
       qualification_ends_at,
       status,
+      entry_opens_at: typeof (config as CglData | undefined)?.entry_opens_at === "string" ? (config as CglData).entry_opens_at : undefined,
+      calendar_ends_at: typeof (config as CglData | undefined)?.calendar_ends_at === "string" ? (config as CglData).calendar_ends_at : undefined,
     }),
   );
   const safeWeeks = visibleWeeks.map(
@@ -794,6 +820,8 @@ export async function getCglPublicSnapshot() {
       sgt_tournament_id,
       sgt_tour_id,
       results_published,
+      config,
+      conditions,
     }) => ({
       id,
       season_id,
@@ -809,6 +837,13 @@ export async function getCglPublicSnapshot() {
       sgt_tournament_id,
       sgt_tour_id,
       results_published,
+      review_until: provisional.get(id)?.review_until,
+      ...((config as CglData | undefined)?.event_approved === true && visibleSeasons.some((season) => season.id===season_id && isSeasonOne(season)) ? {
+        course_a: publicFixtureFields((config as CglData).course_a, ["segment", "tee", "verified"]),
+        course_b: publicFixtureFields((config as CglData).course_b, ["segment", "tee", "verified"]),
+        sgt_tournament_b_id: typeof (config as CglData).sgt_tournament_b_id === "string" ? (config as CglData).sgt_tournament_b_id : undefined,
+        conditions: publicFixtureFields(conditions,["wind","greenFirmness","fairwayFirmness","greenSpeed","teeCategory"]),
+      } : {}),
     }),
   );
   return {
@@ -936,6 +971,16 @@ export async function getCglMemberSnapshot(identity: CglIdentity) {
       position: points?.position ?? null,
     };
   });
+  const managedSeason = visibleSeasons.find(isSeasonOne);
+  const [managedCards, memberEnrolments] = member && managedSeason ? await Promise.all([
+    rows("cgl_qualifying_cards",{season_id:managedSeason.id,member_id:memberId}),rows("cgl_event_enrolments",{member_id:memberId}),
+  ]) : [[],[]];
+  const roundAccess = member && managedSeason ? visibleWeeks.filter((week) => week.season_id===managedSeason.id && ["published","open"].includes(String(week.status)) && Date.parse(String(week.closes_at))+1000>now).map((week) => {
+    const access = evaluateCglEligibility({member,memberships,entries:entries.filter((entry)=>entry.season_id===managedSeason.id),plans,season:managedSeason,week,
+      at:new Date(now).toISOString(),ignoreEnrolment:false,cards:managedCards,enrolments:memberEnrolments.filter((item)=>item.week_id===week.id),divisions:divisions.filter((item)=>item.season_id===managedSeason.id)});
+    return {week_id:week.id,name:week.name,opens_at:week.opens_at,closes_at:week.closes_at,eligible:access.eligible,reason:access.reason,
+      event_ids:access.eligible ? fixtureEventIds(week) : []};
+  }) : [];
   const fullMembership = memberships
     .filter(
       (m) =>
@@ -1010,6 +1055,7 @@ export async function getCglMemberSnapshot(identity: CglIdentity) {
     memberships: memberships.filter((record) => !isCglSandboxRecord(record)),
     payments: payments.filter((record) => !isCglSandboxRecord(record)),
     entries: entries.filter((record) => !isCglSandboxRecord(record)),
+    round_access: roundAccess,
     billing: {
       environment: "sandbox",
       livePaymentsEnabled: false,
@@ -1282,6 +1328,7 @@ export async function getCglEligibility(
   memberId: string,
   week: CglData,
   at = new Date().toISOString(),
+  ignoreEnrolment = false,
 ) {
   const [members, memberships, entries, plans, season] = await Promise.all([
     rows("cgl_members", { id: memberId }),
@@ -1293,7 +1340,18 @@ export async function getCglEligibility(
     rows("cgl_plans"),
     one("cgl_seasons", String(week.season_id)),
   ]);
-  const member = members[0];
+  const [cards, enrolments, divisions] = isSeasonOne(season) ? await Promise.all([
+    rows("cgl_qualifying_cards", { season_id: season.id, member_id: memberId }),
+    ignoreEnrolment ? [] : rows("cgl_event_enrolments", { week_id: week.id, member_id: memberId }),
+    rows("cgl_division_assignments", { season_id: season.id, member_id: memberId }),
+  ]) : [[], [], []];
+  return evaluateCglEligibility({ member: members[0], memberships, entries, plans, season, week, at, ignoreEnrolment, cards, enrolments, divisions });
+}
+
+function evaluateCglEligibility({ member, memberships, entries, plans, season, week, at, ignoreEnrolment, cards, enrolments, divisions }: {
+  member?: CglData; memberships: CglData[]; entries: CglData[]; plans: CglData[]; season: CglData; week: CglData; at: string;
+  ignoreEnrolment: boolean; cards: CglData[]; enrolments: CglData[]; divisions: CglData[];
+}) {
   if (!member)
     return {
       eligible: false,
@@ -1302,6 +1360,24 @@ export async function getCglEligibility(
       kind: "casual" as const,
     };
   const now = new Date(at).getTime();
+  const managed = isSeasonOne(season);
+  const qualifying = cards.filter((card) => card.sgt_player_id === member.sgt_id && Date.parse(String(card.played_at)) <= now);
+  const holes = qualifying.reduce((sum, card) => sum + Number(card.holes), 0);
+  const required = qualifying[0]?.path === "established" ? 18 : 54;
+  const handicapEligible = week.phase === "qualification" || (member.handicap_status === "verified" && (!managed || holes >= required));
+  function withEventGate<T extends ReturnType<typeof competitionEligibility>>(access: T, kind: "full" | "casual") {
+    if (!managed || !access.eligible) return { ...access, kind };
+    const blocked = (reason: string) => ({ ...access, kind, eligible: false, reason });
+    if (season.status === "draft" || configOf(season).schedule_approved !== true || now < Date.parse(String(configOf(season).entry_opens_at)))
+      return blocked("Season 1 entry is not open yet.");
+    if (!member?.sgt_id || !member.sgt_verified_at) return blocked("Verify the player's unique SGT identity first.");
+    if (week.phase === "championship" && !divisions.some((division) => division.locked_at && ["A", "B"].includes(String(division.division)))) return blocked("Assign and lock an A or B Grade division first.");
+    if (ignoreEnrolment) return { ...access, kind };
+    if (week.status === "draft" || now < Date.parse(String(week.opens_at)) || now >= Date.parse(String(week.closes_at)) + 1000) return blocked("This round is outside its published play window.");
+    if (!enrolments.some((record) => record.state === "confirmed" && record.sgt_player_id === member.sgt_id &&
+      JSON.stringify(record.event_ids) === JSON.stringify(fixtureEventIds(week)) && Date.parse(String(record.confirmed_at)) <= now)) return blocked("Awaiting confirmed enrolment in SGT.");
+    return { ...access, kind };
+  }
   const membership = memberships
     .filter(
       (m) =>
@@ -1338,8 +1414,7 @@ export async function getCglEligibility(
       now < Date.now() - 1000 &&
       paidBeforePlay &&
       ["cancelled", "expired"].includes(String(membership.state));
-    return {
-      ...competitionEligibility({
+    return withEventGate(competitionEligibility({
         kind: "full",
         active:
           Boolean(membership.paid_through) &&
@@ -1353,12 +1428,8 @@ export async function getCglEligibility(
         failedPaymentWeek: failedWeek,
         paymentConfirmed: !failedBeforePlay,
         suspended: member.eligibility === "suspended",
-        handicapEligible:
-          week.phase === "qualification" ||
-          member.handicap_status === "verified",
-      }),
-      kind: "full" as const,
-    };
+        handicapEligible,
+      }), "full");
   }
   const registration = memberships.find(
     (m) =>
@@ -1368,20 +1439,16 @@ export async function getCglEligibility(
       m.paid_through &&
       new Date(String(m.paid_through)).getTime() > now,
   );
-  return {
-    ...competitionEligibility({
+  return withEventGate(competitionEligibility({
       kind: "casual",
       active: Boolean(registration),
       now: at,
       competitionWeek: Number(week.week_number),
       casualRegistrationExpiresAt: registration?.paid_through as string | null,
-      seasonEntryPaid: entries.some((e) => !isCglSandboxRecord(e) && e.state === "active" && e.paid_at),
+      seasonEntryPaid: entries.some((e) => !isCglSandboxRecord(e) && e.state === "active" && e.paid_at && (!managed || Date.parse(String(e.paid_at)) <= now)),
       suspended: member.eligibility === "suspended",
-      handicapEligible:
-        week.phase === "qualification" || member.handicap_status === "verified",
-    }),
-    kind: "casual" as const,
-  };
+      handicapEligible,
+    }), "casual");
 }
 
 export async function getCglAdminSnapshot(actor: CglActor) {
@@ -1429,6 +1496,41 @@ export async function getCglAdminSnapshot(actor: CglActor) {
     names.map((name, index) => [name, values[index]]),
   );
   snapshot.sgt_connections = sgtConnections;
+  const managedSeason = snapshot.seasons.find(isSeasonOne);
+  if (managedSeason) {
+    const [reviews, disputes, cards, enrolments] = await Promise.all([
+      rows("cgl_event_reviews"), rows("cgl_event_disputes"),
+      actor.role === "results_admin" ? [] : rows("cgl_qualifying_cards", {season_id:managedSeason.id}),
+      actor.role === "results_admin" ? [] : rows("cgl_event_enrolments"),
+    ]);
+    snapshot.event_reviews = reviews;
+    snapshot.event_disputes = disputes;
+    snapshot.qualifying_cards = cards;
+    snapshot.event_enrolments = enrolments;
+    if (actor.role !== "results_admin") {
+      const byMember = (records: CglData[]) => {
+        const groups = new Map<unknown,CglData[]>();
+        for (const record of records) groups.set(record.member_id,[...(groups.get(record.member_id) ?? []),record]);
+        return groups;
+      };
+      const now = new Date().toISOString();
+      const memberships = byMember(snapshot.memberships), entries = byMember(snapshot.season_entries.filter((entry) => entry.season_id === managedSeason.id));
+      const qualifications = byMember(cards), divisions = byMember(snapshot.division_assignments.filter((record) => record.season_id===managedSeason.id));
+      snapshot.enrolment_queue = snapshot.weeks.filter((week) => week.season_id===managedSeason.id && ["open","published"].includes(String(week.status)) && Date.parse(String(week.closes_at))+1000>Date.parse(now)).flatMap((week) => {
+        const marked = byMember(enrolments.filter((record) => record.week_id===week.id));
+        return snapshot.members.filter((member) => memberships.has(member.id) || entries.has(member.id)).map((member) => {
+          const division = divisions.get(member.id) ?? [];
+          const access = evaluateCglEligibility({ member, season:managedSeason, week, at:now, ignoreEnrolment:true, enrolments:[],
+            memberships:memberships.get(member.id) ?? [],entries:entries.get(member.id) ?? [],plans:snapshot.plans,cards:qualifications.get(member.id) ?? [],divisions:division });
+          const state = marked.get(member.id)?.[0];
+          const confirmed = state?.state === "confirmed" && state.sgt_player_id === member.sgt_id && JSON.stringify(state.event_ids)===JSON.stringify(fixtureEventIds(week));
+          return { week_id:week.id, member_id:member.id, sgt_player_id:member.sgt_id, player:member.sgt_username ?? member.display_name,
+            division:division[0]?.division, event_ids:fixtureEventIds(week), state:!access.eligible ? "blocked" : confirmed ? "confirmed" : state?.state==="confirmed" ? "needs_recheck" : state?.state ?? "ready",
+            reason:access.eligible ? null : access.reason, account_optional: !member.account_id };
+        });
+      });
+    }
+  }
   if (actor.role === "results_admin") {
     return {
       status: "ready",
@@ -1463,6 +1565,8 @@ export async function getCglAdminSnapshot(actor: CglActor) {
       sgt_tours: snapshot.sgt_tours,
       sgt_tournaments: snapshot.sgt_tournaments,
       sgt_sync_runs: snapshot.sgt_sync_runs,
+      event_reviews: snapshot.event_reviews,
+      event_disputes: snapshot.event_disputes,
     };
   }
   const now = Date.now(),
@@ -1695,11 +1799,12 @@ async function importResults(actor: CglActor, body: CglData, reason: string) {
       409,
     );
   const source = sourceUrl.parse(body.sourceUrl ?? body.source_url);
+  const managed = isSeasonOne(season);
   if (week.sgt_tournament_id) {
     const tournament = new URL(source).pathname.match(
       /^\/(?:tournament|scorecard|embed\/tournament)\/(\d+)(?:\/|$)/,
     )?.[1];
-    if (tournament !== String(week.sgt_tournament_id))
+    if (!tournament || !fixtureEventIds(week).includes(tournament))
       throw new CglApiError(
         "The source URL must match this fixture's official SGT tournament.",
         409,
@@ -1715,6 +1820,11 @@ async function importResults(actor: CglActor, body: CglData, reason: string) {
       net: z.number().min(-100).max(200),
       eligible: z.literal(true),
       verified: z.literal(true),
+      sgtPlayerId: z.string().regex(/^\d{8,30}$/).optional(),
+      tournamentId: z.string().regex(/^\d+$/).optional(),
+      nine: z.enum(["front_9","back_9"]).optional(),
+      playedAt: z.string().datetime({ offset: true }).optional(),
+      scorecardUrl: sourceUrl.optional(),
       holes: z
         .array(
           z.object({
@@ -1742,6 +1852,8 @@ async function importResults(actor: CglActor, body: CglData, reason: string) {
       par_saves: z.number().int().min(0).max(18).optional(),
       ctp_metres: z.number().min(0).max(1000).optional(),
       ctp_verified_at: z.string().datetime({ offset: true }).optional(),
+      ctp_hole: z.string().optional(),
+      ctp_first_shot: z.literal(true).optional(),
     })
     .passthrough();
   const resultSchema = z
@@ -1762,12 +1874,13 @@ async function importResults(actor: CglActor, body: CglData, reason: string) {
   const normalised: CglData[] = [];
   for (const result of incoming) {
     const played = Date.parse(result.played_at);
+    const latest = Date.parse(String(week.closes_at)) + (managed ? 1000 : 0);
     if (
       played > Date.now() ||
       !week.opens_at ||
       !week.closes_at ||
       played < Date.parse(String(week.opens_at)) ||
-      played >= Date.parse(String(week.closes_at))
+      played >= latest
     )
       throw new CglApiError(
         "The official completion timestamp must be within this fixture's published window. An administrator can record a deadline extension first.",
@@ -1794,6 +1907,28 @@ async function importResults(actor: CglActor, body: CglData, reason: string) {
       result.attempts as NineHoleAttempt[],
       { strokeIndexOrder: strokeIndexOrder(week) },
     );
+    if (managed) {
+      const member = await one("cgl_members", result.member_id);
+      const eventIds = fixtureEventIds(week);
+      const mapped = [configOf(week).course_a, configOf(week).course_b] as CglData[];
+      const finishes: number[] = [];
+      for (const [index, attempt] of result.attempts.entries()) {
+        const completed = Date.parse(attempt.playedAt ?? "");
+        if (!member.sgt_verified_at || !attempt.sgtPlayerId || attempt.sgtPlayerId !== member.sgt_id ||
+          !attempt.scorecardUrl || attempt.courseId !== mapped[index]?.sgtCourseId || attempt.nine !== mapped[index]?.segment ||
+          attempt.tournamentId !== (eventIds[index] ?? eventIds[0]) || !Number.isFinite(completed) ||
+          completed < Date.parse(String(week.opens_at)) || completed >= latest || completed > Date.now()) {
+          throw new CglApiError("Provide both official cards in Course A / B order with the verified SGT player, event, course, nine and completion time.", 409);
+        }
+        const access = await getCglEligibility(result.member_id,week,attempt.playedAt);
+        if (!access.eligible) throw new CglApiError(access.reason ?? "The golfer was not eligible at play time.", 409);
+        finishes.push(completed);
+      }
+      if (new Set(result.attempts.map((a) => a.scorecardUrl)).size !== 2 || Math.max(...finishes) !== played)
+        throw new CglApiError("Use two distinct official scorecards and the later completion timestamp.", 409);
+      if (result.stats.ctp_metres != null && (result.stats.ctp_first_shot !== true || !result.stats.ctp_verified_at || result.stats.ctp_hole !== configOf(week).ctp_hole))
+        throw new CglApiError("CTP requires a verified first shot on the designated par three.", 409);
+    }
     if (score.status !== "complete")
       throw new CglApiError(
         score.reason ?? "Verified complete source attempts are required.",
@@ -1848,6 +1983,7 @@ async function recalculate(actor: CglActor, weekId: string, publish: boolean) {
     rows("cgl_settings"),
     rows("cgl_division_assignments"),
   ]);
+  const managed = isSeasonOne(await one("cgl_seasons", String(week.season_id)));
   const verified = results.filter((r) => r.state === "verified"),
     config = settingsMap(settings);
   if (verified.length === 0)
@@ -1885,6 +2021,7 @@ async function recalculate(actor: CglActor, weekId: string, publish: boolean) {
         typeof stats.ctp_verified_at === "string"
           ? stats.ctp_verified_at
           : null,
+      completedAt: typeof result.played_at === "string" ? result.played_at : undefined,
     });
   }
   const pointsSetting = config.points;
@@ -1907,29 +2044,30 @@ async function recalculate(actor: CglActor, weekId: string, publish: boolean) {
       409,
     );
   const countback = strokeIndexOrder(week);
-  const points = calculateDivisionPoints(inputs, pointsTable, countback);
+  const points = calculateDivisionPoints(inputs, pointsTable, countback, managed);
   const rewards = config.rewards;
   const awards = selectWeeklyAwards(inputs, {
     verified: true,
-    published: publish,
+    published: publish || managed,
     weekId,
-    priority: (rewards?.weekly_priority ?? [
+    priority: (managed ? ["net","gross","ctp"] : rewards?.weekly_priority ?? [
       "net",
       "gross",
       "ctp",
     ]) as WeeklyAwardCategory[],
-    casualCredits: (rewards?.casual ?? {
+    casualCredits: (managed ? CGL_SEASON_ONE_CREDITS.casual : rewards?.casual ?? {
       net: 10,
       gross: 10,
       ctp: 5,
     }) as Record<WeeklyAwardCategory, number>,
-    fullMultiplier: Number(rewards?.full_multiplier ?? 2),
+    fullMultiplier: managed ? 2 : Number(rewards?.full_multiplier ?? 2),
     strokeIndexOrder: countback,
+    secondNineFirst: managed,
   });
   const configuredAwards = awards.awards.map((award) => ({
     ...award,
     credits:
-      award.membership === "full" &&
+      !managed && award.membership === "full" &&
       (rewards?.full as CglData | undefined)?.[award.category] != null
         ? Number((rewards.full as CglData)[award.category])
         : award.credits,
@@ -1938,7 +2076,7 @@ async function recalculate(actor: CglActor, weekId: string, publish: boolean) {
     .map((r) => ({ id: r.id, updated_at: r.updated_at }))
     .sort((a, b) => String(a.id).localeCompare(String(b.id)));
   const calculation = {
-    rules_version: CGL_RULES_VERSION,
+    rules_version: managed ? CGL_SEASON_ONE_RULES : CGL_RULES_VERSION,
     points_version: pointsTable,
     source_snapshot: snapshot,
     rows: points.rows,
@@ -1965,6 +2103,94 @@ async function recalculate(actor: CglActor, weekId: string, publish: boolean) {
 export async function executeCglAdminAction(actor: CglActor, body: CglData) {
   const action = text(60).parse(body.action),
     reason = reasonSchema.parse(body.reason);
+  if (action === "seed_season_one") {
+    permission(actor, "manage_seasons");
+    const draft = buildCglSeasonOneAdminDraft();
+    return rpc("cgl_seed_season_one", { p_season: draft.season, p_weeks: draft.weeks, p_actor: actor.id, p_reason: reason });
+  }
+  if (action === "approve_season_one_schedule" || action === "approve_season_one_prizes") {
+    permission(actor, action === "approve_season_one_prizes" ? "manage_rewards" : "manage_seasons");
+    const season = await one("cgl_seasons", uuid.parse(body.seasonId));
+    if (!isSeasonOne(season) || body.approved !== true) throw new CglApiError("Explicit approval of the Season 1 draft is required.");
+    const config = configOf(season);
+    const prize = action === "approve_season_one_prizes";
+    const rules = prize ? { prize_cents: CGL_CASH_PRIZE_CENTS.seasonal } : {
+      schedule_approved: true,
+      entry_opens_at: z.string().datetime({ offset: true }).parse(body.entryOpensAt),
+      calendar_ends_at: z.string().datetime({ offset: true }).parse(body.calendarEndsAt),
+    };
+    if (!prize && !(Date.parse(String(rules.entry_opens_at)) < Date.parse(String(season.starts_at)) &&
+      Date.parse(String(rules.calendar_ends_at)) >= Date.parse(String(season.starts_at)) &&
+      Date.parse(String(rules.calendar_ends_at)) <= Date.parse(String(season.ends_at)))) throw new CglApiError("Entry, season calendar and submission deadline must be in order.");
+    return rpc("cgl_admin_save", { p_entity: "season", p_record: { id: season.id, config: { ...config, ...rules } }, p_actor: actor.id, p_reason: reason });
+  }
+  if (action === "verify_season_one_event") {
+    permission(actor, "manage_seasons");
+    const week = await one("cgl_weeks", uuid.parse(body.weekId));
+    const season = await one("cgl_seasons", String(week.season_id));
+    if (!isSeasonOne(season) || week.status !== "draft" || body.approved !== true || !week.opens_at || !week.closes_at) throw new CglApiError("Explicitly verify the event while this fixture is a Season 1 draft with exact play windows.");
+    const eventId = z.string().regex(/^\d{1,15}$/);
+    const aId = eventId.parse(body.eventA);
+    const bId = body.eventB == null || body.eventB === "" ? undefined : eventId.parse(body.eventB);
+    if (aId === bId) throw new CglApiError("For one shared SGT event, leave the second event blank.");
+    const tournaments = await rows("cgl_sgt_tournaments");
+    if (![aId, ...(bId ? [bId] : [])].every((id) => tournaments.some((t) => String(t.sgt_tournament_id) === id)))
+      throw new CglApiError("Both SGT event references must already be present in the synced club cache.", 409);
+    const readCourse = (suffix: "A" | "B") => ({
+      sgtCourseId: text(150).parse(body[`course${suffix}`]),
+      segment: z.enum(["front_9","back_9"]).parse(body[`nine${suffix}`]),
+      tee: text(150).parse(body[`tee${suffix}`]),
+      verified: true,
+    });
+    const a = readCourse("A"), b = readCourse("B");
+    if (a.sgtCourseId === b.sgtCourseId) throw new CglApiError("The two halves must use different course builds.");
+    const ctp = week.phase === "championship" ? z.string().regex(/^[AB]:(?:[1-9]|1[0-8])$/).parse(body.ctpHole) : null;
+    if (ctp) {
+      const [side, rawHole] = ctp.split(":"), hole = Number(rawHole);
+      if (((side === "A" ? a : b).segment === "front_9") !== (hole <= 9)) throw new CglApiError("The CTP hole must belong to the nominated nine.");
+    }
+    return rpc("cgl_admin_save", { p_entity: "week", p_record: { id: week.id, sgt_tournament_id: aId, config: {
+      ...configOf(week), course_a: a, course_b: b, sgt_tournament_b_id: bId ?? null,
+      event_approved: true, ctp_hole: ctp, course_verification: "verified", conditions_verification: "verified",
+      verified_opens_at: week.opens_at, verified_closes_at: week.closes_at,
+    } }, p_actor: actor.id, p_reason: reason });
+  }
+  if (action === "record_qualifying_card") {
+    permission(actor, "manage_members");
+    const [member, season] = await Promise.all([one("cgl_members", uuid.parse(body.memberId)), one("cgl_seasons", uuid.parse(body.seasonId))]);
+    if (!isSeasonOne(season) || !member.sgt_id || !member.sgt_verified_at) throw new CglApiError("Verify the player's SGT account before counting qualification holes.");
+    return rpc("cgl_record_qualifying_card", { p_record: {
+      season_id: season.id, member_id: member.id, sgt_player_id: member.sgt_id, scorecard_id: text(120).parse(body.scorecardId),
+      path: z.enum(["established","new"]).parse(body.path), holes: z.union([z.literal(9),z.literal(18)]).parse(body.holes),
+      played_at: z.string().datetime({offset:true}).parse(body.playedAt), source_url: sourceUrl.parse(body.sourceUrl),
+    }, p_actor: actor.id, p_reason: reason });
+  }
+  if (action === "verify_guest_sgt") {
+    permission(actor,"manage_members");
+    if (body.approved !== true) throw new CglApiError("Verify the unique SGT ID and guest ownership first.");
+    return rpc("cgl_verify_guest_sgt",{p_member_id:uuid.parse(body.memberId),p_username:sgtUsername.parse(body.username),
+      p_sgt_id:z.string().regex(/^\d{8,30}$/).parse(body.playerId),p_source:sourceUrl.parse(body.sourceUrl),p_actor:actor.id,p_reason:reason});
+  }
+  if (action === "save_event_enrolment") {
+    permission(actor, "manage_members");
+    const week = await one("cgl_weeks", uuid.parse(body.weekId));
+    const member = await one("cgl_members", uuid.parse(body.memberId));
+    const season = await one("cgl_seasons", String(week.season_id));
+    const state = z.enum(["in_progress","confirmed","failed"]).parse(body.state);
+    if (!isSeasonOne(season) || !member.sgt_id || !member.sgt_verified_at) throw new CglApiError("Use a Season 1 fixture and a verified SGT player.");
+    const access = await getCglEligibility(String(member.id),week,new Date().toISOString(),true);
+    if (state !== "failed" && !access.eligible) throw new CglApiError(access.reason ?? "This player is not ready for enrolment.", 409);
+    if (state === "confirmed" && body.approved !== true) throw new CglApiError("Check the unique player ID in every required SGT event before confirming.");
+    return rpc("cgl_save_event_enrolment", { p_week_id: week.id, p_member_id: member.id, p_player_id: member.sgt_id,
+      p_event_ids: fixtureEventIds(week), p_state: state, p_evidence: reason, p_actor: actor.id });
+  }
+  if (["open_review", "log_dispute", "resolve_dispute", "extend_dispute"].includes(action)) {
+    permission(actor, "manage_results");
+    const week = await one("cgl_weeks", uuid.parse(body.weekId));
+    if (!isSeasonOne(await one("cgl_seasons", String(week.season_id)))) throw new CglApiError("This review workflow is for Season 1.");
+    return rpc("cgl_update_event_review", { p_week_id: week.id, p_action: action,
+      p_dispute_id: ["resolve_dispute","extend_dispute"].includes(action) ? uuid.parse(body.disputeId) : null, p_actor: actor.id, p_reason: reason });
+  }
   const saveActions: Record<
     string,
     { entity: string; permission: CglPermission; schema: z.ZodType }
@@ -2025,6 +2251,24 @@ export async function executeCglAdminAction(actor: CglActor, body: CglData) {
     const choice = saveActions[action];
     permission(actor, choice.permission);
     const record = choice.schema.parse(body.record) as CglData;
+    if ((choice.entity === "season" || choice.entity === "week") && record.id) {
+      const previous = await one(choice.entity === "season" ? "cgl_seasons" : "cgl_weeks", String(record.id));
+      const parent = choice.entity === "season" ? previous : await one("cgl_seasons", String(previous.season_id));
+      if (isSeasonOne(parent)) {
+        record.config = configOf(previous);
+        if (choice.entity === "season" && ["starts_at","ends_at","qualification_ends_at"].some((key) =>
+          record[key] != null && Date.parse(String(record[key])) !== Date.parse(String(previous[key])))) {
+          if (previous.status !== "draft") throw new CglApiError("Review the approved season boundaries before changing live dates.");
+          record.config = { ...configOf(previous), schedule_approved: false };
+        }
+        if (choice.entity === "week" && (record.course_name !== previous.course_name || record.second_course_name !== previous.second_course_name ||
+          record.sgt_tournament_id !== previous.sgt_tournament_id || JSON.stringify(record.conditions) !== JSON.stringify(previous.conditions) ||
+          ["opens_at","closes_at"].some((key) => Date.parse(String(record[key])) !== Date.parse(String(previous[key]))))) {
+          if (record.status !== "draft") throw new CglApiError("Save changed event settings as a draft and verify them again before release.");
+          record.config = { ...configOf(previous), event_approved: false };
+        }
+      }
+    }
     if (
       ["season", "week", "catalogue", "gift_item"].includes(choice.entity) &&
       !record.id
@@ -2320,15 +2564,22 @@ export async function executeCglAdminAction(actor: CglActor, body: CglData) {
         409,
       );
     const divisionRules = settingsMap(settings).divisions;
-    const cEnabled = divisionRules?.c_grade_enabled === true;
+    const managed = isSeasonOne(season);
+    if (managed) {
+      const qualification = (await rows("cgl_qualifying_cards", { season_id: seasonId, member_id: memberId })).filter((card) => card.sgt_player_id===member.sgt_id);
+      if (qualification.reduce((sum, card) => sum+Number(card.holes),0) < (qualification[0]?.path==="established" ? 18 : 54))
+        throw new CglApiError("Record the verified Season 1 qualification scorecards before assigning a division.", 409);
+      if (body.locked === false) throw new CglApiError("Season 1 divisions must be locked before championship play.");
+    }
+    const cEnabled = !managed && divisionRules?.c_grade_enabled === true;
     const division = assignDivision(Number(member.handicap), {
       cGradeEnabled: cEnabled,
-      aMaximum: Number(divisionRules?.a_max ?? 9.9),
+      aMaximum: managed ? 9.9 : Number(divisionRules?.a_max ?? 9.9),
       bMaximum: Number(divisionRules?.c_min ?? 20) - 0.1,
       ...(body.division
         ? {
             override: {
-              division: z.enum(["A", "B", "C"]).parse(body.division),
+              division: (managed ? z.enum(["A", "B"]) : z.enum(["A", "B", "C"])).parse(body.division),
               reason,
               actorId: actor.id,
             },
@@ -2423,6 +2674,37 @@ export async function executeCglAdminAction(actor: CglActor, body: CglData) {
       p_actor: actor.id,
     });
   }
+  if (action === "prepare_season_one_cash_prizes") {
+    permission(actor,"manage_rewards");
+    permission(actor,"manage_billing");
+    const season = await one("cgl_seasons",uuid.parse(body.seasonId));
+    if (!isSeasonOne(season) || body.approved !== true || Date.parse(String(season.ends_at))>=Date.now())
+      throw new CglApiError("Wait until Season 1 submissions close and explicitly confirm the prize list.");
+    const [weeks,calculations,members,prizes] = await Promise.all([rows("cgl_weeks",{season_id:season.id}),rows("cgl_calculations"),rows("cgl_members"),rows("cgl_prizes",{season_id:season.id})]);
+    if (weeks.filter((week) => week.phase==="championship" && week.results_published).length!==10)
+      throw new CglApiError("Finalise all ten championship rounds before creating the cash prize list.");
+    const rankings = standingsFrom(calculations,weeks,members);
+    const amounts = CGL_CASH_PRIZE_CENTS.seasonal;
+    const pending = (["A","B"] as const).flatMap((grade) => (["champion","runner_up"] as const).map((award, i) => {
+      const winner = rankings.find((row) => row.division===grade && row.position===i+1);
+      if (!winner || winner.tiebreak_review) throw new CglApiError("Resolve the final division positions before preparing cash prizes.",409);
+      return { member_id:winner.member_id, season_id:season.id, category:`${grade}:${award}`,kind:"cash",amount:amounts[grade][award],
+        source_key:`season-one-cash:${season.id}:${grade}:${award}`,reason };
+    }));
+    for (const award of pending) {
+      const existing = prizes.find((prize) => prize.source_key===award.source_key);
+      if (existing && (existing.member_id!==award.member_id || Number(existing.amount)!==award.amount))
+        throw new CglApiError("An existing cash prize differs from final standings and needs reconciliation.",409);
+    }
+    const confirmedAt = Math.max(...currentCalculations(calculations,weeks).map((calc) => Date.parse(String(calc.published_at))));
+    const payoutTarget = new Date(confirmedAt+14*86_400_000).toISOString();
+    let created = 0;
+    for (const award of pending) if (!prizes.some((prize) => prize.source_key===award.source_key)) {
+      await rpc("cgl_command",{p_action:"save_prize",p_payload:{...award,metadata:{payout_target_at:payoutTarget, method:"manual_bank_transfer"}},p_actor:actor.id});
+      created++;
+    }
+    return { created, payout_target_at:payoutTarget };
+  }
   if (action === "save_prize") {
     permission(actor, "manage_rewards");
     const record = z
@@ -2443,6 +2725,8 @@ export async function executeCglAdminAction(actor: CglActor, body: CglData) {
       .strict()
       .parse(body.record);
     if (record.kind === "cash") permission(actor, "manage_billing");
+    if (["cash","credits"].includes(record.kind) && isSeasonOne(await one("cgl_seasons",record.season_id)))
+      throw new CglApiError("Use Season 1 finalisation or the approved season cash prize list to allocate this award.");
     if (record.kind === "physical" && !record.claim_deadline) {
       const season = await one("cgl_seasons", record.season_id),
         seasons = await rows("cgl_seasons");

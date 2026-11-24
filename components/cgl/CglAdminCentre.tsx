@@ -18,6 +18,7 @@ import {
 import ClubhouseAdminLogin from "@/components/ClubhouseAdminLogin";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { financialScenario, CGL_DEFAULT_PLANS } from "@/lib/cgl-engine";
+import { CGL_CASH_PRIZE_CENTS, CGL_SEASON_ONE_RULES } from "@/lib/cgl-season-one";
 import { CglHeading, CglEmpty } from "./CglPublicExperience";
 import {
   aud,
@@ -41,6 +42,7 @@ type Field = {
     | "select"
     | "json"
     | "checkbox"
+    | "hidden"
     | "textarea";
   options?: { value: string; label: string }[];
   required?: boolean;
@@ -53,7 +55,7 @@ const options = (values: string[]) =>
 function toLocalInput(value: unknown) {
   if (typeof value !== "string" || !Number.isFinite(Date.parse(value)))
     return "";
-  return new Date(Date.parse(value) + 10 * 3600000).toISOString().slice(0, 16);
+  return new Date(Date.parse(value) + 10 * 3600000).toISOString().slice(0, 19);
 }
 function OperationForm({
   title,
@@ -95,7 +97,7 @@ function OperationForm({
           payload[field.key] = JSON.parse(String(value || "{}"));
         else if (field.type === "datetime")
           payload[field.key] = value
-            ? new Date(`${value}:00+10:00`).toISOString()
+            ? new Date(`${String(value).length === 16 ? `${value}:00` : value}+10:00`).toISOString()
             : null;
         else payload[field.key] = value === "" ? undefined : value;
       }
@@ -128,6 +130,7 @@ function OperationForm({
       <div className={s.formGrid}>
         {fields.map((field) => {
           const value = record?.[field.key] ?? field.initial ?? "";
+          if (field.type === "hidden") return <input key={field.key} name={field.key} type="hidden" value={String(value)} />;
           return (
             <label
               key={field.key}
@@ -181,7 +184,7 @@ function OperationForm({
                       ? toLocalInput(value)
                       : String(value)
                   }
-                  step={field.type === "number" ? "any" : undefined}
+                  step={field.type === "number" ? "any" : field.type === "datetime" ? 1 : undefined}
                 />
               )}{" "}
               {field.help ? <small>{field.help}</small> : null}
@@ -355,6 +358,7 @@ function exportCsv(items: CglRow[], name: string) {
 }
 const sections = [
   "Overview",
+  "Season 1 launch",
   "SGT live sync",
   "Members",
   "Seasons & fixtures",
@@ -366,6 +370,85 @@ const sections = [
   "Settings",
   "Audit log",
 ];
+
+function SeasonOneOperations({ data, busy, send }: { data: CglSnapshot; busy: boolean; send: Send }) {
+  const season = rows(data.seasons).find((item) => row(item.config).regulation === CGL_SEASON_ONE_RULES);
+  const [chosen, setChosen] = useState("");
+  const [showConfirmed, setShowConfirmed] = useState(false);
+  const fixtures = rows(data.weeks).filter((item) => item.season_id === season?.id).sort((a,b) => num(a.week_number)-num(b.week_number));
+  const week = fixtures.find((item) => item.id === chosen) ?? fixtures[0];
+  const config = row(season?.config), event = row(week?.config);
+  const readOnly = data.role === "results_admin";
+  const queue = rows(data.enrolment_queue).filter((item) => item.week_id===week?.id);
+  const disputes = rows(data.event_disputes).filter((item) => item.week_id===week?.id);
+  const review = rows(data.event_reviews).find((item) => item.week_id===week?.id);
+  const hidden = (key: string, value: unknown): Field => ({ key, label: key, type: "hidden", initial: str(value, "") });
+  const field = (key: string, label: string, initial?: unknown): Field => ({ key, label, initial: str(initial,""), required: true });
+  const pick = (key: string, label: string, values: Field["options"], initial?: unknown): Field => ({ ...field(key,label,initial),type:"select",options:values });
+  const check = (label: string): Field => ({ key:"approved",label,type:"checkbox" });
+  const time = (key: string, label: string, initial?: unknown): Field => ({ ...field(key,label,initial),type:"datetime" });
+  const memberOptions = rows(data.members).map((item) => ({value:str(item.id),label:str(item.sgt_username ?? item.display_name)}));
+  const events = rows(data.sgt_tournaments).map((item) => ({value:str(item.sgt_tournament_id),label:`${str(item.name)} (${str(item.sgt_tournament_id)})`}));
+  const dateLine = (value: unknown) => toLocalInput(value).replace("T"," ") || "Not set";
+  if (!season) return readOnly ? <CglEmpty title="Season 1 has not been prepared" /> : <OperationForm
+    title="Prepare the Hidden Gems Tour" description="Create one draft season and its 13 proposed fixtures. Existing records are never overwritten. This does not open entries or create SGT events."
+    action="seed_season_one" envelope={false} busy={busy} send={send} fields={[]} label="Create or complete the draft" />;
+  return <div className={s.vertical}>
+    <article className={s.panel}>
+      <h3>Hidden Gems Tour · Season 1</h3>
+      <p>Database ID: <code>{str(season.id)}</code> · {str(season.status)} · schedule {config.schedule_approved === true ? "approved" : "pending approval"}.</p>
+      <p>Brisbane (AEST): Entry {dateLine(config.entry_opens_at)} · calendar ends {dateLine(config.calendar_ends_at)} · submissions end {dateLine(season.ends_at)}. Final results have no automatic release date.</p>
+      <p>Annual A$249, monthly A$29.95, weekly A$8.95. Casual: A$29 registration plus A$100 for this season. No billing settings are changed here.</p>
+    </article>
+    {!readOnly && <OperationForm title="Approve the season schedule" description="Review individual windows in Seasons & fixtures before approving. This acknowledgement does not publish fixtures or switch on payment products."
+      action="approve_season_one_schedule" busy={busy} send={send} envelope={false} fields={[hidden("seasonId",season.id),
+        time("entryOpensAt","Entry opens (Brisbane)",config.entry_opens_at),time("calendarEndsAt","Calendar ends (Brisbane)",config.calendar_ends_at),check("I approve the Season 1 schedule")]} />}
+    <article className={s.panel}>
+      <label className={s.field}>Working fixture<select value={str(week?.id,"")} onChange={(e)=>setChosen(e.target.value)}>
+        {fixtures.map((item) => <option key={str(item.id)} value={str(item.id)}>{str(item.name)} · {str(item.status)}</option>)}
+      </select></label>
+      {week && <p>{str(week.course_name)} / {str(week.second_course_name)} · {dateLine(week.opens_at)} to {dateLine(week.closes_at)} AEST. {event.event_approved === true ? "SGT verification recorded." : "Awaiting SGT verification."}</p>}
+    </article>
+    {!readOnly && week?.status === "draft" && <OperationForm key={`verify-${str(week.id)}`} title="Verify SGT fixture mapping" description="Confirm the actual GSPro builds, selected nines, tees, official par/stroke indexes, conditions, dates and one-attempt rule in SGT. For one event covering both nines, leave Event B blank. Existing working SGT sync remains read-only."
+      busy={busy} send={send} action="verify_season_one_event" envelope={false} fields={[hidden("weekId",week.id),
+        pick("eventA","Synced SGT event A",events,week.sgt_tournament_id),{...pick("eventB","Synced SGT event B (if separate)",events,event.sgt_tournament_b_id),required:false},
+        ...(["A","B"] as const).flatMap((side) => { const course=row(event[`course_${side.toLowerCase()}`]); return [
+          field(`course${side}`,`Course ${side} build ID`,course.sgtCourseId),pick(`nine${side}`,`Course ${side} holes`,options(["front_9","back_9"]),course.segment),field(`tee${side}`,`Course ${side} actual tee box`,course.tee),
+        ]; }), ...(week.phase === "championship" ? [field("ctpHole","Designated par-three CTP hole (e.g. B:12)",event.ctp_hole)] : []),check("I verified the event and conditions in SGT/GSPro")]} />}
+    {!readOnly && <OperationForm title="Verify a guest's SGT identity" description="For checkout without a CGS account. Confirm ownership and match the unique player ID on the official SGT profile to the submitted username. Do not ask for the golfer's password."
+      busy={busy} send={send} action="verify_guest_sgt" envelope={false} fields={[
+        pick("memberId","Guest participant",rows(data.members).filter((item)=>!item.account_id && item.sgt_username && !item.sgt_verified_at).map((item)=>({value:str(item.id),label:str(item.sgt_username)}))),
+        field("username","Submitted SGT username"),field("playerId","Unique SGT player ID"),field("sourceUrl","Official SGT profile URL"),check("I checked the official ID and confirmed ownership")]} />}
+    {!readOnly && <OperationForm title="Record verified qualification holes" description="Record each approved CGL or external SGT scorecard once. Established handicap: 18 holes. New handicap: 54 holes. Verify handicap and lock the grade in Members after review."
+      busy={busy} send={send} action="record_qualifying_card" envelope={false} fields={[hidden("seasonId",season.id),pick("memberId","Player",memberOptions),
+        pick("path","Qualification path",options(["established","new"])),field("scorecardId","Unique SGT scorecard ID"),{...field("holes","Completed holes: 9 or 18"),type:"number"},
+        time("playedAt","Completion (Brisbane)"),field("sourceUrl","Official SGT scorecard URL")]} />}
+    {!readOnly && week && <article className={s.panel}>
+      <h3>SGT enrolment queue</h3>
+      <p>Complete enrolment in SGT, check the unique player ID in each event, then record the result here. Website-account holders receive an inbox notice; contact guest entrants directly.</p>
+      <div className={s.actions}>{[week.sgt_tournament_id,event.sgt_tournament_b_id].filter((id) => /^\d+$/.test(str(id,""))).map((id) =>
+        <a className={s.smallButton} key={str(id)} href={`https://simulatorgolftour.com/tournament/${str(id)}`} target="_blank" rel="noreferrer">Open SGT event {str(id)}</a>)}</div>
+      <label><input type="checkbox" checked={showConfirmed} onChange={(e)=>setShowConfirmed(e.target.checked)} /> Include confirmed players</label>
+      <RecordList items={queue.filter((item)=>showConfirmed || item.state!=="confirmed")} columns={["player","member_id","sgt_player_id","division","state","reason","account_optional"]} />
+      {queue.length > 0 && <OperationForm key={`enrol-${str(week.id)}`} title="Record enrolment progress" busy={busy} send={send} action="save_event_enrolment" envelope={false}
+        fields={[hidden("weekId",week.id),pick("memberId","Player",queue.filter((item) => item.sgt_player_id).map((item) => ({value:str(item.member_id),label:`${str(item.player)} · ${str(item.sgt_player_id)}`}))),
+          pick("state","SGT progress",options(["in_progress","confirmed","failed"])),check("I checked this ID in all required SGT events (required to confirm)")]} />}
+    </article>}
+    {week?.phase === "championship" && <div className={s.vertical}>
+      <article className={s.panel}><h3>Results review</h3><p>{review ? `Review ends ${dateLine(review.review_until)} AEST.` : "Review has not opened."} Use Results & imports to verify and calculate, then open review here. Final publication waits for 48 hours and any recorded disputes.</p>
+        <RecordList items={disputes} columns={["id","details","state","created_at","resolution_target_at","resolved_at"]} /></article>
+      {(["open_review","log_dispute","resolve_dispute","extend_dispute"] as const).filter((action)=>action==="open_review" || review).map((action) => <OperationForm
+        key={`${str(week.id)}-${action}`} title={{open_review:"Publish provisional results for review",log_dispute:"Log a scoring dispute",resolve_dispute:"Resolve a scoring dispute",extend_dispute:"Extend the resolution target by seven days"}[action]}
+        busy={busy} send={send} action={action} envelope={false} fields={[hidden("weekId",week.id),...(["resolve_dispute","extend_dispute"].includes(action) ? [pick("disputeId","Open dispute",disputes.filter((item)=>item.state==="open").map((item)=>({value:str(item.id),label:str(item.details)})))] : [])]} />)}
+    </div>}
+    {!readOnly && <>
+      <OperationForm title="Approve the A$1,000 seasonal cash schedule" description={`A Grade: ${aud(CGL_CASH_PRIZE_CENTS.seasonal.A.champion)} / ${aud(CGL_CASH_PRIZE_CENTS.seasonal.A.runner_up)}. B Grade: ${aud(CGL_CASH_PRIZE_CENTS.seasonal.B.champion)} / ${aud(CGL_CASH_PRIZE_CENTS.seasonal.B.runner_up)}. Approval affects only this season.`}
+        busy={busy} send={send} action="approve_season_one_prizes" envelope={false} fields={[hidden("seasonId",season.id),check("Approve these Season 1 amounts")]} />
+      <OperationForm title="Prepare final cash prizes" description="All ten championship rounds must be final. Use Rewards & prizes to verify and approve recipients, then mark awarded only after the manual bank transfer. Do not enter bank details here."
+        busy={busy} send={send} action="prepare_season_one_cash_prizes" envelope={false} fields={[hidden("seasonId",season.id),check("I have confirmed the final season standings")]} />
+    </>}
+  </div>;
+}
 
 function SgtLiveSync({
   data,
@@ -961,7 +1044,7 @@ export default function CglAdminCentre() {
       <div className={s.adminLayout}>
         <nav className={s.adminNav} aria-label="CGL administration">
           {(data.role === "results_admin"
-            ? ["Overview", "Results & imports"]
+            ? ["Overview", "Season 1 launch", "Results & imports"]
             : sections
           ).map((section) => (
             <button
@@ -978,6 +1061,7 @@ export default function CglAdminCentre() {
           ))}
         </nav>
         <div className={s.adminContent}>
+          {tab === "Season 1 launch" ? <SeasonOneOperations data={data} busy={busy} send={send} /> : null}
           {tab === "Overview" && data.role === "results_admin" ? (
             <article className={s.panel}>
               <h2>Results administration</h2>
@@ -1283,7 +1367,7 @@ export default function CglAdminCentre() {
                   },
                   {
                     key: "ends_at",
-                    label: "Season ends (Brisbane)",
+                    label: "Final submission deadline / season access end (Brisbane)",
                     type: "datetime",
                     required: true,
                   },

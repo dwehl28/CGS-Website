@@ -686,7 +686,27 @@ export interface CompetitionResult {
   holes?: readonly HoleScore[];
   ctpMetres?: number | null;
   ctpVerifiedAt?: string | null;
+  completedAt?: string;
   membership?: CglMembershipKind;
+}
+
+export function compareTwoNineCountback(
+  left: readonly HoleScore[] | undefined,
+  right: readonly HoleScore[] | undefined,
+  scoring: "net" | "gross" = "net",
+): ReturnType<typeof compareCountback> {
+  for (const segment of [2, 1]) {
+    const a = left?.filter((hole) => hole.segment === segment) ?? [];
+    const b = right?.filter((hole) => hole.segment === segment) ?? [];
+    const indices = a.map((hole) => hole.strokeIndex).sort((x, y) => x - y);
+    if (a.length !== 9 || b.length !== 9 || new Set(indices).size !== 9 ||
+      new Set(b.map((hole) => hole.strokeIndex)).size !== 9) {
+      return { order: null, reason: "Verified stroke indexes and hole scores are required for both nines." };
+    }
+    const result = compareCountback(a, b, indices, scoring);
+    if (result.order !== 0) return result;
+  }
+  return { order: 0 };
 }
 
 export interface CalculatedPointsRow {
@@ -709,6 +729,7 @@ export function calculateDivisionPoints(
   results: readonly CompetitionResult[],
   table: PointsTable = CGL_DEFAULT_POINTS_TABLE,
   strokeIndexOrder?: readonly number[],
+  secondNineFirst = false,
 ): PointsCalculation {
   if (
     table.values.length === 0 ||
@@ -732,6 +753,28 @@ export function calculateDivisionPoints(
     let offset = 0;
     while (offset < field.length) {
       const group = field.filter((result) => result.net === field[offset].net);
+      if (secondNineFirst && group.length > 1) {
+        const compare = (a: CompetitionResult, b: CompetitionResult) => compareTwoNineCountback(a.holes,b.holes).order;
+        const canCompare = group.every((a,i) => group.slice(i+1).every((b) => compare(a,b) !== null));
+        if (canCompare) group.sort((a,b) => compare(a,b) ?? 0);
+        let start = 0;
+        while (start < group.length) {
+          let end = start+1;
+          if (canCompare) while (end<group.length && compare(group[start],group[end])===0) end++;
+          const occupied = table.values.slice(offset+start,offset+end);
+          const review = !canCompare || occupied.length !== end-start;
+          const award = review ? null : Number((occupied.reduce((a,b) => a+b,0)/occupied.length).toFixed(3));
+          for (const result of group.slice(start,end)) rows.push({
+            playerId: result.playerId, division, position: review ? null : offset+start+1,
+            points: award, status: review ? "manual_review" : "calculated",
+            rulesVersion: CGL_RULES_VERSION, pointsVersion: table.version,
+            ...(review ? { reason: "Verified countback data or approved placement points are missing." } : {}),
+          });
+          start=end;
+        }
+        offset+=group.length;
+        continue;
+      }
       const reasons: string[] = [];
       if (group.length > 1) {
         for (let i = 0; i < group.length; i += 1) {
@@ -899,6 +942,7 @@ export function selectWeeklyAwards(
     casualCredits?: Record<WeeklyAwardCategory, number>;
     fullMultiplier?: number;
     strokeIndexOrder?: readonly number[];
+    secondNineFirst?: boolean;
   },
 ): { awards: WeeklyAward[]; manualReview: boolean; reason?: string } {
   if (!options.verified || !options.published)
@@ -982,26 +1026,24 @@ export function selectWeeklyAwards(
           };
         winner = tied[0];
       } else {
+        const compare = (a: CompetitionResult,b: CompetitionResult) => options.secondNineFirst
+          ? compareTwoNineCountback(a.holes,b.holes,category)
+          : compareCountback(a.holes,b.holes,options.strokeIndexOrder,category);
         for (let i = 0; i < tied.length; i += 1)
           for (let j = i + 1; j < tied.length; j += 1) {
-            const comparison = compareCountback(
-              tied[i].holes,
-              tied[j].holes,
-              options.strokeIndexOrder,
-              category,
-            );
-            if (comparison.order == null || comparison.order === 0)
+            const comparison = compare(tied[i],tied[j]);
+            if (comparison.order == null || (!options.secondNineFirst && comparison.order === 0))
               return { awards, manualReview: true, reason: comparison.reason };
           }
-        tied.sort(
-          (a, b) =>
-            compareCountback(
-              a.holes,
-              b.holes,
-              options.strokeIndexOrder,
-              category,
-            ).order ?? 0,
-        );
+        tied.sort((a,b) => compare(a,b).order ?? 0);
+        if (options.secondNineFirst && compare(tied[0],tied[1]).order===0) {
+          const leaders = tied.filter((result) => compare(tied[0],result).order===0);
+          const time = (result: CompetitionResult) => Date.parse(result.completedAt ?? "");
+          leaders.sort((a,b) => time(a)-time(b));
+          if (leaders.some((result) => !Number.isFinite(time(result))) || time(leaders[0])===time(leaders[1]))
+            return { awards, manualReview: true, reason: "A tied prize needs distinct, verified SGT completion times." };
+          tied[0] = leaders[0];
+        }
         winner = tied[0];
       }
     }

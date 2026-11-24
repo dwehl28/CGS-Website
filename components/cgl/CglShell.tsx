@@ -165,8 +165,8 @@ export default function CglShell({
           <span className={styles.launchStatus} aria-hidden="true" />
           <strong>
             {oneOffSalesOpen
-              ? "CGL memberships and registrations are open"
-              : "CGL Season 1 registrations"}
+              ? "CGL memberships and Casual Registration are open"
+              : "Explore CGL membership options"}
           </strong>
           <span>Play without creating an account.</span>
           <Link href="/cgl/join">View membership options</Link>

@@ -1,4 +1,10 @@
 export const CGL_TIME_ZONE = "Australia/Brisbane";
+export const CGL_SEASON_ONE_RULES = "hidden-gems-2027-v1";
+export const CGL_CASH_PRIZE_CENTS = {
+  seasonal: { A: { champion: 50000, runner_up: 20000 }, B: { champion: 20000, runner_up: 10000 } },
+  annual: { A: { champion: 50000, runner_up: 10000 }, B: { champion: 30000, runner_up: 10000 } },
+} as const;
+export const CGL_SEASON_ONE_CREDITS = { full: { net: 20, gross: 20, ctp: 10 }, casual: { net: 10, gross: 10, ctp: 5 } } as const;
 
 export type CglSeasonPhase = "qualification" | "championship";
 export type CglCourseSegment = "front_9" | "back_9" | null;
@@ -35,13 +41,18 @@ const course = (name: string): CglCourseProposal => ({
   verified: false,
 });
 
+function closingDate(openingDate: string, days: number) {
+  return new Date(Date.parse(`${openingDate}T00:00:00Z`) + (days - 1) * 86_400_000)
+    .toISOString().slice(0, 10);
+}
+
 const qualificationRounds: readonly CglRoundProposal[] = [
   {
     weekNumber: 1,
     phase: "qualification",
     phaseRound: 1,
     openingDate: "2027-02-08",
-    closingDate: null,
+    closingDate: "2027-02-14",
     courses: [course("Assiniboine"), course("Club Sports Belvédère")],
     conditions: null,
   },
@@ -50,7 +61,7 @@ const qualificationRounds: readonly CglRoundProposal[] = [
     phase: "qualification",
     phaseRound: 2,
     openingDate: "2027-02-15",
-    closingDate: null,
+    closingDate: "2027-02-21",
     courses: [course("Trail Creek"), course("Fessenden")],
     conditions: null,
   },
@@ -59,7 +70,7 @@ const qualificationRounds: readonly CglRoundProposal[] = [
     phase: "qualification",
     phaseRound: 3,
     openingDate: "2027-02-22",
-    closingDate: null,
+    closingDate: "2027-02-28",
     courses: [course("Gilbert Plains"), course("Dixie")],
     conditions: null,
   },
@@ -170,7 +181,7 @@ const championshipRounds: readonly CglRoundProposal[] = championshipCourses.map(
     phase: "championship",
     phaseRound: index + 1,
     openingDate: championshipOpeningDates[index],
-    closingDate: null,
+    closingDate: closingDate(championshipOpeningDates[index], 21),
     courses: [course(courseA), course(courseB)],
     conditions: championshipConditions[index],
   }),
@@ -185,6 +196,9 @@ export const CGL_SEASON_ONE_PLAN = Object.freeze({
   status: "proposal" as const,
   timeZone: CGL_TIME_ZONE,
   membershipRegistrationDate: "2027-02-01",
+  proposedEntryOpensAt: "2027-02-01T09:00:00+10:00",
+  calendarEndsAt: "2027-05-09T23:59:59+10:00",
+  submissionEndsAt: "2027-05-23T23:59:59+10:00",
   qualificationStartDate: "2027-02-08",
   championshipStartDate: "2027-03-01",
   finalRoundOpeningDate: "2027-05-03",
@@ -288,8 +302,8 @@ export function validateCglSeasonOnePlan(
       errors.push(`Week ${index + 1} is not in sequence.`);
     if (!/^2027-\d{2}-\d{2}$/.test(round.openingDate))
       errors.push(`Week ${round.weekNumber} has an invalid opening date.`);
-    if (round.closingDate !== null)
-      errors.push(`Week ${round.weekNumber} has an unapproved closing date.`);
+    if (round.closingDate !== closingDate(round.openingDate, round.phase === "qualification" ? 7 : 21))
+      errors.push(`Week ${round.weekNumber} has the wrong proposed submission window.`);
     if (new Set(round.courses.map((item) => item.name)).size !== 2)
       errors.push(`Week ${round.weekNumber} must use two different courses.`);
     for (const item of round.courses) {
@@ -316,11 +330,18 @@ export function buildCglSeasonOneAdminDraft() {
       year: CGL_SEASON_ONE_PLAN.year,
       season_number: CGL_SEASON_ONE_PLAN.seasonNumber,
       format: "world_tour",
-      starts_at: null,
-      ends_at: null,
-      qualification_ends_at: null,
+      starts_at: "2027-02-08T00:00:00+10:00",
+      ends_at: CGL_SEASON_ONE_PLAN.submissionEndsAt,
+      qualification_ends_at: "2027-02-28T23:59:59+10:00",
       status: "draft",
       config: {
+        regulation: CGL_SEASON_ONE_RULES,
+        scoring: "individual_stroke_play",
+        entry_opens_at: CGL_SEASON_ONE_PLAN.proposedEntryOpensAt,
+        calendar_ends_at: CGL_SEASON_ONE_PLAN.calendarEndsAt,
+        schedule_approved: false,
+        automatic_sgt_enrolment: false,
+        proposed_prize_cents: CGL_CASH_PRIZE_CENTS.seasonal,
         campaign_name: CGL_SEASON_ONE_PLAN.campaignName,
         time_zone: CGL_SEASON_ONE_PLAN.timeZone,
         planned_registration_date:
@@ -343,8 +364,8 @@ export function buildCglSeasonOneAdminDraft() {
           ? `Qualification ${round.phaseRound}`
           : `Hidden Gems Round ${round.phaseRound}`,
       phase: round.phase,
-      opens_at: null,
-      closes_at: null,
+      opens_at: `${round.openingDate}T00:00:00+10:00`,
+      closes_at: `${round.closingDate}T23:59:59+10:00`,
       status: "draft",
       course_name: round.courses[0].name,
       second_course_name: round.courses[1].name,
@@ -353,9 +374,10 @@ export function buildCglSeasonOneAdminDraft() {
       conditions: round.conditions ?? {},
       config: {
         planned_open_date: round.openingDate,
-        planned_close_date: null,
-        course_a: round.courses[0],
-        course_b: round.courses[1],
+        planned_close_date: round.closingDate,
+        course_a: { ...round.courses[0], segment: "front_9" },
+        course_b: { ...round.courses[1], segment: "back_9" },
+        event_approved: false,
         course_verification: "required",
         conditions_verification:
           round.phase === "championship" ? "required" : "not_configured",

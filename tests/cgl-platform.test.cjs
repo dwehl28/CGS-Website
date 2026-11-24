@@ -29,6 +29,35 @@ function compileModule(relative, overrides = {}) {
   return loaded.exports;
 }
 const engine = compileModule("lib/cgl-engine.ts");
+const seasonOne = compileModule("lib/cgl-season-one.ts");
+
+test("Season 1 requires verified qualification and SGT enrolment without a full-member Season Pass", async () => {
+  const before = new Date(Date.now()-72*3600000).toISOString();
+  const yesterday = new Date(Date.now()-24*3600000).toISOString();
+  const future = new Date(Date.now()+72*3600000).toISOString();
+  const week = {id:WEEK, season_id:SEASON, week_number:13, opens_at:before, closes_at:future, phase:"championship", status:"published", sgt_tournament_id:"10", config:{sgt_tournament_b_id:"20"}};
+  const tables = {
+    cgl_seasons:[{id:SEASON,status:"active",starts_at:before,ends_at:future,config:{regulation:seasonOne.CGL_SEASON_ONE_RULES,schedule_approved:true,entry_opens_at:before,calendar_ends_at:yesterday}}],
+    cgl_members:[{id:MEMBER,sgt_id:"123456789",sgt_verified_at:before,handicap_status:"verified",eligibility:"active"}],
+    cgl_memberships:[{member_id:MEMBER,plan_code:"annual",starts_at:yesterday,paid_through:future,state:"active"}],
+    cgl_plans:[{code:"annual",full_member:true}],
+    cgl_division_assignments:[{member_id:MEMBER,season_id:SEASON,division:"A",locked_at:yesterday}],
+    cgl_qualifying_cards:[{season_id:SEASON,member_id:MEMBER,sgt_player_id:"123456789",path:"established",played_at:before,holes:9}],
+    cgl_event_enrolments:[],
+  };
+  const {platform} = platformHarness(tables);
+  assert.equal((await platform.getCglEligibility(MEMBER,week)).eligible,false);
+  tables.cgl_qualifying_cards.push({...tables.cgl_qualifying_cards[0]});
+  assert.match((await platform.getCglEligibility(MEMBER,week)).reason,/enrolment/);
+  tables.cgl_event_enrolments.push({week_id:WEEK,member_id:MEMBER,sgt_player_id:"123456789",confirmed_at:yesterday,event_ids:["10"],state:"confirmed"});
+  assert.equal((await platform.getCglEligibility(MEMBER,week)).eligible,false);
+  tables.cgl_event_enrolments[0].event_ids.push("20");
+  assert.equal((await platform.getCglEligibility(MEMBER,week)).eligible,true);
+  assert.equal((await platform.getCglEligibility(MEMBER,{...week,closes_at:yesterday})).eligible,false);
+  assert.equal((await platform.getCglEligibility(MEMBER,week,before)).eligible,false);
+  tables.cgl_qualifying_cards.forEach((card) => { card.path="new"; });
+  assert.equal((await platform.getCglEligibility(MEMBER,week)).eligible,false);
+});
 
 function platformHarness(tables = {}, options = {}) {
   const calls = { rpc: [], auth: [], reads: [], sgt: [], square: [] };
@@ -104,6 +133,7 @@ function platformHarness(tables = {}, options = {}) {
   const platform = compileModule("lib/cgl-platform.ts", {
     "server-only": {},
     "@/lib/cgl-engine": engine,
+    "@/lib/cgl-season-one": seasonOne,
     "@/lib/supabase-admin": { getSupabaseAdmin: () => database },
     "@/lib/cgl-sgt": {
       CglSgtError: TestSgtError,

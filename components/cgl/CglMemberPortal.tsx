@@ -944,6 +944,14 @@ export default function CglMemberPortal({ join = false }: { join?: boolean }) {
                   ? `Closes ${date(available[0].closes_at, true)}. Check your membership and handicap eligibility before playing.`
                   : "Available rounds will appear here when the season opens. You can follow the separate SGT trial now."}
               </p>
+              {rows(data.round_access).length ? <ul>
+                {rows(data.round_access).map((round) => <li key={str(round.week_id)}>
+                  <strong>{str(round.name)}</strong> · {round.eligible ? "Ready to play" : str(round.reason)}
+                  {round.eligible && Array.isArray(round.event_ids) ? round.event_ids.filter((id) => /^\d+$/.test(str(id,""))).map((id) => (
+                    <span key={str(id)}>{" "}<a className={s.textLink} href={`https://simulatorgolftour.com/tournament/${str(id)}`} target="_blank" rel="noreferrer">SGT event {str(id)}</a></span>
+                  )) : null}
+                </li>)}
+              </ul> : null}
               <div className={s.actions}>
                 <Link
                   href={available.length ? "/cgl/competition" : "/cgl/trial"}

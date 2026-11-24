@@ -42,7 +42,7 @@ test("Season 1 proposal contains the agreed three-plus-ten calendar", () => {
 test("course pairings cannot accidentally present draft SGT details as verified", () => {
   for (const round of season.CGL_SEASON_ONE_PLAN.rounds) {
     assert.equal(new Set(round.courses.map((course) => course.name)).size, 2);
-    assert.equal(round.closingDate, null);
+    assert.ok(round.closingDate && round.closingDate > round.openingDate);
     for (const course of round.courses) {
       assert.equal(course.verified, false);
       assert.equal(course.sgtCourseId, null);
@@ -64,15 +64,43 @@ test("championship condition progression remains editable proposal data", () => 
 test("admin draft maps to the existing season and week schema without publishing", () => {
   const draft = season.buildCglSeasonOneAdminDraft();
   assert.equal(draft.season.status, "draft");
-  assert.equal(draft.season.starts_at, null);
-  assert.equal(draft.season.ends_at, null);
+  assert.equal(draft.season.starts_at, "2027-02-08T00:00:00+10:00");
+  assert.equal(draft.season.ends_at, "2027-05-23T23:59:59+10:00");
+  assert.equal(draft.season.config.calendar_ends_at, "2027-05-09T23:59:59+10:00");
+  assert.equal(draft.season.config.entry_opens_at, "2027-02-01T09:00:00+10:00");
+  assert.equal(draft.season.config.schedule_approved, false);
   assert.equal(draft.weeks.length, 13);
   assert.ok(draft.weeks.every((week) => week.status === "draft"));
-  assert.ok(draft.weeks.every((week) => week.opens_at === null));
-  assert.ok(draft.weeks.every((week) => week.closes_at === null));
+  assert.ok(draft.weeks.every((week) => Date.parse(week.opens_at) < Date.parse(week.closes_at)));
+  assert.equal(draft.weeks[0].closes_at, "2027-02-14T23:59:59+10:00");
+  assert.equal(draft.weeks[3].closes_at, "2027-03-21T23:59:59+10:00");
+  assert.ok(Date.parse(draft.weeks[4].opens_at) < Date.parse(draft.weeks[3].closes_at));
+  assert.equal(draft.weeks[12].closes_at, draft.season.ends_at);
   assert.equal(draft.weeks[3].championship_week, 1);
   assert.equal(draft.weeks[3].config.planned_open_date, "2027-03-01");
   assert.equal(draft.weeks[3].config.course_verification, "required");
+});
+
+test("seasonal and annual prize schedules each total A$1000", () => {
+  for (const schedule of Object.values(season.CGL_CASH_PRIZE_CENTS))
+    assert.equal(Object.values(schedule).flatMap(Object.values).reduce((sum, cents) => sum+cents,0), 100000);
+});
+
+test("Season 1 countback compares the second course first and shares fully tied points", async () => {
+  const engine: typeof import("../lib/cgl-engine") = await import(pathToFileURL(resolve(process.cwd(),"lib/cgl-engine.ts")).href);
+  const holes = [1,2].flatMap((segment) => Array.from({length:9},(_,i) => ({segment,strokeIndex:i+1,gross:4,net:4})));
+  const reverse = holes.map((hole) => ({...hole,net:hole.strokeIndex!==1 ? 4 : hole.segment===1 ? 3 : 5}));
+  assert.equal(engine.compareTwoNineCountback(holes,reverse).order,-1);
+  assert.equal(engine.compareTwoNineCountback(holes.slice(0,8),reverse).order,null);
+  const participant = {playerId:"first",division:"A" as const,net:72,gross:72,eligible:true,verified:true,holes};
+  const ties = engine.calculateDivisionPoints([participant,{...participant,playerId:"second"}],undefined,undefined,true);
+  assert.equal(ties.manualReview,false);
+  assert.deepEqual(ties.rows.map((r)=>[r.position,r.points]),[[1,400],[1,400]]);
+  const awards = engine.selectWeeklyAwards([
+    {...participant,membership:"full",completedAt:"2027-03-10T00:00:00Z"},
+    {...participant,playerId:"second",membership:"casual",completedAt:"2027-03-11T00:00:00Z"},
+  ],{verified:true,published:true,secondNineFirst:true,weekId:"verified"});
+  assert.deepEqual(awards.awards.map((a)=>[a.category,a.playerId,a.credits]),[["net","first",20],["gross","second",10]]);
 });
 
 test("launch milestone remains useful before, during and after the season", () => {
